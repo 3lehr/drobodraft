@@ -209,3 +209,11 @@ Statt Stubs werden `pwrite` und `ioctl` per `-D` auf `lifs_dev_pwrite`/`lifs_dev
 ## Was rekonstruiert, nicht abgeschrieben ist
 
 Struktur-Layout, Zahlenwerte der Flags und FS-Attribut-Namen (`UVFS_FSATTR_*` als Strings) sind eigene Festlegungen, nur zwischen Plugin und lifs_cli konsistent. Nachweisbar festgelegt durch den Quelltext sind: UVFS_FA_TYPE_FILE/DIR/SYMLINK = 1/2/3 (Index in `uvfsToVtype_tab`), Modus-Bits = POSIX (`mode & ALLPERMS` in hfs_makenode), `de_reclen`/`de_nextrec` = dasselbe Feld (Endemarke 0 in cat_getdirentries und Tester), UVFS_DIRCOOKIE_EOF = ~0. Fuer FSKit-Anbindung (Phase 2) ist das Layout irrelevant, solange der Adapter denselben Header einbindet.
+
+## Eingriffe in Apples Quellen (vendor/hfs-715.100.10)
+
+Bis Phase 5a unveraendert. Seither ein Eingriff (2026-10-14T13:33:41+0200, Commit db7033c6b), jede weitere Aenderung hier eintragen:
+
+| Datei:Zeile | Aenderung | Grund |
+|---|---|---|
+| `livefiles_hfs_plugin/lf_hfs_vnode.c:218` | `Hdr.uncompressed_size = *((uint32_t*)(data + sizeof(uint64_t)))` -> `uint64_t` | `decmpfs_header.uncompressed_size` (shim `System/sys/decmpfs.h`, Layout wie XNU) ist 64 Bit; die 32-Bit-Lesung schnitt die von getattr gemeldete Groesse komprimierter Dateien ab 4 GiB ab. Beleg: Eichgruppe decmpfs, Fixture n_t7_size5g (Header 5 GiB): vorher 1073741824, nachher 5368709120. Das Lesen selbst liegt ausserhalb von Apples Quellen (`fskit_probe/Module/Decmpfs.swift`). |
