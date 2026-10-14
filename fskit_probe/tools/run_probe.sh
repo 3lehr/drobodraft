@@ -8,9 +8,14 @@ MNT=${MNT:-/Volumes/daten/xcode/drobo/mnt}
 OUT=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nomount "$IMG")
 DEV=$(echo "$OUT" | awk 'NR==1{print $1}')
 echo "attach: $OUT"
-# Sicherheitsgurt: das Geraet muss das Abbild sein, 4 GiB gross, nie physisch
+# Sicherheitsgurt 1: das Geraet muss dieses Abbild sein
 hdiutil info | grep -A30 "^image-path *: *$IMG" | grep -q "$DEV" || { echo "ABBRUCH: $DEV gehoert nicht zu $IMG"; exit 1; }
-diskutil info "$DEV" | grep -E "Virtual|Disk Image|Protocol" || true
+# Sicherheitsgurt 2 (Waechter VOR dem dd): nur ein virtuelles Disk-Image-Geraet, nie physisch. Die 4-GiB-Grenze erzwingt das Modul
+# selbst (Throughput.erlaubteGroesse).
+INFO=$(diskutil info "$DEV")
+echo "$INFO" | grep -E "Virtual|Protocol"
+{ echo "$INFO" | grep -Eq '^ *Virtual: *Yes' && echo "$INFO" | grep -Eq '^ *Protocol: *Disk Image'; } \
+  || { echo "ABBRUCH: $DEV ist kein virtuelles Disk-Image-Geraet (Virtual: Yes / Protocol: Disk Image fehlt)"; hdiutil detach "$DEV" || true; exit 1; }
 printf 'DROBOFSPROBE' | dd of="${DEV/disk/rdisk}" bs=512 count=1 conv=sync 2>&1 | tail -1
 mkdir -p "$MNT"
 echo "--- mount -F"

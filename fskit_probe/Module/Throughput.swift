@@ -8,6 +8,10 @@ enum Throughput {
     static let chunk = 512 * 1024
     static let base: off_t = 1 << 20
     static let marker = Array("DROBOFSPROBE".utf8)
+    /// Einzig erlaubte Geraetegroesse: das 4-GiB-Testabbild aus tools/run_probe.sh. Jede andere Groesse (Drobo, CF-Karte,
+    /// 5-GiB-Abbild) bekommt KEINE Messung, auch mit Marker -- der Marker allein ist ein Byte-Muster, das auch ein
+    /// Fremdmedium tragen kann.
+    static let erlaubteGroesse = 4 << 30
 
     static func now() -> UInt64 { clock_gettime_nsec_np(CLOCK_UPTIME_RAW) }
 
@@ -21,9 +25,12 @@ enum Throughput {
         return memcmp(buf, marker, marker.count) == 0
     }
 
+    /// Schreibt NUR, wenn Groesse == erlaubteGroesse UND der Marker unmittelbar davor erneut gelesen wurde.
     static func run(_ dev: FSBlockDeviceResource, totalBytes: Int = 2 << 30) -> String {
         var out = "bsd=\(dev.bsdName) blockSize=\(dev.blockSize) physBlockSize=\(dev.physicalBlockSize) blockCount=\(dev.blockCount) writable=\(dev.isWritable)\n"
         let devBytes = Int(dev.blockCount * dev.blockSize)
+        guard devBytes == erlaubteGroesse else { return out + "ABBRUCH: Geraetegroesse \(devBytes) != \(erlaubteGroesse) (4 GiB) -- keine Messung, nichts geschrieben\n" }
+        guard (try? hasMarker(dev)) == true else { return out + "ABBRUCH: Marker vor der Messung nicht (mehr) lesbar -- keine Messung, nichts geschrieben\n" }
         let total = min(totalBytes, devBytes - Int(base)) / chunk * chunk
         let n = total / chunk
         guard dev.isWritable, n > 0 else { return out + "ABBRUCH: nicht beschreibbar oder zu klein\n" }

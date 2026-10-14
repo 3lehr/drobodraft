@@ -85,6 +85,10 @@ final class ProbeVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperat
     func synchronize(flags: FSSyncFlags) async throws {}
 
     func mount(options: FSTaskOptions) async throws {
+        guard (try? Throughput.hasMarker(dev)) == true else {
+            log.error("mount: kein Marker -> abgelehnt")
+            throw posix(EINVAL)
+        }
         log.notice("mount: Durchsatzmessung startet")
         let text = Throughput.run(dev)
         content = Data(text.utf8)
