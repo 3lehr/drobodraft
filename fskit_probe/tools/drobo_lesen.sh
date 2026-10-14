@@ -140,7 +140,7 @@ elif [ "${DECMPFS:-an}" != aus ]; then echo "Decmpfs-Vergleich uebersprungen: Li
 
 # ---- 5. Mount, nur lesend ----
 mkdir -p "$MNT"
-MOUT=$(mount -F -t hfsdrobo -o rdonly "$DEV" "$MNT" 2>&1); RC=$?
+MOUT=$(mount -F -t hfsdrobo -o rdonly${MOUNT_OPTS:+,$MOUNT_OPTS} "$DEV" "$MNT" 2>&1); RC=$?  # MOUNT_OPTS z. B. nobrowse
 if [ $RC != 0 ]; then
   echo "mount: $MOUT"
   case "$MOUT" in *"ermission"*|*EACCES*|*"Operation not permitted"*) echo "Zugriffsrecht fehlt. Betreiber fuehrt aus:   sudo chown \$USER $DEV $RDEV   (dann Skript erneut)";; esac
@@ -208,6 +208,7 @@ POST=$(HOSTSUM); echo "Wirt nachher: $POST"
 [ "$PRE" = "$POST" ] && echo "Wirt-Pruefsummen vorher == nachher: OK" || { echo "WARNUNG: Wirt-Pruefsummen ABWEICHEND"; RES=9; }
 ST=$(/usr/bin/log show --last 15m --info --style compact --predicate 'subsystem == "de.begod.drobofsprobe"' 2>/dev/null | grep "STATS unmount" | tail -1 | sed 's/.*STATS/STATS/')
 echo "$ST"
+/usr/bin/log show --last 15m --info --style compact --predicate 'subsystem == "de.begod.drobofsprobe"' 2>/dev/null | grep -E "GEOM|STATS-LESEN|STATS-KLEIN" | tail -3 | sed -E 's/.*(GEOM|STATS-)/\1/'
 echo "$ST" | grep -q " dev_writes=0 " && echo "$ST" | grep -q "dev_schreibversuche=0" && echo "Schreibzaehler 0: OK" || { echo "WARNUNG: Schreibzaehler nicht 0 oder nicht auffindbar"; RES=10; }
 [ $RES = 0 ] && echo "ERGEBNIS: OK" || echo "ERGEBNIS: FEHLER (Code $RES)"
 exit $RES
