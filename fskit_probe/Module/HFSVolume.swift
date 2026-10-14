@@ -24,7 +24,22 @@ private func withName<R>(_ n: FSFileName, _ f: (UnsafePointer<CChar>) -> R) -> R
     return a.withUnsafeBufferPointer { f($0.baseAddress!) }
 }
 private func check(_ r: Int32) throws { if r != 0 { throw posixError(r > 0 ? r : EIO) } }
+/// Wie locked{}, zaehlt aber Wartende und Wartezeit am libLock (nur fuer HFSVolume.read; Phase-5-Messung).
+private func timedLock<T>(_ b: DeviceBackend, _ f: () -> T) -> T {
+    let t0 = DispatchTime.now().uptimeNanoseconds
+    b.statLock.lock(); b.waiting += 1; b.maxWaiting = max(b.maxWaiting, b.waiting); b.statLock.unlock()
+    libLock.lock(); defer { libLock.unlock() }
+    let t1 = DispatchTime.now().uptimeNanoseconds
+    b.statLock.lock(); b.waiting -= 1; b.waitNanos += t1 - t0; b.statLock.unlock()
+    return f()
+}
 private func locked<T>(_ f: () throws -> T) rethrows -> T { libLock.lock(); defer { libLock.unlock() }; return try f() }
+
+#if TEST_LATENZ
+private let latenzBau = 1
+#else
+private let latenzBau = 0
+#endif
 
 final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperations, FSVolume.XattrOperations {
     let dev: FSBlockDeviceResource
@@ -37,6 +52,8 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
     private var timer: DispatchSourceTimer?
     private let readOnly: Bool
     private var roBlocked = 0
+    /// Hebel B nur im Modus nurlesen; Messschalter: Datei direktweg_aus im Container des Moduls schaltet ihn ab (alter Weg zum Vergleich).
+    private let directRead: Bool
     private func rofail() throws -> Never { roBlocked += 1; throw posixError(EROFS) }
 
     init(dev: FSBlockDeviceResource, backend: DeviceBackend, containerUUID: UUID, nurlesen: Bool = false) throws {
@@ -60,6 +77,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         _ = lifs_volinfo(root, &info)
         let name = withUnsafePointer(to: &info.name) { $0.withMemoryRebound(to: CChar.self, capacity: 256) { String(cString: $0) } }
         self.dev = dev; self.backend = backend; self.readOnly = ro
+        self.directRead = ro && !FileManager.default.fileExists(atPath: NSHomeDirectory() + "/direktweg_aus")
         self.rootItem = HItem(root!)
         self.mountedName = name.isEmpty ? "HFS+" : name
         self.items[root!] = rootItem
@@ -145,7 +163,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         let st = lifs_dev_stats
         log.notice("STATS unmount=\(r) nutz_geschrieben=\(self.userBytesWritten) dev_writes=\(st.writes) dev_bytes=\(st.bytes) max_cmd=\(st.max_cmd) max_call=\(st.max_call) chunked=\(st.chunked_calls) syncs=\(st.syncs) ro=\(self.readOnly ? 1 : 0) ro_blockiert=\(self.roBlocked) dev_schreibversuche=\(self.backend.writeAttempts) swift_dev_writes=\(self.backend.devWrites) swift_max=\(self.backend.devMax)")
         let be = backend
-        log.notice("STATS-LESEN dev_reads=\(be.rdCalls) dev_read_bytes=\(be.rdBytes) hist_le128k=\(be.rdHist[0]) hist_le512k=\(be.rdHist[1]) hist_le1m=\(be.rdHist[2]) dev_read_ms=\(be.rdNanos / 1_000_000) vol_reads=\(be.volReads) max_wartend=\(be.maxWaiting) lock_wait_ms=\(be.waitNanos / 1_000_000)")
+        log.notice("STATS-LESEN dev_reads=\(be.rdCalls) dev_read_bytes=\(be.rdBytes) hist_le128k=\(be.rdHist[0]) hist_le512k=\(be.rdHist[1]) hist_le1m=\(be.rdHist[2]) dev_read_ms=\(be.rdNanos / 1_000_000) vol_reads=\(be.volReads) max_wartend=\(be.maxWaiting) lock_wait_ms=\(be.waitNanos / 1_000_000) direkt_reads=\(be.directReads) fallback_reads=\(be.fallbackReads) max_dev_read_parallel=\(be.maxInflight) direktweg=\(self.directRead ? 1 : 0) latenz_bau=\(latenzBau)")
         backend.unregister()
         try check(r)
     }
@@ -335,13 +353,26 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         let want = min(length, buffer.length)
         var act = 0
         let b = backend
-        let t0 = DispatchTime.now().uptimeNanoseconds
-        b.statLock.lock(); b.volReads += 1; b.waiting += 1; b.maxWaiting = max(b.maxWaiting, b.waiting); b.statLock.unlock()
-        libLock.lock()
-        let t1 = DispatchTime.now().uptimeNanoseconds
-        b.statLock.lock(); b.waiting -= 1; b.waitNanos += t1 - t0; b.statLock.unlock()
-        let r: Int32 = buffer.withUnsafeMutableBytes { HFS_fsOps.fsops_read!(it.node, UInt64(offset), want, $0.baseAddress, &act) }
-        libLock.unlock()
+        b.statLock.lock(); b.volReads += 1; b.statLock.unlock()
+        // Hebel B (nur nurlesen): unter libLock nur die Zuordnung Datei -> Geraet, das Lesen selbst ausserhalb, parallel. Alles andere: alter Weg.
+        if directRead {
+            var ext = [lifs_extent_t](repeating: lifs_extent_t(), count: 16)
+            var n: Int32 = 0, total: UInt64 = 0
+            let node = it.node
+            let rc: Int32 = timedLock(b) { lifs_map_read(node, UInt64(offset), UInt64(want), &ext, 16, &n, &total) }
+            if rc == 0 {
+                if total > 0 {
+                    try buffer.withUnsafeMutableBytes { raw in
+                        var pos = 0
+                        for e in ext[0..<Int(n)] { try b.readDirect(raw.baseAddress! + pos, Int(e.len), Int64(e.dev_off)); pos += Int(e.len) }
+                    }
+                }
+                b.statLock.lock(); b.directReads += 1; b.statLock.unlock()
+                return Int(total)
+            }
+        }
+        b.statLock.lock(); b.fallbackReads += 1; b.statLock.unlock()
+        let r: Int32 = timedLock(b) { buffer.withUnsafeMutableBytes { HFS_fsOps.fsops_read!(it.node, UInt64(offset), want, $0.baseAddress, &act) } }
         try check(r)
         return act
     }

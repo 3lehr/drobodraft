@@ -39,4 +39,11 @@ int lifs_volume_uuid(const uint8_t *vh, uint8_t out[16]);
 
 /* 1 = Journal vorhanden, initialisiert und NICHT leer (Replay noetig, schreibt), 0 = leer/kein Journal, <0 = -errno. Liest nur. */
 int lifs_journal_dirty(int fd);
+
+/* Hebel B (Phase 5): Zuordnung Datei-Bereich -> Geraete-Bereiche, NUR LESEN, unter libLock aufzurufen (liest ggf. den Extents-Baum ueber das Geraet).
+ * off/len = gewuenschter Bereich der Datendatei; gekappt auf die Dateigroesse. out[0..*n) = zusammenhaengende Geraete-Stuecke in Dateireihenfolge
+ * (benachbarte werden verschmolzen), *total = Summe der Laengen. Rueckgabe 0 = Zuordnung vollstaendig (auch *total==0 bei off >= Dateigroesse),
+ * 1 = KEIN DIREKTWEG (keine regulaere Datei, komprimiert, Luecke/ERANGE/Fehler im Mapping, mehr als max Stuecke) -> Aufrufer nimmt fsops_read. */
+typedef struct { uint64_t dev_off, len; } lifs_extent_t;
+int lifs_map_read(UVFSFileNode node, uint64_t off, uint64_t len, lifs_extent_t *out, int max, int *n, uint64_t *total);
 #endif

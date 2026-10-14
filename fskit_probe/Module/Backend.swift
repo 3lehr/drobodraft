@@ -17,12 +17,15 @@ final class DeviceBackend {
     private let lock = NSLock()
     var vfd: Int32 = -1
     var devWrites = 0, devMax = 0, writeAttempts = 0
-    /// Phase-5-Messung (nur Lesen, Zaehler ohne Wirkung auf den Ablauf): dev.read-Aufrufe, Bytes, Histogramm (<=128K, <=512K, <=1M), Zeit in dev.read.
+    /// Phase-5-Messung (nur Lesen, Zaehler ohne Wirkung auf den Ablauf): dev.read-Aufrufe, Bytes, Histogramm (<=128K, <=512K, <=1M), Zeit in dev.read,
+    /// gleichzeitig laufende dev.read (jetzt/max). Alles unter statLock, weil der Direktweg ausserhalb des libLock liest.
     var rdCalls = 0, rdBytes: UInt64 = 0, rdNanos: UInt64 = 0
     var rdHist = [0, 0, 0]
-    /// HFSVolume.read-Aufrufe am libLock: Anzahl, gleichzeitig wartend (jetzt/max), Summe Wartezeit; geschuetzt durch statLock.
+    var inflight = 0, maxInflight = 0
+    /// HFSVolume.read-Aufrufe am libLock: Anzahl, gleichzeitig wartend (jetzt/max), Summe Wartezeit; Direktweg-/Rueckfall-Lesungen (Hebel B).
     let statLock = NSLock()
     var volReads = 0, waiting = 0, maxWaiting = 0, waitNanos: UInt64 = 0
+    var directReads = 0, fallbackReads = 0
     /// Zweite Sperre (Modus nurlesen): dev.write wird NIE erreicht, jeder Versuch zaehlt und scheitert mit EROFS.
     let forcedReadOnly: Bool
 
@@ -52,6 +55,42 @@ final class DeviceBackend {
 
     private func fail(_ e: Int32) -> Int { errno = e; return -1 }
 
+    /// EINZIGE Stelle fuer Lesebefehle ans Geraet (Zaehler; Pruefbau TEST_LATENZ: feste Verzoegerung je dev.read wie bei einem langsamen Geraet).
+    private func devRead(_ p: UnsafeMutableRawPointer, _ a0: Int64, _ span: Int) throws -> Int {
+        statLock.lock(); inflight += 1; maxInflight = max(maxInflight, inflight); statLock.unlock()
+        let t0 = DispatchTime.now().uptimeNanoseconds
+        defer {
+            let dt = DispatchTime.now().uptimeNanoseconds - t0
+            statLock.lock(); inflight -= 1; rdNanos += dt; rdCalls += 1; rdBytes += UInt64(span)
+            rdHist[span <= 131072 ? 0 : span <= 524288 ? 1 : 2] += 1; statLock.unlock()
+        }
+        #if TEST_LATENZ
+        usleep(8000)
+        #endif
+        return try dev.read(into: UnsafeMutableRawBufferPointer(start: p, count: span), startingAt: a0, length: span)
+    }
+
+    /// Hebel B: Lesen OHNE gemeinsame Sperre und OHNE gemeinsamen Bounce-Puffer (Puffer je Aufruf), mehrere Aufrufe gleichzeitig moeglich.
+    /// devOff/n kommen aus lifs_map_read (liegen im Volume). Ausrichtung auf phys und <= 1 MiB je dev.read wie read(). Fehler/Kurzlesung -> EIO.
+    func readDirect(_ dst: UnsafeMutableRawPointer, _ n: Int, _ devOff: Int64) throws {
+        guard devOff >= 0, UInt64(devOff) + UInt64(n) <= bytes else { throw posixError(EIO) }
+        let tmp = UnsafeMutableRawPointer.allocate(byteCount: min(n + 2 * phys, Self.bounceSize), alignment: 4096)
+        defer { tmp.deallocate() }
+        var done = 0
+        while done < n {
+            let pos = devOff + Int64(done)
+            let a0 = pos - pos % Int64(phys)
+            let head = Int(pos - a0)
+            let chunk = min(n - done, (1 << 20) - head)
+            let span = (head + chunk + phys - 1) / phys * phys
+            let got: Int
+            do { got = try devRead(tmp, a0, span) } catch { log.error("readDirect \(devOff) \(n): \(String(describing: error), privacy: .public)"); throw posixError(EIO) }
+            if got < head + chunk { throw posixError(EIO) }
+            memcpy(dst + done, tmp + head, chunk)
+            done += chunk
+        }
+    }
+
     func read(_ buf: UnsafeMutableRawPointer, _ n: Int, _ off: Int64) -> Int {
         lock.lock(); defer { lock.unlock() }
         if off < 0 || UInt64(off) >= bytes { return 0 }
@@ -64,10 +103,7 @@ final class DeviceBackend {
                 let head = Int(pos - a0)
                 let chunk = min(want - done, (1 << 20) - head)
                 let span = (head + chunk + phys - 1) / phys * phys
-                let t0 = DispatchTime.now().uptimeNanoseconds
-                let got = try dev.read(into: UnsafeMutableRawBufferPointer(start: bounce, count: span), startingAt: a0, length: span)
-                rdNanos += DispatchTime.now().uptimeNanoseconds - t0
-                rdCalls += 1; rdBytes += UInt64(span); rdHist[span <= 131072 ? 0 : span <= 524288 ? 1 : 2] += 1
+                let got = try devRead(bounce, a0, span)
                 if got <= head { break }
                 let use = min(chunk, got - head)
                 memcpy(buf + done, bounce + head, use)

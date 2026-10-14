@@ -5,6 +5,8 @@
 #include "lf_hfs_journal.h"
 #include "lf_hfs_vfsutils.h"
 #include "lf_hfs_dirops_handler.h"
+#include "lf_hfs_file_extent_mapping.h"
+#include "lf_hfs_cnode.h"
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -211,4 +213,30 @@ int lifs_journal_dirty(int fd)
     if (lifs_dev_pread(fd, jh, 512, (off_t)be64(jib + 36)) != 512) return -EIO;
     if (jh[0] != 0x78 || jh[1] != 0x4c || jh[2] != 0x4e || jh[3] != 0x4a) return -EINVAL;   /* Journal-Kopf unlesbar: nicht anfassen */
     return le64(jh + 8) != le64(jh + 16);
+}
+
+int lifs_map_read(UVFSFileNode node, uint64_t off, uint64_t len, lifs_extent_t *out, int max, int *n, uint64_t *total)
+{
+    *n = 0; *total = 0;
+    vnode_t vp = (vnode_t)node;
+    if (!vp || !vnode_isreg(vp)) return 1;
+    struct cnode *cp = VTOC(vp);
+    struct filefork *fp = VTOF(vp);
+    if (!cp || !fp || (cp->c_bsdflags & UF_COMPRESSED)) return 1;
+    if (fp->ff_unallocblocks != 0 || !TAILQ_EMPTY(&fp->ff_invalidranges)) return 1;     /* ungeschriebene/ungueltige Bereiche: nur der alte Weg */
+    uint64_t fsz = fp->ff_size;
+    if (off >= fsz) return 0;
+    if (len > fsz - off) len = fsz - off;
+    struct hfsmount *hfsmp = VTOHFS(vp);
+    uint64_t ss = hfsmp->hfs_logical_block_size, done = 0;
+    while (done < len) {
+        daddr64_t sec = 0; size_t avail = 0;
+        if (MapFileBlockC(HFSTOVCB(hfsmp), (FCB *)fp, (size_t)(len - done), (off_t)(off + done), &sec, &avail) != 0 || avail == 0) return 1;
+        uint64_t doff = (uint64_t)sec * ss + (off + done) % ss;
+        if (*n > 0 && out[*n - 1].dev_off + out[*n - 1].len == doff) out[*n - 1].len += avail;
+        else { if (*n >= max) return 1; out[*n].dev_off = doff; out[*n].len = avail; (*n)++; }
+        done += avail;
+    }
+    *total = done;
+    return 0;
 }
