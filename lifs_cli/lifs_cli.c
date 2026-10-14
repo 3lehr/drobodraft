@@ -225,6 +225,8 @@ static int run(int argc, char **argv)
             err = OPS.fsops_write(b, strtoull(argv[2], NULL, 10), sizeof x, x, &act); OPS.fsops_reclaim(b, 0);
         }
         release(a);
+    } else if (!strcmp(cmd, "enable-journal")) {   /* enable-journal [groesse_byte]: Journal auf nicht-journaled Volume anlegen */
+        err = lifs_enable_journal(g_root, argc > 1 ? strtoull(argv[1], NULL, 10) : 0);
     } else if (!strcmp(cmd, "import")) {
         NEED(2); if ((err = resolve(argv[2], 0, &a))) return die("import dir", err);
         err = import_dir(a, argv[1]); release(a);

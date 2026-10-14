@@ -110,3 +110,78 @@ int lifs_volinfo(UVFSFileNode root, lifs_volinfo_t *o)
     if (!OPS.fsops_getfsattr(root, UVFS_FSATTR_VOLNAME, &u.v, sizeof u.raw, &len)) strlcpy(o->name, u.v.fsa_string, sizeof o->name);
     return r;
 }
+
+#include <unistd.h>
+#include "lf_hfs_cnode.h"
+#include "lf_hfs_readwrite_ops.h"
+
+static uint64_t default_journal_size(uint64_t vol_bytes)
+{   /* Eigene Regel (Kernel-Formel nicht belegt): 8 MiB, ab 64 GiB vol/8192, hoechstens 512 MiB. Bis 16 GiB = diskutil/newfs (8 MiB gemessen). */
+    uint64_t s = vol_bytes / 8192;
+    if (s < (8u << 20)) s = 8u << 20;
+    if (s > (512u << 20)) s = 512u << 20;
+    return s;
+}
+
+static void be32w(uint8_t *p, uint32_t v) { p[0] = v >> 24; p[1] = v >> 16; p[2] = v >> 8; p[3] = v; }
+static void be64w(uint8_t *p, uint64_t v) { be32w(p, (uint32_t)(v >> 32)); be32w(p + 4, (uint32_t)v); }
+
+static int make_hidden(UVFSFileNode root, const char *name, UVFSFileNode *out)
+{
+    UVFSFileAttributes a; memset(&a, 0, sizeof a);
+    a.fa_validmask = UVFS_FA_VALID_MODE | UVFS_FA_VALID_UID | UVFS_FA_VALID_GID;
+    a.fa_mode = 0; a.fa_uid = geteuid(); a.fa_gid = getegid();       /* mode 100000 wie beim Kernel */
+    int r = OPS.fsops_create(root, name, &a, out);
+    if (r) return r;
+    uint8_t fi[32] = {'j','r','n','l','h','f','s','+', 0x50, 0x00};   /* wie newfs_hfs: Typ jrnl, Ersteller hfs+, unsichtbar+gesperrt */
+    return OPS.fsops_setxattr(*out, "com.apple.FinderInfo", fi, sizeof fi, UVFSXattrHowSet);
+}
+
+int lifs_enable_journal(UVFSFileNode root, uint64_t jsize)
+{
+    struct hfsmount *hfsmp = VTOHFS(((vnode_t)root));
+    ExtendedVCB *vcb = HFSTOVCB(hfsmp);
+    if (hfsmp->jnl || (vcb->vcbAtrb & kHFSVolumeJournaledMask)) return EEXIST;
+    if (hfsmp->hfs_flags & HFS_READ_ONLY) return EROFS;
+    uint32_t bs = vcb->blockSize;
+    if (!jsize) jsize = default_journal_size((uint64_t)vcb->totalBlocks * bs);
+    jsize = (jsize + bs - 1) / bs * bs;
+    UVFSFileNode t = NULL, jn = NULL, ji = NULL; int r;
+    if (!OPS.fsops_lookup(root, ".journal", &t)) { OPS.fsops_reclaim(t, 0); return EEXIST; }
+    if (!OPS.fsops_lookup(root, ".journal_info_block", &t)) { OPS.fsops_reclaim(t, 0); return EEXIST; }
+
+    /* 1. Journal: ein Extent, vorab zusammenhaengend belegt, dann Groesse setzen */
+    if ((r = make_hidden(root, ".journal", &jn))) return r;
+    union { UVFSFSAttributeValue v; LIFilePreallocateArgs_t a; char raw[64]; } rq, rs;
+    memset(&rq, 0, sizeof rq); memset(&rs, 0, sizeof rs);
+    rq.a.flags = LI_PREALLOCATE_ALLOCATECONTIG | LI_PREALLOCATE_ALLOCATEALL; rq.a.length = (int64_t)jsize;
+    if ((r = OPS.fsops_setfsattr(jn, LI_FSATTR_PREALLOCATE, &rq.v, sizeof rq.a, &rs.v, sizeof rs.a))) goto undo;
+    UVFSFileAttributes sa; memset(&sa, 0, sizeof sa); sa.fa_validmask = UVFS_FA_VALID_SIZE; sa.fa_size = jsize;
+    UVFSFileAttributes out;
+    if ((r = OPS.fsops_setattr(jn, &sa, &out))) goto undo;
+    struct filefork *jf = VTOF(((vnode_t)jn));
+    if (jf->ff_extents[0].blockCount * (uint64_t)bs < jsize || jf->ff_extents[1].blockCount != 0) { r = ENOSPC; goto undo; }   /* nicht zusammenhaengend */
+    uint32_t jstart = jf->ff_extents[0].startBlock;
+
+    /* 2. Journal-Info-Block: eine Allokationseinheit, Inhalt InFS|NeedInit + Ort/Groesse des Journals */
+    if ((r = make_hidden(root, ".journal_info_block", &ji))) goto undo;
+    uint8_t *blk = calloc(1, bs);
+    if (!blk) { r = ENOMEM; goto undo; }
+    be32w(blk, 0x5); be64w(blk + 36, (uint64_t)jstart * bs); be64w(blk + 44, jsize);
+    size_t act = 0;
+    r = OPS.fsops_write(ji, 0, bs, blk, &act); free(blk);
+    if (r || act != bs) { if (!r) r = EIO; goto undo; }
+    struct filefork *iff = VTOF(((vnode_t)ji));
+    if (iff->ff_extents[0].blockCount != 1 || iff->ff_extents[1].blockCount != 0) { r = ENOSPC; goto undo; }
+    uint32_t jibstart = iff->ff_extents[0].startBlock;
+
+    /* 3. Volume-Header (wird von LFHFS_Unmount direkt geschrieben, Haupt- und Alternativ-Header) */
+    vcb->vcbJinfoBlock = jibstart;
+    vcb->vcbAtrb |= kHFSVolumeJournaledMask;
+    OPS.fsops_reclaim(ji, 0); OPS.fsops_reclaim(jn, 0);
+    return 0;
+undo:
+    if (ji) { OPS.fsops_remove(root, ".journal_info_block", ji); OPS.fsops_reclaim(ji, 0); }
+    if (jn) { OPS.fsops_remove(root, ".journal", jn); OPS.fsops_reclaim(jn, 0); }
+    return r;
+}

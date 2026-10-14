@@ -244,12 +244,71 @@ t_zerofill() {
   rmw zf.raw zf2.raw zf.out zf2.out zfp.raw junk.bin
 }
 
+# ================= 7. Journal einschalten (lifs_cli enable-journal) =================
+# Ausgangslage: gefuelltes nicht-journaled Abbild. Referenz: diskutil enableJournal an einem Klon. Richter: Kernel (fsck, "Journaled", md5).
+t_enablejournal() {
+  local H="python3 -I $M/hfsdump.py" st mx
+  say "=== ENABLE-JOURNAL"
+  mkimg ej 1024 0; kmount "$W/ej.raw" "$W/mnt_ej" || { fail "ej kmount"; return; }
+  head -c 50000000 /dev/urandom > "$W/mnt_ej/a.bin"; mkdir "$W/mnt_ej/d"; for i in 1 2 3 4 5; do echo $i > "$W/mnt_ej/d/f$i"; done
+  cp "$W/src/mid/m1.bin" "$W/mnt_ej/m1.bin"; xattr -w user.ej v "$W/mnt_ej/d/f1"; sync
+  mdlist "$W/mnt_ej" > "$W/ej.pre.md5"; kumount
+  cp -c "$W/ej.raw" "$W/ej_ref.raw"; cp -c "$W/ej.raw" "$W/ej_ours.raw"
+  kmount "$W/ej_ref.raw" "$W/mnt_ejr" && { diskutil enableJournal "$KDEV" >>"$LOG" 2>&1; diskutil info "$KDEV" | grep -E "Personality|Journal:" | tee -a "$LOG"; kumount; }
+  say "--- Referenz diskutil enableJournal:"; $H "$W/ej_ref.raw" root | tee -a "$LOG" | cut -c1-210
+  chk "ej Ausgang: nicht journaled" bash -c "$H '$W/ej_ours.raw' | grep -q 'attr=0x80000100'"
+  st=$("$L" -s "$W/ej_ours.raw" enable-journal 2>&1); say "   $(echo "$st" | grep -E 'STATS|ERR' | cut -c1-200)"
+  mx=$(echo "$st" | maxfield max_cmd); chk "ej max Geraete-Schreibbefehl $mx <= 524288" test "${mx:-0}" -le 524288
+  say "--- lifs_cli enable-journal:"; $H "$W/ej_ours.raw" root | tee -a "$LOG" | cut -c1-210
+  chk "ej Journal-Bit 0x2000 + JIB gesetzt" bash -c "$H '$W/ej_ours.raw' | grep -q 'attr=0x80002100'"
+  chk "ej fsck_hfs -fn (vor jedem Mount) appears to be OK" fsck_ok "$W/ej_ours.raw"
+  # Kernel: erkennt "Journaled HFS+", Inhalt unveraendert
+  kmount "$W/ej_ours.raw" "$W/mnt_eju" && { diskutil info "$KDEV" | grep -E "Personality|Journal:" | tee -a "$LOG"
+    diskutil info "$KDEV" | grep -q "Journaled HFS+" && pass "ej Kernel erkennt Journaled HFS+" || fail "ej Kernel erkennt Journaled HFS+"
+    mdlist "$W/mnt_eju" > "$W/ej.post.md5"; kumount; } || fail "ej Kernel-rw-Mount"
+  chk "ej md5 vor/nach enable-journal gleich (Kernel-Mount)" diff "$W/ej.pre.md5" "$W/ej.post.md5"
+  chk "ej fsck nach Kernel-Mount OK" fsck_ok "$W/ej_ours.raw"
+  # lifs mountet das neue Journal, schreibt, Unmount leert es
+  "$L" "$W/ej_ours.raw" put "$W/src/mid/m2.bin" /m2.bin >/dev/null 2>&1; python3 -I "$M/jstate.py" "$W/ej_ours.raw" | tee -a "$LOG"
+  chk "ej nach lifs-Schreiben fsck OK, Journal leer" bash -c "fsck_ok_dummy=1; python3 -I '$M/jstate.py' '$W/ej_ours.raw' | grep -q LEER"
+  # Absturzprobe NACH enable-journal: Abbruch nach N-tem Schreibbefehl, Kernel-Replay, fsck
+  cp -c "$W/ej.raw" "$W/ej_base.raw"; "$L" "$W/ej_base.raw" enable-journal >/dev/null 2>&1
+  local tot N img
+  cp -c "$W/ej_base.raw" "$W/ej_dry.raw"; tot=$("$L" -s "$W/ej_dry.raw" put "$W/src/mid/m3.bin" /m3 2>&1 | grep '^STATS' | sed -n 's/.*[ ]writes=\([0-9]*\) .*/\1/p'); rmw ej_dry.raw
+  for N in 2 5 $((tot/4)) $((tot/2)) $((tot*3/4)) $((tot-6)) $((tot-3)) $((tot-1)); do
+    img=$W/ej_c$N.raw; cp -c "$W/ej_base.raw" "$img"
+    LIFS_DIE_AFTER_WRITES=$N "$L" "$img" put "$W/src/mid/m3.bin" /m3 >/dev/null 2>&1
+    kmount "$img" "$W/mnt_ejc" && kumount || fail "ej crash N=$N Kernel-rw-Mount"
+    fsck_ok "$img" && pass "ej Absturz N=$N/$tot: Kernel-Replay, fsck OK" || fail "ej Absturz N=$N/$tot: fsck nicht OK"; rmw "ej_c$N.raw"
+  done
+  rmw ej.raw ej_ref.raw ej_ours.raw ej_base.raw mnt_ej mnt_ejr mnt_eju mnt_ejc
+  # Rueckbau: Freiraum so zerstueckelt, dass kein zusammenhaengender 8-MiB-Extent existiert -> ENOSPC, Volume unveraendert und konsistent
+  mkimg ejf 200 0; kmount "$W/ejf.raw" "$W/mnt_ejf" || { fail "ejf kmount"; return; }
+  python3 -I - "$W/mnt_ejf" <<'PY'
+import os,sys
+d=sys.argv[1]; blob=b'x'*65536; n=0
+for n in range(100000):
+    try:
+        with open('%s/f%05d'%(d,n),'wb') as f: f.write(blob)
+    except OSError: break
+for i in range(0,n,2):
+    try: os.remove('%s/f%05d'%(d,i))
+    except OSError: pass
+PY
+  sync; kumount; cp -c "$W/ejf.raw" "$W/ejf_pre.raw"
+  st=$("$L" "$W/ejf.raw" enable-journal 2>&1); echo "$st" | tee -a "$LOG" | head -2
+  echo "$st" | grep -q "ERR enable-journal: 28" && pass "ej zerstueckelter Freiraum: ENOSPC gemeldet" || fail "ej zerstueckelter Freiraum: kein ENOSPC ($st)"
+  chk "ej nach Rueckbau fsck OK" fsck_ok "$W/ejf.raw"
+  chk "ej nach Rueckbau weiter nicht journaled, Dateizahl wie vorher" bash -c "[ \"\$(python3 -I '$M/hfsdump.py' '$W/ejf.raw' | head -1 | sed 's/.*attr=\\(0x[0-9a-f]*\\).*files=\\([0-9]*\\).*/\\1 \\2/')\" = \"\$(python3 -I '$M/hfsdump.py' '$W/ejf_pre.raw' | head -1 | sed 's/.*attr=\\(0x[0-9a-f]*\\).*files=\\([0-9]*\\).*/\\1 \\2/')\" ]"
+  rmw ejf.raw ejf_pre.raw mnt_ejf
+}
+
 main() {
   [ -x "$L" ] || { echo "erst make"; exit 2; }
   [ -d "$W/src" ] || mksrc "$W/src"
   case "${1:-alles}" in
-    lesen) t_lesen;; schreiben) t_schreiben;; kappung) t_kappung;; absturz) t_absturz;; befund) t_befund_lmv;; zerofill) t_zerofill;;
-    alles) t_lesen; t_schreiben; t_kappung; t_absturz; t_befund_lmv; t_zerofill;;
+    lesen) t_lesen;; schreiben) t_schreiben;; kappung) t_kappung;; absturz) t_absturz;; befund) t_befund_lmv;; zerofill) t_zerofill;; enablejournal) t_enablejournal;;
+    alles) t_lesen; t_schreiben; t_kappung; t_absturz; t_befund_lmv; t_zerofill; t_enablejournal;;
   esac
   say "=== ERGEBNIS PASS=$NPASS FAIL=$NFAIL (Log: $LOG)"
   [ "$NFAIL" = 0 ]

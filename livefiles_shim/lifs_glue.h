@@ -29,4 +29,8 @@ typedef struct {
     char name[256];
 } lifs_volinfo_t;
 int lifs_volinfo(UVFSFileNode root, lifs_volinfo_t *out);
+/* Journal auf einem nicht-journaled HFS+ anlegen (Gegenstueck zu diskutil enableJournal / Kernel): .journal_info_block + .journal im Wurzelverzeichnis
+ * (Journal ein zusammenhaengender Extent), Journal-Info-Block (InFS|NeedInit), VH.journalInfoBlock und Bit 0x2000 (wird beim Unmount geschrieben).
+ * Aufrufen mit rw gemountetem, nicht-journaled Volume, danach normal unmounten. jsize 0 = Standard. Rueckgabe 0 oder errno; bei Fehler Rueckbau. */
+int lifs_enable_journal(UVFSFileNode root, uint64_t jsize);
 #endif
