@@ -1,5 +1,6 @@
 #include <DriverKit/DriverKit.h>
 #include <DriverKit/IOKitKeys.h>
+#include <os/log.h>
 #include "MaxWriteProbe.h"
 
 // Weg A (Plan Phase 0b): Schreibbefehle auf 512 KiB kappen, sonst Standardverhalten.
@@ -17,11 +18,15 @@ kern_return_t IMPL(MaxWriteProbe, UserDetermineDeviceCharacteristics)
     if (props && bytes && blocks) {
         props->setObject(kIOMaximumByteCountWriteKey, bytes);
         props->setObject(kIOMaximumBlockCountWriteKey, blocks);
-        ret = SetProperties(props);
-        *result = (ret == kIOReturnSuccess);
+        // SUPERDISPATCH: ohne ihn bleibt der Aufruf im Dext (Default scheitert); mit ihm schreibt
+        // der Kernel-Teil die Keys in den Registry-Eintrag (Muster aus IOHIDEventService.iig).
+        ret = SetProperties(props, SUPERDISPATCH);
     }
+    *result = true;  // Grenzen sind Zusatz; das Geraet muss auch bei Fehlschlag starten (ret wird geloggt)
+    os_log(OS_LOG_DEFAULT, "MaxWriteProbe: UserDetermineDeviceCharacteristics bytes=%llu blocks=%llu ret=0x%x result=%d",
+           kMaxWriteBytes, kMaxWriteBlocks, ret, (int)*result);
     OSSafeReleaseNULL(blocks);
     OSSafeReleaseNULL(bytes);
     OSSafeReleaseNULL(props);
-    return ret;
+    return kIOReturnSuccess;
 }
