@@ -145,6 +145,9 @@ mkplain() { # name journaled MiB -> Abbild OHNE Marker, vom Kernel gefuellt; set
   mdlist "$W/mnt_$n" > "$W/$n.ref.md5"; hdiutil detach "$d" >>"$LOG" 2>&1
 }
 fg_set() { printf '%s' "$1" > "$FREIGABE"; }
+# Betreiber-Freigabeliste (z. B. Drobo-Eintrag) vor der Eichung sichern und danach zurueckstellen, nie loeschen.
+fg_sichern() { [ -f "$FREIGABE.eich_sicherung" ] || { [ -f "$FREIGABE" ] && cp -p "$FREIGABE" "$FREIGABE.eich_sicherung"; }; rm -f "$FREIGABE"; }
+fg_zurueck() { trap - RETURN; if [ -f "$FREIGABE.eich_sicherung" ]; then mv -f "$FREIGABE.eich_sicherung" "$FREIGABE"; else rm -f "$FREIGABE"; fi; }
 fg_mount() { # img [extra-mount-opts] -> rc ; setzt DEV MNT
   attach "$1"; MNT=$W/mnt_fg; mkdir -p "$MNT"
   mount -F -t $SHORT $2 "$DEV" "$MNT" >>"$LOG" 2>&1 || { sleep 3; mount -F -t $SHORT $2 "$DEV" "$MNT" >>"$LOG" 2>&1; }
@@ -152,7 +155,7 @@ fg_mount() { # img [extra-mount-opts] -> rc ; setzt DEV MNT
 t_freigabe() {
   local n img sha0 sha1 st rc mp
   [ -f "$W/m3.bin" ] || head -c 21000123 /dev/urandom > "$W/m3.bin"
-  trap 'rm -f "$FREIGABE"' RETURN; rm -f "$FREIGABE"
+  trap fg_zurueck RETURN; fg_sichern
   for J in 1 0; do
     n=fg$J; img=$W/$n.img; say "=== FREIGABE nurlesen journaled=$J (Abbild ohne Marker)"
     mkplain "$n" $J 512; say "   Volume-UUID (diskutil) $VUUID"
@@ -203,7 +206,7 @@ t_freigabe() {
 # Schreibzugriffe erreichen also seine eigenen EROFS-Sperren (ro_blockiert) und, nie, den Backend-Zaehler. Danach normalen Bau wieder installieren.
 t_freigabe_modul() {
   local n=fgm img sha0 st
-  trap 'rm -f "$FREIGABE"' RETURN
+  trap fg_zurueck RETURN; fg_sichern
   mkplain "$n" 1 512; img=$W/$n.img; sha0=$(sha "$img")
   fg_set "[{\"volume_uuid\":\"$VUUID\",\"modus\":\"nurlesen\",\"max_bytes\":1073741824}]"
   fg_mount "$img" "" || { fail "$n mount"; return; }
