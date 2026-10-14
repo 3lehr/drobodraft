@@ -49,4 +49,6 @@ typedef struct { uint64_t dev_off, len; } lifs_extent_t;
 int lifs_map_read(UVFSFileNode node, uint64_t off, uint64_t len, lifs_extent_t *out, int max, int *n, uint64_t *total);
 /* 1 = regulaere Datei mit UF_COMPRESSED (unter libLock aufrufen). */
 int lifs_is_compressed(UVFSFileNode node);
+/* Geometrie des Volumes fuer das Mount-Log (Phase 5c): Sektorgroessen der Bibliothek und Versatz des HFS+-Volumes im Geraet (0 = kein Wrapper). */
+void lifs_geometry(UVFSFileNode node, uint32_t *logical, uint32_t *physical, uint64_t *io_pos_offset);
 #endif

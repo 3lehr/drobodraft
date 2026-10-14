@@ -4,13 +4,12 @@ import FSKit
 import Foundation
 
 /// HFS-komprimierte Dateien (UF_COMPRESSED), Phase 5a. livefiles_hfs liest nur die (leere) Datengabel; hier wird com.apple.decmpfs ausgewertet.
+/// Entpacker: Compression.framework COMPRESSION_LZFSE ueber einen 'bvxn'-Rahmen (kein undokumentierter Algorithmus-Code).
 /// Unterstuetzt: Typ 7 (LZVN im xattr, ab Byte 16) und Typ 8 (LZVN-Bloecke zu 64 KiB in der Ressourcengabel, vorn Tabelle (n+1) LE-u32-Offsets).
 /// Block/Strom mit erstem Byte 0x06 = unkomprimiert gespeichert (0x06 ist der LZVN-Endeopcode, also nie ein gueltiger Strombeginn).
 /// JEDER andere Typ und jeder Formatfehler -> EIO; nie falsche Bytes ausliefern. Aufruf nur mit gehaltenem libLock.
 enum Decmpfs {
     static let blk = 65536
-    /// LZVN (roher Strom, kein bvxn-Rahmen) ist in compression.h nicht benannt, libcompression kennt ihn unter 0x900.
-    static let lzvn = compression_algorithm(rawValue: 0x900)
     static let tableMaxBlocks = 1 << 22                       // 256 GiB; darueber ist die Tabelle unglaubwuerdig
 
     static func eio(_ why: String) -> Error { hfsLog.error("decmpfs: \(why, privacy: .public)"); return posixError(EIO) }
@@ -25,11 +24,18 @@ enum Decmpfs {
             if expected > 0 { memcpy(out, src.baseAddress! + 1, expected) }
             return
         }
-        let got = compression_decode_buffer(out, expected + 1, src.baseAddress!.assumingMemoryBound(to: UInt8.self), src.count, nil, lzvn)
-        guard got == expected else { throw eio("LZVN entpackt \(got) B, erwartet \(expected)") }
+        // Dokumentierter Weg: roher LZVN-Strom in einen LZFSE-'bvxn'-Rahmen legen ('bvxn', n_raw, n_payload, Payload, 'bvx$') und mit COMPRESSION_LZFSE entpacken.
+        var frame = [UInt8](repeating: 0, count: 12 + src.count + 4)
+        frame.replaceSubrange(0..<4, with: [0x62, 0x76, 0x78, 0x6e])
+        for i in 0..<4 { frame[4 + i] = UInt8((expected >> (8 * i)) & 0xff); frame[8 + i] = UInt8((src.count >> (8 * i)) & 0xff) }
+        frame.withUnsafeMutableBytes { _ = memcpy($0.baseAddress! + 12, src.baseAddress!, src.count) }
+        frame.replaceSubrange((12 + src.count)..<(16 + src.count), with: [0x62, 0x76, 0x78, 0x24])
+        let got = compression_decode_buffer(out, expected + 1, frame, frame.count, nil, COMPRESSION_LZFSE)
+        guard got == expected else { throw eio("LZVN (bvxn) entpackt \(got) B, erwartet \(expected)") }
     }
 
     static func read(node: Node, offset: UInt64, want: Int, dst: UnsafeMutableRawPointer) throws -> Int {
+        if want == 0 { return 0 }                             // sonst Unterlauf offset + n - 1 und leerer Bereich first...last (Absturz); per pread(len 0) nicht erreichbar (VFS), Sperre trotzdem
         var x = [UInt8](repeating: 0, count: 4096)
         var xn = 0
         let r = x.withUnsafeMutableBytes { HFS_fsOps.fsops_getxattr!(node, "com.apple.decmpfs", $0.baseAddress, 4096, &xn) }

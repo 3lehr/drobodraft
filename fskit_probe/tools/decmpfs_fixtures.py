@@ -73,6 +73,7 @@ def main(mnt, manifest, gooddir):
         if not os.stat(j(name)).st_flags & stat.UF_COMPRESSED:
             os.unlink(j(name)); print("Hinweis: Kernel hat %s nicht komprimiert, Fixture entfaellt" % name); continue
         P(name, content, typ, desc)
+    c = rand(5 * 1048576 + 4097); open(j("plain_rand.bin"), "wb").write(c); P("plain_rand.bin", c, 0, "unkomprimiert 5 MiB + 4097 (Direktweg)")
     # --- positive, hand gebaut ---
     c = text(3400, 5);  mk7(j("t7_lzvn.txt"), c, "z"); P("t7_lzvn.txt", c, 7, "Typ 7 echter LZVN-Strom 3400 B")
     c = rand(1000);     mk7(j("t7_raw.bin"), c, "r");  P("t7_raw.bin", c, 7, "Typ 7 Rohdaten (0x06) 1000 B")
@@ -95,6 +96,18 @@ def main(mnt, manifest, gooddir):
     finish(j("n_lzvn_bad"), 8, len(c), b"", table_fork(bad)); N("n_lzvn_bad", len(c), 8, "Block 1 kein gueltiger LZVN-Strom", c[:BLK])
     short = list(blocks); short[2] = lzvn(c[2 * BLK:2 * BLK + 1000])
     finish(j("n_decode_short"), 8, len(c), b"", table_fork(short)); N("n_decode_short", len(c), 8, "Block 2 entpackt kuerzer als erwartet", c[:2 * BLK])
+    lng = list(blocks); lng[1] = lzvn(text(70000, 10))
+    finish(j("n_decode_long"), 8, len(c), b"", table_fork(lng)); N("n_decode_long", len(c), 8, "Block 1 entpackt laenger als 64 KiB", c[:BLK])
+    t = bytearray(table_fork(blocks)); struct.pack_into("<I", t, 0, 4)
+    finish(j("n_offtab_start"), 8, len(c), b"", bytes(t)); N("n_offtab_start", len(c), 8, "Tabelle beginnt vor ihrem Ende (t[0] < Tabellengroesse)")
+    big = list(blocks); big[1] = b"\x06" + rand(70000)
+    finish(j("n_offtab_delta"), 8, len(c), b"", table_fork(big)); N("n_offtab_delta", len(c), 8, "Blocklaenge > 64 KiB + 1", c[:BLK])
+    finish(j("n_t8_huge"), 8, 2 ** 40, b"", table_fork(blocks)); N("n_t8_huge", 2 ** 40, 8, "Typ 8 mit 2^24 Bloecken (> tableMaxBlocks)")
+    open(j("n_noxattr"), "wb").write(b"x" * 100)
+    try: os.chflags(j("n_noxattr"), stat.UF_COMPRESSED)
+    except OSError: pass
+    if os.stat(j("n_noxattr")).st_flags & stat.UF_COMPRESSED: N("n_noxattr", 100, 0, "UF_COMPRESSED ohne xattr com.apple.decmpfs (100 B in der Datengabel)")
+    else: os.unlink(j("n_noxattr")); print("Hinweis: Kernel entfernt UF_COMPRESSED ohne xattr, Fixture n_noxattr entfaellt")
     finish(j("n_t7_bad"), 7, 3400, b"\xff" * 50); N("n_t7_bad", 3400, 7, "Typ 7 ungueltiger LZVN-Strom")
     finish(j("n_t7_short"), 7, 5000, lzvn(text(3400, 5))); N("n_t7_short", 5000, 7, "Typ 7 entpackt kuerzer als Header-Groesse")
     finish(j("n_t7_size5g"), 7, 5 * 2**30, b"\x06" + b"x" * 10); N("n_t7_size5g", 5 * 2**30, 7, "Header meldet 5 GiB (getattr-Groesse 64 Bit), Lesen -> EIO")

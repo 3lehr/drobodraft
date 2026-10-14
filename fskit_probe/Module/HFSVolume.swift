@@ -75,6 +75,9 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         if r != 0 || root == nil { throw posixError(r > 0 ? r : EIO) }
         var info = lifs_volinfo_t()
         _ = lifs_volinfo(root, &info)
+        var gl: UInt32 = 0, gp: UInt32 = 0, go: UInt64 = 0
+        lifs_geometry(root, &gl, &gp, &go)
+        log.notice("GEOM dev.blockSize=\(dev.blockSize) dev.physicalBlockSize=\(dev.physicalBlockSize) hfs_logical_block_size=\(gl) hfs_physical_block_size=\(gp) hfsPlusIOPosOffset=\(go) blockCount=\(dev.blockCount)")
         let name = withUnsafePointer(to: &info.name) { $0.withMemoryRebound(to: CChar.self, capacity: 256) { String(cString: $0) } }
         self.dev = dev; self.backend = backend; self.readOnly = ro
         self.directRead = ro && !FileManager.default.fileExists(atPath: NSHomeDirectory() + "/direktweg_aus")
@@ -163,7 +166,10 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         let st = lifs_dev_stats
         log.notice("STATS unmount=\(r) nutz_geschrieben=\(self.userBytesWritten) dev_writes=\(st.writes) dev_bytes=\(st.bytes) max_cmd=\(st.max_cmd) max_call=\(st.max_call) chunked=\(st.chunked_calls) syncs=\(st.syncs) ro=\(self.readOnly ? 1 : 0) ro_blockiert=\(self.roBlocked) dev_schreibversuche=\(self.backend.writeAttempts) swift_dev_writes=\(self.backend.devWrites) swift_max=\(self.backend.devMax)")
         let be = backend
-        log.notice("STATS-LESEN dev_reads=\(be.rdCalls) dev_read_bytes=\(be.rdBytes) hist_le128k=\(be.rdHist[0]) hist_le512k=\(be.rdHist[1]) hist_le1m=\(be.rdHist[2]) dev_read_ms=\(be.rdNanos / 1_000_000) vol_reads=\(be.volReads) max_wartend=\(be.maxWaiting) lock_wait_ms=\(be.waitNanos / 1_000_000) direkt_reads=\(be.directReads) fallback_reads=\(be.fallbackReads) decmpfs_reads=\(be.decmpfsReads) max_dev_read_parallel=\(be.maxInflight) direktweg=\(self.directRead ? 1 : 0) latenz_bau=\(latenzBau)")
+        be.statLock.lock()                                   // Direktweg-Lesungen koennen noch zaehlen: Werte konsistent kopieren
+        let c = (be.rdCalls, be.rdBytes, be.rdHist, be.rdNanos, be.volReads, be.maxWaiting, be.waitNanos, be.directReads, be.fallbackReads, be.decmpfsReads, be.maxInflight)
+        be.statLock.unlock()
+        log.notice("STATS-LESEN dev_reads=\(c.0) dev_read_bytes=\(c.1) hist_le128k=\(c.2[0]) hist_le512k=\(c.2[1]) hist_le1m=\(c.2[2]) dev_read_ms=\(c.3 / 1_000_000) vol_reads=\(c.4) max_wartend=\(c.5) lock_wait_ms=\(c.6 / 1_000_000) direkt_reads=\(c.7) fallback_reads=\(c.8) decmpfs_reads=\(c.9) max_dev_read_parallel=\(c.10) direktweg=\(self.directRead ? 1 : 0) latenz_bau=\(latenzBau)")
         backend.unregister()
         try check(r)
     }

@@ -247,3 +247,12 @@ int lifs_is_compressed(UVFSFileNode node)
     vnode_t vp = (vnode_t)node;
     return vp && vnode_isreg(vp) && VTOC(vp) && (VTOC(vp)->c_bsdflags & UF_COMPRESSED) ? 1 : 0;
 }
+
+void lifs_geometry(UVFSFileNode node, uint32_t *logical, uint32_t *physical, uint64_t *io_pos_offset)
+{
+    vnode_t vp = (vnode_t)node;
+    struct hfsmount *hfsmp = VTOHFS(vp);
+    *logical = hfsmp->hfs_logical_block_size;
+    *physical = hfsmp->hfs_physical_block_size;
+    *io_pos_offset = HFSTOVCB(hfsmp)->hfsPlusIOPosOffset;
+}

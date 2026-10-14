@@ -82,7 +82,7 @@ t_normal() {
     # Kernel als Richter: erst ro-Mount (Journal muss leer sein), fsck, md5
     python3 -I "$M/jstate.py" "$img" | tee -a "$LOG"
     chk "$n fsck_hfs -fn nach Unmount appears to be OK" fsck_ok "$img"
-    mkdir -p "$W/kro_$n"; local kd; kd=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nobrowse -noverify -readonly -mountpoint "$W/kro_$n" "$img" | awk 'NR==1{print $1}')
+    mkdir -p "$W/kro_$n" "$W/dc_ref_$n"; local kd; kd=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nobrowse -noverify -readonly -mountpoint "$W/kro_$n" "$img" | awk 'NR==1{print $1}')
     if [ -n "$kd" ]; then pass "$n Kernel-ro-Mount direkt nach FSKit-Unmount moeglich"
       mdlist "$W/kro_$n" > "$W/$n.k.md5"; dlist "$W/kro_$n" > "$W/$n.k.dirs"; hdiutil detach "$kd" >>"$LOG" 2>&1
       chk "$n Kernel-ro-Mount md5 = Referenz" diff "$W/$n.ref.md5" "$W/$n.k.md5"
@@ -108,7 +108,7 @@ t_absturz() {
     umount -f "$MNT" >>"$LOG" 2>&1; sleep 1; hdiutil detach -force "$DEV" >>"$LOG" 2>&1
     python3 -I "$M/jstate.py" "$img" | tee -a "$LOG"
     fsck_ok "$img"; local rc0=$?; say "   [roh nach Kill] fsck rc=$rc0 $(grep -E 'appears to be OK|corrupt|needs|nvalid' "$W/fsck.out" | tr '\n' '|' | cut -c1-200)"
-    mkdir -p "$W/kro_$n"; local kd; kd=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nobrowse -noverify -mountpoint "$W/kro_$n" "$img" | awk 'NR==1{print $1}'); [ -n "$kd" ] && hdiutil detach "$kd" >>"$LOG" 2>&1   # rw: Kernel spielt das Journal ein
+    mkdir -p "$W/kro_$n" "$W/dc_ref_$n"; local kd; kd=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nobrowse -noverify -mountpoint "$W/kro_$n" "$img" | awk 'NR==1{print $1}'); [ -n "$kd" ] && hdiutil detach "$kd" >>"$LOG" 2>&1   # rw: Kernel spielt das Journal ein
     if [ $J = 1 ]; then fsck_ok "$img" && pass "ABSTURZ $n nach Kernel-Replay fsck OK (roh=$rc0)" || fail "ABSTURZ $n nach Kernel-Replay fsck NICHT OK"
     else [ $rc0 = 0 ] && NJ_OK=$((NJ_OK+1)) || NJ_BAD=$((NJ_BAD+1)); say "   NJ: roh nach Kill fsck rc=$rc0 (Kernel-Mount repariert selbst per Auto-fsck)"; fi
     rmw "$n.img" "kro_$n" "mnt_$n"
@@ -226,7 +226,7 @@ t_freigabe_modul() {
 
 # Phase 5a: HFS-komprimierte Dateien (decmpfs Typ 7/8, LZVN). Kernel = Orakel (md5 der Kernel-Entpackung == md5 der Quelle, Modul muss gleich liefern);
 # Negativproben (unbekannter Typ, kaputte Offsettabelle, abgeschnittener/ungueltiger Block): EIO und KEINE Bytes. Fixtures: decmpfs_fixtures.py
-DCFIX="$PWD/decmpfs_fixtures.py"
+DCFIX="$PWD/decmpfs_fixtures.py"; PREADV="$PWD/pread_vergleich.py"
 dc_make() { # name journaled -> $W/name.img (ohne Marker), setzt VUUID; Manifest $W/name.tsv
   local n=$1 f=$W/$1.img d; rmw "$n.img"; truncate -s 160m "$f"
   d=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nomount "$f" | awk 'NR==1{print $1}'); newfs_hfs $([ "$2" = 1 ] && echo -J) -v "DC_$n" "${d/disk/rdisk}" >>"$LOG" 2>&1; hdiutil detach "$d" >>"$LOG" 2>&1
@@ -256,12 +256,13 @@ t_decmpfs() {
     dc_make "$n" $J && pass "$n Fixtures erzeugt (Kernel-Orakel hat jede positive Datei gegen die Quelle geprueft)" || { fail "$n Fixtures"; continue; }
     sha0=$(sha "$img")
     # Kernel-ro-Mount: eigene md5 je positive Datei muss der Quelle entsprechen (zweite Orakel-Lesung, anderer Mount)
-    mkdir -p "$W/kro_$n"; local kd; kd=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nobrowse -readonly -mountpoint "$W/kro_$n" "$img" | awk 'NR==1{print $1}')
-    if [ -n "$kd" ]; then local bad=0 k nm sz m; while IFS=$'\t' read -r k nm sz m _; do [ "$k" = P ] && [ "$(md5 -q "$W/kro_$n/$nm")" != "$m" ] && bad=1; done < "$W/$n.tsv"; [ $bad = 0 ] && pass "$n Kernel-ro md5 == Quelle (alle positiven)" || fail "$n Kernel-ro md5 weicht ab"; hdiutil detach "$kd" >>"$LOG" 2>&1; else fail "$n Kernel-ro-Mount"; fi
+    mkdir -p "$W/kro_$n" "$W/dc_ref_$n"; local kd; kd=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nobrowse -readonly -mountpoint "$W/kro_$n" "$img" | awk 'NR==1{print $1}')
+    if [ -n "$kd" ]; then local bad=0 k nm sz m; while IFS=$'\t' read -r k nm sz m _; do [ "$k" = P ] && { [ "$(md5 -q "$W/kro_$n/$nm")" != "$m" ] && bad=1; cp "$W/kro_$n/$nm" "$W/dc_ref_$n/$nm"; }; done < "$W/$n.tsv"; [ $bad = 0 ] && pass "$n Kernel-ro md5 == Quelle (alle positiven)" || fail "$n Kernel-ro md5 weicht ab"; hdiutil detach "$kd" >>"$LOG" 2>&1; else fail "$n Kernel-ro-Mount"; fi
     # (a) Modul nurlesen (Freigabe)
     fg_set "[{\"volume_uuid\":\"$VUUID\",\"modus\":\"nurlesen\",\"max_bytes\":1073741824}]"
     fg_mount "$img" "-o rdonly" && pass "$n mount -F -o rdonly (nurlesen)" || { fail "$n mount nurlesen"; hdiutil detach "$DEV" >/dev/null; continue; }
     dc_pruefe "$n nurlesen" "$MNT" "$W/$n.tsv"
+    chk "$n nurlesen: Lesungen mitten im Block/Extent gleich Kernel" python3 -I "$PREADV" "$W/dc_ref_$n" "$MNT" "$W/$n.tsv"
     umount "$MNT"; sleep 1; hdiutil detach "$DEV" >>"$LOG" 2>&1; st=$(stats_line 2); say "   $st"
     chk "$n nurlesen: Schreibzaehler 0" test "$(fld "$st" dev_writes)" = 0 -a "$(fld "$st" dev_schreibversuche)" = 0
     chk "$n nurlesen: Abbild-SHA256 vorher == nachher" test "$sha0" = "$(sha "$img")"
@@ -269,9 +270,10 @@ t_decmpfs() {
     local im=$W/${n}_m.img; cp "$img" "$im"; printf 'DROBOFSPROBE' | dd of="$im" bs=1 count=12 conv=notrunc 2>/dev/null
     attach "$im"; MNT=$W/mnt_dcm; fmount "$DEV" "$MNT" && pass "$n mount -F (Marker, rw)" || { fail "$n mount rw"; hdiutil detach "$DEV" >/dev/null; continue; }
     dc_pruefe "$n rw" "$MNT" "$W/$n.tsv"
+    chk "$n rw: Lesungen mitten im Block/Extent gleich Kernel" python3 -I "$PREADV" "$W/dc_ref_$n" "$MNT" "$W/$n.tsv"
     umount "$MNT"; sleep 1; hdiutil detach "$DEV" >>"$LOG" 2>&1
     chk "$n fsck_hfs -fn nach rw-Mount OK" fsck_ok "$im"
-    rmw "$n.img" "${n}_m.img" "mnt_$n" "kro_$n" "mnt_dcm"
+    rmw "$n.img" "${n}_m.img" "mnt_$n" "kro_$n" "mnt_dcm" "dc_ref_$n"
   done
 }
 
