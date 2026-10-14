@@ -189,7 +189,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         let kl = be.klein, kk = be.kleinKB, vr = (be.volReadBytes, be.volNonSeq, be.volDoppeltBytes, be.volDateien)
         be.statLock.unlock()
         log.notice("STATS-LESEN dev_reads=\(c.0) dev_read_bytes=\(c.1) hist_le128k=\(c.2[0]) hist_le512k=\(c.2[1]) hist_le1m=\(c.2[2]) dev_read_ms=\(c.3 / 1_000_000) vol_reads=\(c.4) max_wartend=\(c.5) lock_wait_ms=\(c.6 / 1_000_000) direkt_reads=\(c.7) fallback_reads=\(c.8) decmpfs_reads=\(c.9) max_dev_read_parallel=\(c.10) direktweg=\(self.directRead ? 1 : 0) drobo_bau=\(droboBau) fehler_bau=\(fehlerBau)")
-        log.notice("STATS-KLEIN le128k nach Bereich: bitmap=\(kl[0])/\(kk[0])KiB extents=\(kl[1])/\(kk[1])KiB katalog=\(kl[2])/\(kk[2])KiB attribute=\(kl[3])/\(kk[3])KiB sonst=\(kl[4])/\(kk[4])KiB | FSKit-Ebene: vol_read_bytes=\(vr.0) vol_nonseq=\(vr.1) vol_doppelt_bytes=\(vr.2) vol_dateien=\(vr.3) | Operationen: getattr=\(ops.0) lookup=\(ops.1) readdir=\(ops.2) reclaim=\(ops.3)")
+        log.notice("STATS-KLEIN le128k nach Bereich: bitmap=\(kl[0])/\(kk[0])KiB extents=\(kl[1])/\(kk[1])KiB katalog=\(kl[2])/\(kk[2])KiB attribute=\(kl[3])/\(kk[3])KiB sonst=\(kl[4])/\(kk[4])KiB | FSKit-Ebene: vol_read_bytes=\(vr.0) vol_nonseq=\(vr.1) vol_doppelt_bytes=\(vr.2) vol_dateien=\(vr.3) | Baumfenster: treffer=\(be.fensterTreffer) lesungen=\(be.fensterLesungen) an=\(be.fensterAn ? 1 : 0) | Operationen: getattr=\(ops.0) lookup=\(ops.1) readdir=\(ops.2) reclaim=\(ops.3)")
         backend.unregister()
         try check(r)
     }

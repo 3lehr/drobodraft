@@ -45,6 +45,36 @@ final class DeviceBackend {
     }
     func tagFor(_ off: Int64) -> Int { let i = rangeIdx(off); return i >= 0 ? ranges[i].tag : 4 }
 
+    /// Phase 5e: Baumknoten (Extents-Ueberlauf, Katalog, Attribute) im Modus nurlesen in 4-MiB-Fenstern lesen und zwischenspeichern (8 Fenster = 32 MiB, LRU).
+    /// Grund: ein Fremdzugriff (Verzeichnisse auflisten, Lookups) liest 8-KiB-Knoten einzeln; auf einem Geraet, das Befehle seriell abarbeitet und jeden
+    /// Sprung mit ~35 ms bezahlt, kostet jeder Wechsel zwischen Datenstrom und Katalog einen Sprung. Ein Fenster = ein Befehl statt bis zu 512 Knotenbefehle.
+    /// Nur nurlesen: der Baum aendert sich dann nie. Unter `lock` (Aufrufer: read). nil = nicht zustaendig, normaler Weg.
+    private static let fensterGroesse = 4 << 20
+    private var fenster: [(start: Int64, len: Int, buf: UnsafeMutableRawPointer)] = []   // zuletzt benutzt = hinten
+    var fensterTreffer = 0, fensterLesungen = 0
+    /// Messschalter: Datei fenster_aus im Modulcontainer schaltet den Fensterweg ab (Vergleich vorher/nachher).
+    let fensterAn = !FileManager.default.fileExists(atPath: NSHomeDirectory() + "/fenster_aus")
+    private func fensterLesen(_ out: UnsafeMutableRawPointer, _ n: Int, _ off: Int64) -> Int? {
+        let i = rangeIdx(off)
+        guard i >= 0, ranges[i].tag >= 1, ranges[i].tag <= 3, off + Int64(n) <= ranges[i].end else { return nil }
+        if let k = fenster.firstIndex(where: { off >= $0.start && off + Int64(n) <= $0.start + Int64($0.len) }) {
+            let w = fenster.remove(at: k); fenster.append(w)
+            memcpy(out, w.buf + Int(off - w.start), n)
+            statLock.lock(); fensterTreffer += 1; statLock.unlock()
+            return n
+        }
+        let ws = max(ranges[i].start, off - off % Int64(Self.fensterGroesse))
+        let wl = Int(min(ranges[i].end - ws, Int64(Self.fensterGroesse)))
+        guard off + Int64(n) <= ws + Int64(wl), wl % phys == 0 || ws + Int64(wl) == ranges[i].end else { return nil }
+        let span = (wl + phys - 1) / phys * phys
+        var slot: (start: Int64, len: Int, buf: UnsafeMutableRawPointer)
+        if fenster.count >= 8 { slot = fenster.removeFirst() } else { slot = (0, 0, UnsafeMutableRawPointer.allocate(byteCount: Self.fensterGroesse + 16384, alignment: 4096)) }
+        guard let got = try? devRead(slot.buf, ws, span), got >= wl else { slot.len = 0; fenster.insert(slot, at: 0); return nil }
+        slot.start = ws; slot.len = wl; fenster.append(slot)
+        memcpy(out, slot.buf + Int(off - ws), n)
+        statLock.lock(); fensterLesungen += 1; statLock.unlock()
+        return n
+    }
     #if TEST_FEHLER
     /// Pruefbau (analog TEST_DROBO): Datei fehler.txt im Container "N modus" laesst die N-te GROSSE (> 128 KiB) Lesung ans Geraet scheitern
     /// (modus wirf = Fehler EIO) oder verkuerzt sie auf die Haelfte (modus kurz). Ohne Datei kein Eingriff.
@@ -69,7 +99,7 @@ final class DeviceBackend {
         fehlerLesen()
         #endif
     }
-    deinit { bounce.deallocate() }
+    deinit { bounce.deallocate(); for w in fenster { w.buf.deallocate() } }
 
     func register() -> Bool {
         var b = lifs_backend_t()
@@ -163,6 +193,7 @@ final class DeviceBackend {
         lock.lock(); defer { lock.unlock() }
         if off < 0 || UInt64(off) >= bytes { return 0 }
         let want = Int(min(UInt64(n), bytes - UInt64(off)))
+        if forcedReadOnly && want == n && n <= 131072 && fensterAn, let r = fensterLesen(buf, n, off) { return r }
         var done = 0
         do {
             while done < want {
