@@ -26,6 +26,17 @@ final class DeviceBackend {
     let statLock = NSLock()
     var volReads = 0, waiting = 0, maxWaiting = 0, waitNanos: UInt64 = 0
     var directReads = 0, fallbackReads = 0, decmpfsReads = 0
+    #if TEST_FEHLER
+    /// Pruefbau (analog TEST_LATENZ): Datei fehler.txt im Container "N modus" laesst die N-te GROSSE (> 128 KiB) Lesung ans Geraet scheitern
+    /// (modus wirf = Fehler EIO) oder verkuerzt sie auf die Haelfte (modus kurz). Ohne Datei kein Eingriff.
+    private var fehlerN = 0, fehlerWirf = false, grosseLesungen = 0
+    private func fehlerLesen() {
+        guard let t = try? String(contentsOfFile: NSHomeDirectory() + "/fehler.txt", encoding: .utf8) else { log.notice("FEHLER-PRUEFBAU: keine fehler.txt"); return }
+        let f = t.split(whereSeparator: { $0 == " " || $0 == "\n" })
+        if f.count >= 2, let n = Int(f[0]) { fehlerN = n; fehlerWirf = f[1] == "wirf" }
+        log.notice("FEHLER-PRUEFBAU: N=\(self.fehlerN) wirf=\(self.fehlerWirf)")
+    }
+    #endif
     /// Zweite Sperre (Modus nurlesen): dev.write wird NIE erreicht, jeder Versuch zaehlt und scheitert mit EROFS.
     let forcedReadOnly: Bool
 
@@ -35,6 +46,9 @@ final class DeviceBackend {
         self.phys = Int(max(512, dev.physicalBlockSize))
         self.bytes = dev.blockCount * dev.blockSize
         bounce = UnsafeMutableRawPointer.allocate(byteCount: Self.bounceSize, alignment: 4096)
+        #if TEST_FEHLER
+        fehlerLesen()
+        #endif
     }
     deinit { bounce.deallocate() }
 
@@ -67,7 +81,17 @@ final class DeviceBackend {
         #if TEST_LATENZ
         usleep(8000)
         #endif
+        #if TEST_FEHLER
+        var kurz = false
+        if span > 131072 && fehlerN > 0 {
+            statLock.lock(); grosseLesungen += 1; let treffer = grosseLesungen == fehlerN; statLock.unlock()
+            if treffer { log.notice("FEHLER-PRUEFBAU: Treffer bei grosser Lesung \(self.grosseLesungen)"); if fehlerWirf { throw posixError(EIO) } else { kurz = true } }
+        }
+        let got = try dev.read(into: UnsafeMutableRawBufferPointer(start: p, count: span), startingAt: a0, length: span)
+        return kurz ? got / 2 : got
+        #else
         return try dev.read(into: UnsafeMutableRawBufferPointer(start: p, count: span), startingAt: a0, length: span)
+        #endif
     }
 
     /// Hebel B: Lesen OHNE gemeinsame Sperre und OHNE gemeinsamen Bounce-Puffer (Puffer je Aufruf), mehrere Aufrufe gleichzeitig moeglich.

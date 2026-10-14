@@ -148,7 +148,12 @@ fg_set() { printf '%s' "$1" > "$FREIGABE"; }
 # Betreiber-Freigabeliste (z. B. Drobo-Eintrag) vor der Eichung sichern und danach zurueckstellen, nie loeschen.
 # Die RETURN-Falle feuert in bash 5.3 zweimal (Ende der Funktion und danach noch einmal): FG_FERTIG macht fg_zurueck idempotent, sonst loescht der
 # zweite Aufruf (ohne Sicherung) die gerade zurueckgestellte Liste (Befund 2026-10-14, P5 Schritt 2).
-fg_sichern() { FG_FERTIG=0; [ -f "$FREIGABE.eich_sicherung" ] || { [ -f "$FREIGABE" ] && cp -p "$FREIGABE" "$FREIGABE.eich_sicherung"; }; rm -f "$FREIGABE"; }
+fg_sichern() {
+  FG_FERTIG=0
+  if [ -f "$FREIGABE.eich_sicherung" ] && [ -f "$FREIGABE" ]; then   # veraltete Sicherung UND aktuelle Liste: eine von beiden gehoert dem Betreiber - nichts ueberschreiben
+    echo "ABBRUCH: $FREIGABE.eich_sicherung (aelterer, abgebrochener Eichlauf) UND $FREIGABE existieren. Betreiber entscheidet, welche gilt; nichts veraendert." >&2; exit 3
+  fi
+  [ -f "$FREIGABE.eich_sicherung" ] || { [ -f "$FREIGABE" ] && cp -p "$FREIGABE" "$FREIGABE.eich_sicherung"; }; rm -f "$FREIGABE"; }
 fg_zurueck() { trap - RETURN; [ "${FG_FERTIG:-0}" = 1 ] && return 0; FG_FERTIG=1; if [ -f "$FREIGABE.eich_sicherung" ]; then mv -f "$FREIGABE.eich_sicherung" "$FREIGABE"; else rm -f "$FREIGABE"; fi; }
 fg_mount() { # img [extra-mount-opts] -> rc ; setzt DEV MNT
   attach "$1"; MNT=$W/mnt_fg; mkdir -p "$MNT"
@@ -243,7 +248,7 @@ dc_pruefe() { # label mnt manifest : Modul-Mount gegen Manifest
     else
       cat "$mnt/$name" >"$W/dc_out.bin" 2>"$W/dc_err.txt"; err=$(cat "$W/dc_err.txt"); out=$(wc -c < "$W/dc_out.bin" | tr -d ' ')
       # erlaubt: EIO, davor hoechstens ein byte-genauer Praefix der gueltigen Bloecke (spaetere Lesungen scheitern), nie falsche Bytes
-      { echo "$err" | grep -q "Input/output error" && [ "$out" -le "$(wc -c < "$good/$name" | tr -d ' ')" ] && { [ "$out" = 0 ] || cmp -s -n "$out" "$W/dc_out.bin" "$good/$name"; }; } \
+      { echo "$err" | grep -q "Input/output error" && [ "$out" -le "$(wc -c < "$good/$name" | tr -d ' ')" ] && { [ "$out" = 0 ] || [ "$(head -c "$out" "$good/$name" | md5 -q)" = "$(md5 -q "$W/dc_out.bin")" ]; }; } \
         && pass "$lab $name ($desc): EIO nach $out Bytes (korrekter Praefix)" || fail "$lab $name ($desc): $out Bytes, Fehler '$err'"
     fi
   done < "$tsv"
@@ -277,11 +282,43 @@ t_decmpfs() {
   done
 }
 
+# Phase 5c: Fehlerpfade beim Lesen. NUR mit Pruefbau (XC_EXTRA='SWIFT_ACTIVE_COMPILATION_CONDITIONS=TEST_FEHLER' tools/install_module.sh), danach Normalbau wieder installieren.
+# fehler.txt im Modulcontainer: "3 wirf" / "3 kurz" = die 3. grosse Geraetelesung scheitert bzw. kommt halb. Erwartet: EIO, davor nur ein byte-genauer Praefix.
+t_fehler() {
+  local n=fe img=$W/fe.img CD="$HOME/Library/Containers/de.begod.drobofsprobe.fsmodule/Data" pfad modus kd sl out err
+  trap fg_zurueck RETURN; fg_sichern
+  mkplain fe 0 64
+  mkdir -p "$W/kro_fe"; kd=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nobrowse -readonly -mountpoint "$W/kro_fe" "$img" | awk 'NR==1{print $1}'); cp "$W/kro_fe/a.bin" "$W/fe_ref.bin"; hdiutil detach "$kd" >>"$LOG" 2>&1
+  for pfad in direkt fallback rw; do for modus in kontrolle wirf kurz; do
+    rm -f "$CD/fehler.txt" "$CD/direktweg_aus"; [ $modus != kontrolle ] && echo "3 $modus" > "$CD/fehler.txt"
+    case $pfad in
+      direkt)   fg_set "[{\"volume_uuid\":\"$VUUID\",\"modus\":\"nurlesen\",\"max_bytes\":1073741824}]"; fg_mount "$img" "-o rdonly" || { fail "fe $pfad mount"; continue; };;
+      fallback) touch "$CD/direktweg_aus"; fg_set "[{\"volume_uuid\":\"$VUUID\",\"modus\":\"nurlesen\",\"max_bytes\":1073741824}]"; fg_mount "$img" "-o rdonly" || { fail "fe $pfad mount"; continue; };;
+      rw)       cp "$img" "$W/fe_m.img"; printf 'DROBOFSPROBE' | dd of="$W/fe_m.img" bs=1 count=12 conv=notrunc 2>/dev/null; attach "$W/fe_m.img"; MNT=$W/mnt_fe; fmount "$DEV" "$MNT" || { fail "fe rw mount"; continue; };;
+    esac
+    cat "$MNT/a.bin" > "$W/fe_out.bin" 2> "$W/fe_err.txt"; err=$(cat "$W/fe_err.txt"); out=$(wc -c < "$W/fe_out.bin" | tr -d ' ')
+    umount "$MNT"; sleep 2; hdiutil detach "$DEV" >>"$LOG" 2>&1
+    sl=$(/usr/bin/log show --last 2m --info --style compact --predicate 'subsystem == "de.begod.drobofsprobe"' 2>/dev/null | grep "STATS-LESEN" | tail -1 | sed 's/.*STATS-LESEN/STATS-LESEN/')
+    [ "$(fld "$sl" fehler_bau)" = 1 ] || { say "SKIP fehler: Modul ist kein Pruefbau TEST_FEHLER (fehler_bau=$(fld "$sl" fehler_bau))"; rm -f "$CD/fehler.txt" "$CD/direktweg_aus"; return; }
+    say "   $pfad $modus: $out Bytes, '$err'  [$(echo "$sl" | sed 's/.*direkt_reads/direkt_reads/;s/ max_dev.*//')]"
+    if [ $modus = kontrolle ]; then chk "fe $pfad ohne Fehler: md5 gleich" cmp -s "$W/fe_out.bin" "$W/fe_ref.bin"
+    else
+      # Treffer im Modul-Log belegen; dann entweder EIO mit byte-genauem Praefix ODER (Kernel wiederholt eine gescheiterte Vorauslesung) die komplette Datei byte-gleich
+      local hits; hits=$(/usr/bin/log show --last 2m --info --style compact --predicate 'subsystem == "de.begod.drobofsprobe"' 2>/dev/null | grep -c "Treffer bei grosser Lesung")
+      if [ "$hits" -gt 0 ] && echo "$err" | grep -q "Input/output error" && [ "$out" -lt 20000000 ] && { [ "$out" = 0 ] || [ "$(head -c "$out" "$W/fe_ref.bin" | md5 -q)" = "$(md5 -q "$W/fe_out.bin")" ]; }; then pass "fe $pfad $modus: Treffer, EIO nach $out Bytes, Praefix byte-genau"
+      elif [ "$hits" -gt 0 ] && [ -z "$err" ] && cmp -s "$W/fe_out.bin" "$W/fe_ref.bin"; then pass "fe $pfad $modus: Treffer, Fehler vom Kernel wiederholt, Datei byte-gleich (kein falsches Byte)"
+      else fail "fe $pfad $modus: Treffer=$hits, $out Bytes, '$err', cmp: $(cmp "$W/fe_out.bin" "$W/fe_ref.bin" 2>&1 | head -1)"; fi
+    fi
+  done; done
+  rm -f "$CD/fehler.txt" "$CD/direktweg_aus"
+}
+
 NJ_OK=0; NJ_BAD=0
 
 main() {
+  trap 'fg_zurueck; exit 130' INT TERM       # Abbruch (Ctrl-C/kill) stellt die Betreiber-Freigabeliste zurueck
   mksrc
-  case "${1:-alles}" in normal) t_normal;; absturz) t_absturz;; sperre) t_sperre;; freigabe) t_freigabe;; freigabe-modul) t_freigabe_modul;; decmpfs) t_decmpfs;; alles) t_sperre; t_freigabe; t_decmpfs; t_normal; t_absturz;; esac
+  case "${1:-alles}" in normal) t_normal;; absturz) t_absturz;; sperre) t_sperre;; freigabe) t_freigabe;; freigabe-modul) t_freigabe_modul;; decmpfs) t_decmpfs;; fehler) t_fehler;; alles) t_sperre; t_freigabe; t_decmpfs; t_normal; t_absturz;; esac
   say "=== ERGEBNIS PASS=$NPASS FAIL=$NFAIL (Log: $LOG)"; [ "$NFAIL" = 0 ]
 }
 [ "${BASH_SOURCE[0]}" = "$0" ] && main "$@"
