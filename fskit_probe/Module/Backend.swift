@@ -16,10 +16,13 @@ final class DeviceBackend {
     private static let bounceSize = (1 << 20) + 16384
     private let lock = NSLock()
     var vfd: Int32 = -1
-    var devWrites = 0, devMax = 0
+    var devWrites = 0, devMax = 0, writeAttempts = 0
+    /// Zweite Sperre (Modus nurlesen): dev.write wird NIE erreicht, jeder Versuch zaehlt und scheitert mit EROFS.
+    let forcedReadOnly: Bool
 
-    init(dev: FSBlockDeviceResource) {
+    init(dev: FSBlockDeviceResource, forcedReadOnly: Bool = false) {
         self.dev = dev
+        self.forcedReadOnly = forcedReadOnly
         self.phys = Int(max(512, dev.physicalBlockSize))
         self.bytes = dev.blockCount * dev.blockSize
         bounce = UnsafeMutableRawPointer.allocate(byteCount: Self.bounceSize, alignment: 4096)
@@ -35,7 +38,7 @@ final class DeviceBackend {
         b.block_size = UInt32(dev.blockSize)
         b.phys_block_size = UInt32(phys)
         b.block_count = dev.blockCount
-        b.writable = dev.isWritable ? 1 : 0
+        b.writable = (dev.isWritable && !forcedReadOnly) ? 1 : 0
         vfd = lifs_dev_register(&b)
         return vfd >= 0
     }
@@ -71,6 +74,7 @@ final class DeviceBackend {
 
     func write(_ buf: UnsafeRawPointer, _ n: Int, _ off: Int64) -> Int {
         lock.lock(); defer { lock.unlock() }
+        if forcedReadOnly { writeAttempts += 1; log.error("SCHREIBVERSUCH im Modus nurlesen off=\(off) n=\(n) -> EROFS"); return fail(EROFS) }
         guard dev.isWritable else { return fail(EROFS) }
         guard n <= 524288, off >= 1024, UInt64(off) + UInt64(n) <= bytes else {
             log.error("write abgelehnt off=\(off) n=\(n)")

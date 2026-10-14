@@ -133,11 +133,97 @@ t_sperre() {
   done
 }
 
+# Freigabeliste (Phase 4 Vorbereitung): Geraet OHNE Marker nur ueber freigabe.json im Container des Moduls; Modus nurlesen = nichts darf schreiben.
+FREIGABE="$HOME/Library/Containers/de.begod.drobofsprobe.fsmodule/Data/freigabe.json"
+sha() { shasum -a 256 "$1" | awk '{print $1}'; }
+mkplain() { # name journaled MiB -> Abbild OHNE Marker, vom Kernel gefuellt; setzt VUUID, $W/name.ref.md5
+  local n=$1 f=$W/$1.img d; rmw "$n.img"; truncate -s "${3}m" "$f"
+  d=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nomount "$f" | awk 'NR==1{print $1}'); newfs_hfs $([ "$2" = 1 ] && echo -J) -v "FG_$n" "${d/disk/rdisk}" >>"$LOG" 2>&1; hdiutil detach "$d" >>"$LOG" 2>&1
+  mkdir -p "$W/mnt_$n"; d=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nobrowse -mountpoint "$W/mnt_$n" "$f" | awk 'NR==1{print $1}')
+  VUUID=$(diskutil info "$d" | awk '/Volume UUID/{print $3}')
+  head -c 20000000 /dev/urandom > "$W/mnt_$n/a.bin"; mkdir "$W/mnt_$n/d"; for i in 1 2 3; do echo $i > "$W/mnt_$n/d/f$i"; done; xattr -w user.fg v "$W/mnt_$n/d/f1"; sync
+  mdlist "$W/mnt_$n" > "$W/$n.ref.md5"; hdiutil detach "$d" >>"$LOG" 2>&1
+}
+fg_set() { printf '%s' "$1" > "$FREIGABE"; }
+fg_mount() { # img [extra-mount-opts] -> rc ; setzt DEV MNT
+  attach "$1"; MNT=$W/mnt_fg; mkdir -p "$MNT"
+  mount -F -t $SHORT $2 "$DEV" "$MNT" >>"$LOG" 2>&1 || { sleep 3; mount -F -t $SHORT $2 "$DEV" "$MNT" >>"$LOG" 2>&1; }
+}
+t_freigabe() {
+  local n img sha0 sha1 st rc mp
+  [ -f "$W/m3.bin" ] || head -c 21000123 /dev/urandom > "$W/m3.bin"
+  trap 'rm -f "$FREIGABE"' RETURN; rm -f "$FREIGABE"
+  for J in 1 0; do
+    n=fg$J; img=$W/$n.img; say "=== FREIGABE nurlesen journaled=$J (Abbild ohne Marker)"
+    mkplain "$n" $J 512; say "   Volume-UUID (diskutil) $VUUID"
+    chk "$n Abbild traegt keinen Marker" test "$(head -c 12 "$img" | tr -d "\\0")" != "DROBOFSPROBE"
+    sha0=$(sha "$img")
+    # (a) nicht gelistet -> abgelehnt
+    attach "$img"; MNT=$W/mnt_fg; mkdir -p "$MNT"; mount -F -t $SHORT "$DEV" "$MNT" >>"$LOG" 2>&1 && { fail "$n ohne Freigabe eingehaengt"; umount "$MNT"; } || pass "$n ohne Eintrag abgelehnt"; hdiutil detach "$DEV" >>"$LOG" 2>&1
+    fg_set '[{"volume_uuid":"00000000-1111-3333-8888-000000000000","modus":"nurlesen","max_bytes":1073741824}]'
+    attach "$img"; mount -F -t $SHORT "$DEV" "$MNT" >>"$LOG" 2>&1 && { fail "$n fremde UUID eingehaengt"; umount "$MNT"; } || pass "$n fremde UUID in der Liste: abgelehnt"; hdiutil detach "$DEV" >>"$LOG" 2>&1
+    fg_set "[{\"volume_uuid\":\"$VUUID\",\"modus\":\"nurlesen\",\"max_bytes\":1048576}]"
+    attach "$img"; mount -F -t $SHORT "$DEV" "$MNT" >>"$LOG" 2>&1 && { fail "$n Geraet groesser als max_bytes eingehaengt"; umount "$MNT"; } || pass "$n Geraet > max_bytes: abgelehnt"; hdiutil detach "$DEV" >>"$LOG" 2>&1
+    fg_set '{kaputt'
+    attach "$img"; mount -F -t $SHORT "$DEV" "$MNT" >>"$LOG" 2>&1 && { fail "$n kaputte Liste eingehaengt"; umount "$MNT"; } || pass "$n ungueltige Liste: abgelehnt"; hdiutil detach "$DEV" >>"$LOG" 2>&1
+    # (b) freigegeben nurlesen: einmal mit -o rdonly, einmal ohne
+    for opt in "-o rdonly" ""; do
+      fg_set "[{\"volume_uuid\":\"$VUUID\",\"modus\":\"nurlesen\",\"max_bytes\":1073741824}]"
+      fg_mount "$img" "$opt" && pass "$n mount -F ${opt:-(ohne rdonly)} freigegeben" || { fail "$n mount freigegeben ($opt)"; hdiutil detach "$DEV" >/dev/null; continue; }
+      mp=$(mount | grep -iF " $MNT " | head -1); echo "$mp" | grep -q "read-only" && pass "$n als read-only gemeldet: $(echo "$mp" | sed 's/.*(\(.*\))/\1/')" || fail "$n nicht read-only gemeldet: $mp"
+      mdlist "$MNT" > "$W/$n.fg.md5"; chk "$n Lesen md5 gleich Referenz (${opt:-ohne rdonly})" diff "$W/$n.ref.md5" "$W/$n.fg.md5"
+      for t in "cp /etc/hosts $MNT/neu" "touch $MNT/t" "mkdir $MNT/nd" "rm $MNT/a.bin" "xattr -w user.x y $MNT/d/f1" "mv $MNT/a.bin $MNT/b.bin" "ln -s a.bin $MNT/sl" "truncate -s 5 $MNT/a.bin"; do
+        $t >>"$LOG" 2>&1 && fail "$n Schreibversuch gelang: $t" || pass "$n Schreibversuch scheitert: ${t%% *}"
+      done
+      umount "$MNT"; sleep 1; hdiutil detach "$DEV" >>"$LOG" 2>&1
+      st=$(stats_line 2); say "   $st"
+      chk "$n Schreibzaehler 0 (dev_writes=$(fld "$st" dev_writes), dev_schreibversuche=$(fld "$st" dev_schreibversuche))" test "$(fld "$st" dev_writes)" = 0 -a "$(fld "$st" dev_schreibversuche)" = 0
+      chk "$n Modul meldet ro=1" test "$(fld "$st" ro)" = 1
+      sha1=$(sha "$img"); chk "$n Abbild-SHA256 vorher == nachher" test "$sha0" = "$sha1"
+    done
+    chk "$n fsck_hfs -fn danach OK" fsck_ok "$img"; rmw "$n.img" "mnt_$n"
+  done
+  # (c) Journal nicht leer + nurlesen -> abgelehnt (Kontrolle: nach Kernel-Replay angenommen)
+  n=fgj; img=$W/$n.img; say "=== FREIGABE: Journal nicht leer"
+  mkplain "$n" 1 512
+  "$M/build/lifs_cli" "$img" mkdir /x >/dev/null 2>&1; LIFS_DIE_AFTER_WRITES=90 "$M/build/lifs_cli" "$img" put "$W/m3.bin" /x/m3 >/dev/null 2>&1
+  python3 -I "$M/jstate.py" "$img" | tee -a "$LOG" | grep -q NICHT-LEER && pass "$n Ausgang: Journal NICHT leer" || fail "$n Ausgang: Journal ist leer (Test ungueltig)"
+  fg_set "[{\"volume_uuid\":\"$VUUID\",\"modus\":\"nurlesen\",\"max_bytes\":1073741824}]"
+  sha0=$(sha "$img"); attach "$img"; MNT=$W/mnt_fg; mkdir -p "$MNT"
+  mount -F -t $SHORT -o rdonly "$DEV" "$MNT" >>"$LOG" 2>&1 && { fail "$n nurlesen mit nicht leerem Journal eingehaengt"; umount "$MNT"; } || pass "$n nurlesen + Journal nicht leer: abgelehnt"
+  hdiutil detach "$DEV" >>"$LOG" 2>&1
+  /usr/bin/log show --last 2m --info --style compact --predicate 'subsystem == "de.begod.drobofsprobe"' 2>/dev/null | grep -E "Journal nicht leer" | tail -1 | sed 's/.*\] /   /' | tee -a "$LOG"
+  chk "$n Abbild-SHA256 vorher == nachher (abgelehnt, nichts geschrieben)" test "$sha0" = "$(sha "$img")"
+  local kd; mkdir -p "$W/mnt_fgk"; kd=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nobrowse -mountpoint "$W/mnt_fgk" "$img" | awk 'NR==1{print $1}'); hdiutil detach "$kd" >>"$LOG" 2>&1   # Kernel spielt das Journal ein
+  fg_mount "$img" "-o rdonly" && pass "$n Kontrolle: nach Kernel-Replay wird nurlesen angenommen" || fail "$n Kontrolle: nach Replay immer noch abgelehnt"
+  umount "$MNT" 2>/dev/null; hdiutil detach "$DEV" >>"$LOG" 2>&1; rmw "$n.img" mnt_fg mnt_fgk
+}
+
+# Nur mit Pruefbau (XC_EXTRA='SWIFT_ACTIVE_COMPILATION_CONDITIONS=TEST_MOUNT_RW' tools/install_module.sh): das Modul meldet dem Kernel NICHT read-only,
+# Schreibzugriffe erreichen also seine eigenen EROFS-Sperren (ro_blockiert) und, nie, den Backend-Zaehler. Danach normalen Bau wieder installieren.
+t_freigabe_modul() {
+  local n=fgm img sha0 st
+  trap 'rm -f "$FREIGABE"' RETURN
+  mkplain "$n" 1 512; img=$W/$n.img; sha0=$(sha "$img")
+  fg_set "[{\"volume_uuid\":\"$VUUID\",\"modus\":\"nurlesen\",\"max_bytes\":1073741824}]"
+  fg_mount "$img" "" || { fail "$n mount"; return; }
+  mount | grep -iF " $MNT " | grep -q "read-only" && fail "$n Pruefbau meldet trotzdem read-only (Test ungueltig)" || pass "$n Pruefbau: Kernel-Mount ist schreibbar gemeldet (Modul-Sperren werden erreicht)"
+  for t in "cp /etc/hosts $MNT/neu" "touch $MNT/t" "mkdir $MNT/nd" "rm $MNT/a.bin" "xattr -w user.x y $MNT/d/f1" "mv $MNT/a.bin $MNT/b.bin" "ln -s a.bin $MNT/sl" "truncate -s 5 $MNT/a.bin" "ln $MNT/a.bin $MNT/hl"; do
+    $t >>"$LOG" 2>&1 && fail "$n Schreibversuch gelang: $t" || pass "$n Modul antwortet EROFS/Fehler: ${t%% *}"
+  done
+  chk "$n Lesen weiter moeglich" test "$(md5 -q "$MNT/a.bin")" = "$(grep ' ./a.bin' "$W/$n.ref.md5" | awk '{print $1}')"
+  umount "$MNT"; sleep 1; hdiutil detach "$DEV" >>"$LOG" 2>&1; st=$(stats_line 2); say "   $st"
+  chk "$n ro_blockiert=$(fld "$st" ro_blockiert) > 0 (Modul-Sperre griff)" test "$(fld "$st" ro_blockiert)" -gt 0
+  chk "$n dev_schreibversuche=0, dev_writes=0" test "$(fld "$st" dev_schreibversuche)" = 0 -a "$(fld "$st" dev_writes)" = 0
+  chk "$n Abbild-SHA256 vorher == nachher" test "$sha0" = "$(sha "$img")"
+  rmw "$n.img" mnt_fgm
+}
+
 NJ_OK=0; NJ_BAD=0
 
 main() {
   mksrc
-  case "${1:-alles}" in normal) t_normal;; absturz) t_absturz;; sperre) t_sperre;; alles) t_sperre; t_normal; t_absturz;; esac
+  case "${1:-alles}" in normal) t_normal;; absturz) t_absturz;; sperre) t_sperre;; freigabe) t_freigabe;; freigabe-modul) t_freigabe_modul;; alles) t_sperre; t_freigabe; t_normal; t_absturz;; esac
   say "=== ERGEBNIS PASS=$NPASS FAIL=$NFAIL (Log: $LOG)"; [ "$NFAIL" = 0 ]
 }
 [ "${BASH_SOURCE[0]}" = "$0" ] && main "$@"

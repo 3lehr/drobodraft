@@ -22,6 +22,7 @@
 #define MODE_ALL (UVFS_FA_MODE_OTH(UVFS_FA_MODE_RWX) | UVFS_FA_MODE_GRP(UVFS_FA_MODE_RWX) | UVFS_FA_MODE_USR(UVFS_FA_MODE_RWX))
 
 static UVFSFileNode g_root;
+static int g_fd;
 static uint64_t g_bytes_moved;   /* Nutzdaten fuer MB/s */
 
 static int die(const char *what, int err) { fprintf(stderr, "ERR %s: %d\n", what, err); return err ? err : 1; }
@@ -225,6 +226,11 @@ static int run(int argc, char **argv)
             err = OPS.fsops_write(b, strtoull(argv[2], NULL, 10), sizeof x, x, &act); OPS.fsops_reclaim(b, 0);
         }
         release(a);
+    } else if (!strcmp(cmd, "uuid")) {        /* Volume-UUID wie diskutil + Journal-Zustand (nur lesen) */
+        uint8_t vh[512], u[16];
+        if (pread(g_fd, vh, 512, 1024) != 512) return die("uuid", EIO);
+        int none = lifs_volume_uuid(vh, u);
+        printf("%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X%s journal_dirty=%d\n", u[0],u[1],u[2],u[3],u[4],u[5],u[6],u[7],u[8],u[9],u[10],u[11],u[12],u[13],u[14],u[15], none ? " (keine ID)" : "", lifs_journal_dirty(g_fd));
     } else if (!strcmp(cmd, "enable-journal")) {   /* enable-journal [groesse_byte]: Journal auf nicht-journaled Volume anlegen */
         err = lifs_enable_journal(g_root, argc > 1 ? strtoull(argv[1], NULL, 10) : 0);
     } else if (!strcmp(cmd, "import")) {
@@ -260,7 +266,7 @@ int main(int argc, char **argv)
     int ro = 0, stats = 0, i = 1;
     for (; i < argc && argv[i][0] == '-'; i++) { if (argv[i][1] == 'r') ro = 1; else if (argv[i][1] == 's') stats = 1; }
     if (argc - i < 2) { fprintf(stderr, "usage: lifs_cli [-r] [-s] <abbild> <befehl> [args]\n"); return 2; }
-    int fd = open(argv[i], ro ? O_RDONLY : O_RDWR);
+    int fd = open(argv[i], ro ? O_RDONLY : O_RDWR); g_fd = fd;
     if (fd < 0) return die("open", errno);
     int rc;
     if ((rc = OPS.fsops_init())) return die("init", rc);

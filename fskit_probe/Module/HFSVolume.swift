@@ -36,10 +36,16 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
     private var userBytesWritten: UInt64 = 0
     private var timer: DispatchSourceTimer?
     private let readOnly: Bool
+    private var roBlocked = 0
+    private func rofail() throws -> Never { roBlocked += 1; throw posixError(EROFS) }
 
-    init(dev: FSBlockDeviceResource, backend: DeviceBackend, containerUUID: UUID) throws {
+    init(dev: FSBlockDeviceResource, backend: DeviceBackend, containerUUID: UUID, nurlesen: Bool = false) throws {
         let fd = backend.vfd
-        let ro = !dev.isWritable
+        let ro = !dev.isWritable || nurlesen
+        if nurlesen {                                                        // Journal nicht leer: Mount ABLEHNEN (Replay wuerde schreiben)
+            let d = lifs_journal_dirty(fd)
+            if d != 0 { log.error("nurlesen abgelehnt: Journal nicht leer oder unlesbar (\(d))"); throw posixError(d < 0 ? -d : EBUSY) }
+        }
         if !ro {
             let p = lifs_prepare_volume(fd)                                   // lastMountedVersion=HFSJ vor dem ersten Journal-Schreiben
             if p < 0 { throw posixError(-p) }
@@ -77,6 +83,11 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
     var truncatesLongNames: Bool { false }
     var maximumXattrSize: Int { 128 * 1024 }
     var maximumFileSizeInBits: Int { 64 }
+
+    #if !TEST_MOUNT_RW
+    @available(macOS 26.4, *)
+    var requestedMountOptions: FSVolume.MountOptions { get { readOnly ? [.readOnly] : [] } set {} }
+    #endif   // TEST_MOUNT_RW: nur Pruefbau (eich_fskit.sh freigabe-modul), damit Schreibzugriffe die EROFS-Sperren des Moduls erreichen
 
     var supportedVolumeCapabilities: FSVolume.SupportedCapabilities {
         var info = lifs_volinfo_t()
@@ -132,7 +143,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
             return r
         }
         let st = lifs_dev_stats
-        log.notice("STATS unmount=\(r) nutz_geschrieben=\(self.userBytesWritten) dev_writes=\(st.writes) dev_bytes=\(st.bytes) max_cmd=\(st.max_cmd) max_call=\(st.max_call) chunked=\(st.chunked_calls) syncs=\(st.syncs) swift_dev_writes=\(self.backend.devWrites) swift_max=\(self.backend.devMax)")
+        log.notice("STATS unmount=\(r) nutz_geschrieben=\(self.userBytesWritten) dev_writes=\(st.writes) dev_bytes=\(st.bytes) max_cmd=\(st.max_cmd) max_call=\(st.max_call) chunked=\(st.chunked_calls) syncs=\(st.syncs) ro=\(self.readOnly ? 1 : 0) ro_blockiert=\(self.roBlocked) dev_schreibversuche=\(self.backend.writeAttempts) swift_dev_writes=\(self.backend.devWrites) swift_max=\(self.backend.devMax)")
         backend.unregister()
         try check(r)
     }
@@ -171,6 +182,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
     }
 
     func setAttributes(_ new: FSItem.SetAttributesRequest, on item: FSItem) async throws -> FSItem.Attributes {
+        if readOnly { try rofail() }
         let it = try self.item(item)
         var u = UVFSFileAttributes()
         var consumed: FSItem.Attribute = []
@@ -233,6 +245,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
     }
 
     func createItem(named name: FSFileName, type: FSItem.ItemType, inDirectory directory: FSItem, attributes: FSItem.SetAttributesRequest) async throws -> (FSItem, FSFileName) {
+        if readOnly { try rofail() }
         let d = try item(directory)
         guard type == .file || type == .directory else { throw posixError(ENOTSUP) }
         var u = setAttrs(attributes, dir: type == .directory)
@@ -246,6 +259,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
     }
 
     func createSymbolicLink(named name: FSFileName, inDirectory directory: FSItem, attributes: FSItem.SetAttributesRequest, linkContents contents: FSFileName) async throws -> (FSItem, FSFileName) {
+        if readOnly { try rofail() }
         let d = try item(directory)
         var u = setAttrs(attributes, dir: false)
         return try locked { () throws -> (FSItem, FSFileName) in
@@ -258,6 +272,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
     }
 
     func createLink(to item: FSItem, named name: FSFileName, inDirectory directory: FSItem) async throws -> FSFileName {
+        if readOnly { try rofail() }
         let src = try self.item(item), d = try self.item(directory)
         var af = UVFSFileAttributes(), ad = UVFSFileAttributes()
         try locked { withName(name) { HFS_fsOps.fsops_link!(src.node, d.node, $0, &af, &ad) } }.check()
@@ -265,6 +280,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
     }
 
     func removeItem(_ item: FSItem, named name: FSFileName, fromDirectory directory: FSItem) async throws {
+        if readOnly { try rofail() }
         let it = try self.item(item), d = try self.item(directory)
         var a = UVFSFileAttributes()
         try locked { () -> Int32 in
@@ -274,6 +290,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
     }
 
     func renameItem(_ item: FSItem, inDirectory sourceDirectory: FSItem, named sourceName: FSFileName, to destinationName: FSFileName, inDirectory destinationDirectory: FSItem, overItem: FSItem?) async throws -> FSFileName {
+        if readOnly { try rofail() }
         let it = try self.item(item), sd = try self.item(sourceDirectory), dd = try self.item(destinationDirectory)
         let over = try overItem.map { try self.item($0) }
         try locked { withName(sourceName) { s in withName(destinationName) { d in
@@ -321,6 +338,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
     }
 
     func write(contents: Data, to item: FSItem, at offset: off_t) async throws -> Int {
+        if readOnly { try rofail() }
         let it = try self.item(item)
         var act = 0
         let r: Int32 = locked { contents.withUnsafeBytes { HFS_fsOps.fsops_write!(it.node, UInt64(offset), contents.count, $0.baseAddress, &act) } }
@@ -345,6 +363,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
     }
 
     func setXattr(named name: FSFileName, to value: Data?, on item: FSItem, policy: FSVolume.SetXattrPolicy) async throws {
+        if readOnly { try rofail() }
         let it = try self.item(item)
         let how: UVFSXattrHow
         switch policy {

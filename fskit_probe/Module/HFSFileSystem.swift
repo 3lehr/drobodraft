@@ -14,7 +14,8 @@ final class HFSFileSystem: FSUnaryFileSystem, FSUnaryFileSystemOperations, FSMan
         guard let dev = resource as? FSBlockDeviceResource else { return replyHandler(.notRecognized, nil) }
         do {
             let head = try Gate.readHead(dev, 4096)
-            if let why = Gate.refusal(dev, head: head) {
+            let (zul, why) = Gate.decide(dev, head: head)
+            guard zul != nil else {
                 hfsLog.notice("probe \(dev.bsdName, privacy: .public): abgelehnt (\(why, privacy: .public))")
                 return replyHandler(.notRecognized, nil)
             }
@@ -22,7 +23,7 @@ final class HFSFileSystem: FSUnaryFileSystem, FSUnaryFileSystemOperations, FSMan
                 hfsLog.notice("probe \(dev.bsdName, privacy: .public): Marker, aber kein HFS+")
                 return replyHandler(.notRecognized, nil)
             }
-            hfsLog.notice("probe \(dev.bsdName, privacy: .public): HFS+ im Testabbild, angenommen")
+            hfsLog.notice("probe \(dev.bsdName, privacy: .public): HFS+ angenommen (\(zul!.grund, privacy: .public))")
             replyHandler(.usable(name: "HFS+", containerID: FSContainerIdentifier(uuid: Gate.containerUUID(head))), nil)
         } catch {
             hfsLog.error("probe \(dev.bsdName, privacy: .public) Fehler \(String(describing: error), privacy: .public)")
@@ -31,9 +32,13 @@ final class HFSFileSystem: FSUnaryFileSystem, FSUnaryFileSystemOperations, FSMan
     }
 
     func loadResource(resource: FSResource, options: FSTaskOptions, replyHandler: @escaping (FSVolume?, (any Error)?) -> Void) {
-        guard let dev = resource as? FSBlockDeviceResource, let head = try? Gate.readHead(dev, 4096),
-              Gate.refusal(dev, head: head) == nil, Gate.isHFSPlus(head) else {
-            hfsLog.error("load: Sperre -> abgelehnt")
+        guard let dev = resource as? FSBlockDeviceResource, let head = try? Gate.readHead(dev, 4096), Gate.isHFSPlus(head) else {
+            hfsLog.error("load: kein HFS+ / nicht lesbar -> abgelehnt")
+            return replyHandler(nil, posixError(EINVAL))
+        }
+        let (zul, why) = Gate.decide(dev, head: head)
+        guard let z = zul else {
+            hfsLog.error("load: Sperre -> abgelehnt (\(why, privacy: .public))")
             return replyHandler(nil, posixError(EINVAL))
         }
         libLock.lock(); defer { libLock.unlock() }
@@ -42,12 +47,12 @@ final class HFSFileSystem: FSUnaryFileSystem, FSUnaryFileSystemOperations, FSMan
             if r != 0 { return replyHandler(nil, posixError(r)) }
             libInitDone = true
         }
-        let backend = DeviceBackend(dev: dev)
+        let backend = DeviceBackend(dev: dev, forcedReadOnly: z.modus == .nurlesen)
         guard backend.register() else { return replyHandler(nil, posixError(EMFILE)) }
         do {
-            let vol = try HFSVolume(dev: dev, backend: backend, containerUUID: Gate.containerUUID(head))
+            let vol = try HFSVolume(dev: dev, backend: backend, containerUUID: Gate.containerUUID(head), nurlesen: z.modus == .nurlesen)
             containerStatus = .ready
-            hfsLog.notice("load \(dev.bsdName, privacy: .public) opts=\(options.taskOptions, privacy: .public) name=\(vol.mountedName, privacy: .public)")
+            hfsLog.notice("load \(dev.bsdName, privacy: .public) opts=\(options.taskOptions, privacy: .public) name=\(vol.mountedName, privacy: .public) modus=\(z.modus.rawValue, privacy: .public) \(z.grund, privacy: .public)")
             replyHandler(vol, nil)
         } catch {
             backend.unregister()

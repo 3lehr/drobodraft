@@ -19,11 +19,42 @@ enum Gate {
         return Array(UnsafeRawBufferPointer(start: buf, count: got))
     }
 
-    /// nil = erlaubt, sonst Ablehnungsgrund.
-    static func refusal(_ dev: FSBlockDeviceResource, head: [UInt8]) -> String? {
-        if deviceBytes(dev) > maxBytes { return "Groesse \(deviceBytes(dev)) > \(maxBytes)" }
-        if head.count < marker.count || Array(head[0..<marker.count]) != marker { return "kein Marker" }
-        return nil
+    enum Modus: String { case nurlesen, schreiben }
+    struct Freigabe { let uuid: String; let modus: Modus; let maxBytes: UInt64 }
+    /// Zulassung: Marker-Testabbild (schreibbar) oder Eintrag der Freigabeliste (Modus aus der Liste).
+    struct Zulassung { let modus: Modus; let grund: String }
+
+    /// Freigabeliste im Container des Moduls (die Sandbox darf ihn lesen): ~/Library/Containers/de.begod.drobofsprobe.fsmodule/Data/freigabe.json.
+    /// Format: [{"volume_uuid":"C2E343A1-...","modus":"nurlesen","max_bytes":70368744177664}] oder {"eintraege":[...]}. Unlesbar/ungueltig = leer (nichts freigegeben).
+    static var freigabePfad: String { NSHomeDirectory() + "/freigabe.json" }
+    static func freigaben() -> [Freigabe] {
+        guard let d = try? Data(contentsOf: URL(fileURLWithPath: freigabePfad)), let j = try? JSONSerialization.jsonObject(with: d) else { return [] }
+        let arr = (j as? [[String: Any]]) ?? ((j as? [String: Any])?["eintraege"] as? [[String: Any]]) ?? []
+        return arr.compactMap { e in
+            guard let u = e["volume_uuid"] as? String, let m = (e["modus"] as? String).flatMap(Modus.init(rawValue:)), let mb = (e["max_bytes"] as? NSNumber)?.uint64Value else { return nil }
+            return Freigabe(uuid: u.uppercased(), modus: m, maxBytes: mb)
+        }
+    }
+
+    /// HFS-Volume-UUID wie diskutil (lifs_volume_uuid: MD5 ueber Namespace + finderInfo[6..7]); nil = Volume ohne ID.
+    static func volumeUUID(_ head: [UInt8]) -> String? {
+        guard head.count >= 1024 + 512 else { return nil }
+        var u = [UInt8](repeating: 0, count: 16)
+        let none = head[1024..<(1024 + 512)].withUnsafeBytes { lifs_volume_uuid($0.bindMemory(to: UInt8.self).baseAddress, &u) }
+        return none != 0 ? nil : UUID(uuid: (u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], u[8], u[9], u[10], u[11], u[12], u[13], u[14], u[15])).uuidString
+    }
+
+    /// Entscheidung. Marker-Abbild (wie bisher: <= 24 GiB + Marker) ODER Freigabeeintrag mit passender Volume-UUID und Geraet <= max_bytes.
+    static func decide(_ dev: FSBlockDeviceResource, head: [UInt8]) -> (Zulassung?, String) {
+        let hasMarker = head.count >= marker.count && Array(head[0..<marker.count]) == marker
+        if hasMarker {
+            if deviceBytes(dev) > maxBytes { return (nil, "Marker, aber Groesse \(deviceBytes(dev)) > \(maxBytes)") }
+            return (Zulassung(modus: .schreiben, grund: "Marker"), "")
+        }
+        guard let u = volumeUUID(head) else { return (nil, "kein Marker, keine Volume-UUID") }
+        guard let f = freigaben().first(where: { $0.uuid == u }) else { return (nil, "kein Marker, UUID \(u) nicht in der Freigabeliste") }
+        if deviceBytes(dev) > f.maxBytes { return (nil, "UUID \(u) freigegeben, aber Geraet \(deviceBytes(dev)) > max_bytes \(f.maxBytes)") }
+        return (Zulassung(modus: f.modus, grund: "Freigabe \(u) \(f.modus.rawValue)"), "")
     }
 
     /// HFS+/HFSX-Volume-Header bei Offset 1024: Signatur 'H+' oder 'HX'.

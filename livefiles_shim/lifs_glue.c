@@ -10,6 +10,8 @@
 #include <string.h>
 #include <sys/disk.h>
 #include <sys/attr.h>
+#include <CommonCrypto/CommonDigest.h>
+#include <System/uuid/namespace.h>
 
 #define OPS HFS_fsOps
 static uint16_t be16(const uint8_t *p) { return (uint16_t)(p[0] << 8 | p[1]); }
@@ -184,4 +186,29 @@ undo:
     if (ji) { OPS.fsops_remove(root, ".journal_info_block", ji); OPS.fsops_reclaim(ji, 0); }
     if (jn) { OPS.fsops_remove(root, ".journal", jn); OPS.fsops_reclaim(jn, 0); }
     return r;
+}
+
+int lifs_volume_uuid(const uint8_t *vh, uint8_t out[16])
+{
+    const uint8_t *raw = vh + 80 + 24;                              /* finderInfo[6..7] */
+    if (be32(raw) == 0 || be32(raw + 4) == 0) { memset(out, 0, 16); return 1; }
+    CC_MD5_CTX c; CC_MD5_Init(&c);
+    CC_MD5_Update(&c, kFSUUIDNamespaceSHA1, 16); CC_MD5_Update(&c, raw, 8); CC_MD5_Final(out, &c);
+    out[6] = (out[6] & 0x0F) | 0x30; out[8] = (out[8] & 0x3F) | 0x80;
+    return 0;
+}
+
+int lifs_journal_dirty(int fd)
+{
+    uint8_t vh[512], jib[512], jh[512];
+    if (lifs_dev_pread(fd, vh, 512, 1024) != 512) return -EIO;
+    uint16_t sig = be16(vh);
+    if ((sig != 0x482B && sig != 0x4858) || !(be32(vh + 4) & 0x2000)) return 0;
+    uint32_t bs = be32(vh + 40);
+    if (bs < 512) return 0;
+    if (lifs_dev_pread(fd, jib, 512, (off_t)be32(vh + 12) * bs) != 512) return -EIO;
+    if (!(be32(jib) & 1) || (be32(jib) & 4)) return 0;             /* extern oder "needs init": nie benutzt, leer */
+    if (lifs_dev_pread(fd, jh, 512, (off_t)be64(jib + 36)) != 512) return -EIO;
+    if (jh[0] != 0x78 || jh[1] != 0x4c || jh[2] != 0x4e || jh[3] != 0x4a) return -EINVAL;   /* Journal-Kopf unlesbar: nicht anfassen */
+    return le64(jh + 8) != le64(jh + 16);
 }

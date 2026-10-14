@@ -33,4 +33,10 @@ int lifs_volinfo(UVFSFileNode root, lifs_volinfo_t *out);
  * (Journal ein zusammenhaengender Extent), Journal-Info-Block (InFS|NeedInit), VH.journalInfoBlock und Bit 0x2000 (wird beim Unmount geschrieben).
  * Aufrufen mit rw gemountetem, nicht-journaled Volume, danach normal unmounten. jsize 0 = Standard. Rueckgabe 0 oder errno; bei Fehler Rueckbau. */
 int lifs_enable_journal(UVFSFileNode root, uint64_t jsize);
+/* HFS-Volume-UUID wie diskutil/Kernel sie zeigt: MD5(kFSUUIDNamespaceSHA1 || VH.finderInfo[24..31]) mit Version-3-Bits (Quelle: lf_hfs_volume_identifiers.c).
+ * vh = die 512 Byte des Volume-Headers (Offset 1024). 0 = ok, 1 = Volume hat keine ID (Null-UUID). */
+int lifs_volume_uuid(const uint8_t *vh, uint8_t out[16]);
+
+/* 1 = Journal vorhanden, initialisiert und NICHT leer (Replay noetig, schreibt), 0 = leer/kein Journal, <0 = -errno. Liest nur. */
+int lifs_journal_dirty(int fd);
 #endif

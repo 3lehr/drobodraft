@@ -12,7 +12,7 @@ PL="$HOME/Library/Group Containers/group.com.apple.fskit.settings/enabledModules
 plutil -p "$PL" | grep -q "$ID" || { echo "STOP: $ID steht nicht in enabledModules.plist -> Betreiber muss das Modul freischalten (nichts installiert)"; exit 3; }
 make -C .. -s
 xcodegen generate >/dev/null
-xcodebuild -project DroboFSProbe.xcodeproj -scheme DroboFSProbe -configuration Debug -derivedDataPath "$DD" -allowProvisioningUpdates build > "$DD/build_install.log" 2>&1 \
+xcodebuild -project DroboFSProbe.xcodeproj -scheme DroboFSProbe -configuration Debug -derivedDataPath "$DD" -allowProvisioningUpdates ${XC_EXTRA:-} build > "$DD/build_install.log" 2>&1 \
   || { tail -20 "$DD/build_install.log"; exit 1; }
 SRC="$DD/Build/Products/Debug/DroboFSProbe.app"
 mkdir -p /Applications/DroboFSProbe.app
