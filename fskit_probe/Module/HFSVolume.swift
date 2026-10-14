@@ -144,6 +144,8 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         }
         let st = lifs_dev_stats
         log.notice("STATS unmount=\(r) nutz_geschrieben=\(self.userBytesWritten) dev_writes=\(st.writes) dev_bytes=\(st.bytes) max_cmd=\(st.max_cmd) max_call=\(st.max_call) chunked=\(st.chunked_calls) syncs=\(st.syncs) ro=\(self.readOnly ? 1 : 0) ro_blockiert=\(self.roBlocked) dev_schreibversuche=\(self.backend.writeAttempts) swift_dev_writes=\(self.backend.devWrites) swift_max=\(self.backend.devMax)")
+        let be = backend
+        log.notice("STATS-LESEN dev_reads=\(be.rdCalls) dev_read_bytes=\(be.rdBytes) hist_le128k=\(be.rdHist[0]) hist_le512k=\(be.rdHist[1]) hist_le1m=\(be.rdHist[2]) dev_read_ms=\(be.rdNanos / 1_000_000) vol_reads=\(be.volReads) max_wartend=\(be.maxWaiting) lock_wait_ms=\(be.waitNanos / 1_000_000)")
         backend.unregister()
         try check(r)
     }
@@ -332,7 +334,14 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         let it = try self.item(item)
         let want = min(length, buffer.length)
         var act = 0
-        let r: Int32 = locked { buffer.withUnsafeMutableBytes { HFS_fsOps.fsops_read!(it.node, UInt64(offset), want, $0.baseAddress, &act) } }
+        let b = backend
+        let t0 = DispatchTime.now().uptimeNanoseconds
+        b.statLock.lock(); b.volReads += 1; b.waiting += 1; b.maxWaiting = max(b.maxWaiting, b.waiting); b.statLock.unlock()
+        libLock.lock()
+        let t1 = DispatchTime.now().uptimeNanoseconds
+        b.statLock.lock(); b.waiting -= 1; b.waitNanos += t1 - t0; b.statLock.unlock()
+        let r: Int32 = buffer.withUnsafeMutableBytes { HFS_fsOps.fsops_read!(it.node, UInt64(offset), want, $0.baseAddress, &act) }
+        libLock.unlock()
         try check(r)
         return act
     }

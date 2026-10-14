@@ -17,6 +17,12 @@ final class DeviceBackend {
     private let lock = NSLock()
     var vfd: Int32 = -1
     var devWrites = 0, devMax = 0, writeAttempts = 0
+    /// Phase-5-Messung (nur Lesen, Zaehler ohne Wirkung auf den Ablauf): dev.read-Aufrufe, Bytes, Histogramm (<=128K, <=512K, <=1M), Zeit in dev.read.
+    var rdCalls = 0, rdBytes: UInt64 = 0, rdNanos: UInt64 = 0
+    var rdHist = [0, 0, 0]
+    /// HFSVolume.read-Aufrufe am libLock: Anzahl, gleichzeitig wartend (jetzt/max), Summe Wartezeit; geschuetzt durch statLock.
+    let statLock = NSLock()
+    var volReads = 0, waiting = 0, maxWaiting = 0, waitNanos: UInt64 = 0
     /// Zweite Sperre (Modus nurlesen): dev.write wird NIE erreicht, jeder Versuch zaehlt und scheitert mit EROFS.
     let forcedReadOnly: Bool
 
@@ -58,7 +64,10 @@ final class DeviceBackend {
                 let head = Int(pos - a0)
                 let chunk = min(want - done, (1 << 20) - head)
                 let span = (head + chunk + phys - 1) / phys * phys
+                let t0 = DispatchTime.now().uptimeNanoseconds
                 let got = try dev.read(into: UnsafeMutableRawBufferPointer(start: bounce, count: span), startingAt: a0, length: span)
+                rdNanos += DispatchTime.now().uptimeNanoseconds - t0
+                rdCalls += 1; rdBytes += UInt64(span); rdHist[span <= 131072 ? 0 : span <= 524288 ? 1 : 2] += 1
                 if got <= head { break }
                 let use = min(chunk, got - head)
                 memcpy(buf + done, bounce + head, use)
