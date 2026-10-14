@@ -35,10 +35,10 @@ private func timedLock<T>(_ b: DeviceBackend, _ f: () -> T) -> T {
 }
 private func locked<T>(_ f: () throws -> T) rethrows -> T { libLock.lock(); defer { libLock.unlock() }; return try f() }
 
-#if TEST_LATENZ
-private let latenzBau = 1
+#if TEST_DROBO
+private let droboBau = 1
 #else
-private let latenzBau = 0
+private let droboBau = 0
 #endif
 #if TEST_FEHLER
 private let fehlerBau = 1
@@ -174,7 +174,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         be.statLock.lock()                                   // Direktweg-Lesungen koennen noch zaehlen: Werte konsistent kopieren
         let c = (be.rdCalls, be.rdBytes, be.rdHist, be.rdNanos, be.volReads, be.maxWaiting, be.waitNanos, be.directReads, be.fallbackReads, be.decmpfsReads, be.maxInflight)
         be.statLock.unlock()
-        log.notice("STATS-LESEN dev_reads=\(c.0) dev_read_bytes=\(c.1) hist_le128k=\(c.2[0]) hist_le512k=\(c.2[1]) hist_le1m=\(c.2[2]) dev_read_ms=\(c.3 / 1_000_000) vol_reads=\(c.4) max_wartend=\(c.5) lock_wait_ms=\(c.6 / 1_000_000) direkt_reads=\(c.7) fallback_reads=\(c.8) decmpfs_reads=\(c.9) max_dev_read_parallel=\(c.10) direktweg=\(self.directRead ? 1 : 0) latenz_bau=\(latenzBau) fehler_bau=\(fehlerBau)")
+        log.notice("STATS-LESEN dev_reads=\(c.0) dev_read_bytes=\(c.1) hist_le128k=\(c.2[0]) hist_le512k=\(c.2[1]) hist_le1m=\(c.2[2]) dev_read_ms=\(c.3 / 1_000_000) vol_reads=\(c.4) max_wartend=\(c.5) lock_wait_ms=\(c.6 / 1_000_000) direkt_reads=\(c.7) fallback_reads=\(c.8) decmpfs_reads=\(c.9) max_dev_read_parallel=\(c.10) direktweg=\(self.directRead ? 1 : 0) drobo_bau=\(droboBau) fehler_bau=\(fehlerBau)")
         backend.unregister()
         try check(r)
     }

@@ -27,7 +27,7 @@ final class DeviceBackend {
     var volReads = 0, waiting = 0, maxWaiting = 0, waitNanos: UInt64 = 0
     var directReads = 0, fallbackReads = 0, decmpfsReads = 0
     #if TEST_FEHLER
-    /// Pruefbau (analog TEST_LATENZ): Datei fehler.txt im Container "N modus" laesst die N-te GROSSE (> 128 KiB) Lesung ans Geraet scheitern
+    /// Pruefbau (analog TEST_DROBO): Datei fehler.txt im Container "N modus" laesst die N-te GROSSE (> 128 KiB) Lesung ans Geraet scheitern
     /// (modus wirf = Fehler EIO) oder verkuerzt sie auf die Haelfte (modus kurz). Ohne Datei kein Eingriff.
     private var fehlerN = 0, fehlerWirf = false, grosseLesungen = 0
     private func fehlerLesen() {
@@ -69,7 +69,7 @@ final class DeviceBackend {
 
     private func fail(_ e: Int32) -> Int { errno = e; return -1 }
 
-    /// EINZIGE Stelle fuer Lesebefehle ans Geraet (Zaehler; Pruefbau TEST_LATENZ: feste Verzoegerung je dev.read wie bei einem langsamen Geraet).
+    /// EINZIGE Stelle fuer Lesebefehle ans Geraet (Zaehler; Pruefbau TEST_DROBO: serielles Geraetemodell DroboModell).
     private func devRead(_ p: UnsafeMutableRawPointer, _ a0: Int64, _ span: Int) throws -> Int {
         statLock.lock(); inflight += 1; maxInflight = max(maxInflight, inflight); statLock.unlock()
         let t0 = DispatchTime.now().uptimeNanoseconds
@@ -78,8 +78,8 @@ final class DeviceBackend {
             statLock.lock(); inflight -= 1; rdNanos += dt; rdCalls += 1; rdBytes += UInt64(span)
             rdHist[span <= 131072 ? 0 : span <= 524288 ? 1 : 2] += 1; statLock.unlock()
         }
-        #if TEST_LATENZ
-        usleep(8000)
+        #if TEST_DROBO
+        return try droboLesen(p, a0, span)
         #endif
         #if TEST_FEHLER
         var kurz = false
@@ -93,6 +93,22 @@ final class DeviceBackend {
         return try dev.read(into: UnsafeMutableRawBufferPointer(start: p, count: span), startingAt: a0, length: span)
         #endif
     }
+
+    #if TEST_DROBO
+    /// Pruefbau TEST_DROBO: EIN globaler Mutex (ein Geraet, strikt seriell), Modellzeit je Befehl abzueglich der echten Lesezeit.
+    private static let droboLock = NSLock()
+    private static var droboEnde: Int64 = 0
+    private func droboLesen(_ p: UnsafeMutableRawPointer, _ a0: Int64, _ span: Int) throws -> Int {
+        Self.droboLock.lock(); defer { Self.droboLock.unlock() }
+        let t0 = DispatchTime.now().uptimeNanoseconds
+        let soll = DroboModell.dauer(start: a0, bytes: span, vorigesEnde: Self.droboEnde)
+        Self.droboEnde = a0 + Int64(span)
+        let got = try dev.read(into: UnsafeMutableRawBufferPointer(start: p, count: span), startingAt: a0, length: span)
+        let rest = soll - Double(DispatchTime.now().uptimeNanoseconds - t0) / 1e9
+        if rest > 0 { usleep(UInt32(rest * 1e6)) }
+        return got
+    }
+    #endif
 
     /// Hebel B: Lesen OHNE gemeinsame Sperre und OHNE gemeinsamen Bounce-Puffer (Puffer je Aufruf), mehrere Aufrufe gleichzeitig moeglich.
     /// devOff/n kommen aus lifs_map_read (liegen im Volume). Ausrichtung auf phys und <= 1 MiB je dev.read wie read(). Fehler/Kurzlesung -> EIO.

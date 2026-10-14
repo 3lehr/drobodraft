@@ -1,7 +1,7 @@
 #!/bin/bash
 # Phase 5 Schritt 2: Hebel B (Direktweg) messen. Abbild $W/p5.img (aus messen_lesen.sh prep), Modul nurlesen, je Zelle 3 Laeufe frisch gemountet.
 # Aufruf:  bash messen_direkt.sh freigabe          Freigabeeintrag fuers Abbild (Sicherung in $W/freigabe.orig.json, falls noch keine)
-#          bash messen_direkt.sh messen NAME       Zellen alt+neu fuer den installierten Bau (STATS-LESEN zeigt latenz_bau=0/1); Ergebnis $W/direkt_NAME.txt
+#          bash messen_direkt.sh messen NAME       Zellen alt+neu fuer den installierten Bau (STATS-LESEN zeigt drobo_bau=0/1); Ergebnis $W/direkt_NAME.txt
 #          (REV=1: erst alt, dann neu)
 #          bash messen_direkt.sh fallback          md5 von komprimierter und fragmentierter Datei ueber das Modul (neuer Weg), Vergleich mit $W/src2.md5
 #          bash messen_direkt.sh abbau             Freigabeliste zurueckstellen, Schalter direktweg_aus entfernen
