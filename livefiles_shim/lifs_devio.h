@@ -15,7 +15,25 @@
 #endif
 
 ssize_t lifs_dev_pwrite(int fd, const void *buf, size_t n, off_t off);
+ssize_t lifs_dev_pread(int fd, void *buf, size_t n, off_t off);
 int     lifs_dev_ioctl(int fd, unsigned long req, ...);
+/* posix_spawn aus Apples Quellen (fsck_hfs-Aufruf) ist gesperrt: der Kindprozess schriebe ohne Kappung. */
+struct _posix_spawn_args_desc;
+int     lifs_blocked_spawn(void);
+
+/* Geraete-Rueckgriff statt Dateideskriptor (FSKit-Modul: FSBlockDeviceResource). register liefert einen virtuellen fd (>= 1000).
+ * pwrite der Rueckgriffs wird nur mit n <= LIFS_MAX_WRITE aufgerufen. */
+typedef struct {
+    void *ctx;
+    ssize_t (*pread)(void *ctx, void *buf, size_t n, off_t off);
+    ssize_t (*pwrite)(void *ctx, const void *buf, size_t n, off_t off);
+    int (*flush)(void *ctx);                 /* DKIOCSYNCHRONIZE */
+    uint32_t block_size, phys_block_size;
+    uint64_t block_count;
+    int writable;
+} lifs_backend_t;
+int  lifs_dev_register(const lifs_backend_t *b);
+void lifs_dev_unregister(int vfd);
 
 /* Zaehler fuer Eichung (Befehlsgroessen am Geraet) */
 typedef struct {

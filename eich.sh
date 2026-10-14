@@ -115,8 +115,9 @@ t_schreiben() {
     chk "schreiben J=$J keine ERR-Zeile ($(grep -c '^ERR' "$W/$n.cmdlog"))" test "$(grep -c '^ERR' "$W/$n.cmdlog")" = 0
     chk "schreiben J=$J fsck_hfs -fn (Zustand unmittelbar nach lifs_cli) appears to be OK" fsck_ok "$img"
     python3 -I "$M/jstate.py" "$img" | tee -a "$LOG"
-    if kmount "$img" "$W/mnt_$n" ro; then say "   BEFUND ro-Kernel-Mount direkt nach lifs_cli: moeglich"; kumount
-    else say "   BEFUND ro-Kernel-Mount direkt nach lifs_cli: VERWEIGERT (Journal nicht leer, braucht rw-Mount/Replay)"; fi
+    if kmount "$img" "$W/mnt_$n" ro; then pass "schreiben J=$J ro-Kernel-Mount direkt nach lifs_cli moeglich (Journal geschlossen)"; kumount
+    else fail "schreiben J=$J ro-Kernel-Mount direkt nach lifs_cli verweigert (Journal nicht leer)"; fi
+    chk "schreiben J=$J Journal leer (start==end) nach lifs_cli" bash -c "python3 -I '$M/jstate.py' '$img' | grep -q 'LEER\\|attr=0x80000100'"
     kmount "$img" "$W/mnt_$n" || { fail "$n kmount rw"; continue; }          # rw: der Kernel spielt unser Journal ein
     mdlist "$W/mnt_$n" > "$W/$n.kmd5"; dlist "$W/mnt_$n" > "$W/$n.kdirs"
     local kx; kx=$(xattr -p user.lifs "$W/mnt_$n/xx/x.txt" 2>&1); kumount
@@ -152,7 +153,7 @@ judge() { # label img journaled
   cp -c "$img" "$img.k"; cp -c "$img" "$img.u"
   kfsck "$img"; raw=$?
   if [ "$j" = 1 ]; then
-    kmount "$img.k" "$W/mnt_j" && kumount; kfsck "$img.k"; rk=$?
+    kmount "$img.k" "$W/mnt_j" && kumount || fail "ABSTURZ $lab: Kernel-rw-Mount (Replay) fehlgeschlagen"; kfsck "$img.k"; rk=$?
     "$L" "$img.u" info >/dev/null 2>&1; kfsck "$img.u"; ru=$?
     say "   $lab: roh=$raw kernelReplay=$rk lifsReplay=$ru"
     [ $rk = 0 ] && [ $ru = 0 ] && pass "ABSTURZ $lab" || fail "ABSTURZ $lab (roh=$raw kernel=$rk lifs=$ru) siehe Log"
@@ -204,28 +205,51 @@ t_absturz() {
   rmw crashbase_j.raw crashbase_n.raw
 }
 
-# ================= 5. Befund: frisch formatiertes Abbild (lastMountedVersion != HFSJ) =================
-# Der Kernel schreibt beim ersten rw-Mount lastMountedVersion=HFSJ SOFORT; livefiles_hfs schreibt sie journaled.
-# Bricht ein Lauf nach dem Journal-Commit, vor dem Rueckschreiben ab, ignoriert jeder Replay das Journal (Version != HFSJ).
+# ================= 5. lastMountedVersion: frisch formatiertes Abbild =================
+# Der Kernel schreibt beim ersten rw-Mount lastMountedVersion=HFSJ SOFORT; livefiles_hfs schreibt sie journaled. Bricht ein Lauf
+# nach dem Journal-Commit, vor dem Rueckschreiben ab, ignoriert jeder Replay das Journal (Version != HFSJ). lifs_prepare_volume
+# setzt sie vor dem Mount. Rot-Probe: LIFS_SKIP_PREPARE=1 muss den Fehler zeigen.
 t_befund_lmv() {
   local N=90 m=$W/src/mid/m3.bin st rc
-  say "=== BEFUND lastMountedVersion: Abbruch nach Schreibbefehl N=$N (nach Journal-Commit, vor Rueckschreiben)"
-  mkimg lmv0 600 1; cp -c "$W/lmv0.raw" "$W/lmv1.raw"; kmount "$W/lmv1.raw" "$W/mnt_j" && kumount
-  for st in lmv0 lmv1; do
-    LIFS_DIE_AFTER_WRITES=$N "$L" "$W/$st.raw" put "$m" /m >/dev/null 2>&1
-    kmount "$W/$st.raw" "$W/mnt_j" && kumount; fsck_ok "$W/$st.raw"; rc=$?; say "   $st ($([ $st = lmv0 ] && echo 'frisch newfs' || echo 'einmal Kernel-gemountet')): fsck nach Kernel-Replay rc=$rc (0=OK)"
-  done
-  fsck_ok "$W/lmv1.raw" && pass "BEFUND lmv: einmal Kernel-gemountetes Abbild ueberlebt Abbruch nach Commit" || fail "BEFUND lmv: auch gewachsenes Abbild kaputt"
-  fsck_ok "$W/lmv0.raw" && fail "BEFUND lmv: frisches Abbild unerwartet OK (Befund nicht reproduziert)" || pass "BEFUND lmv reproduziert: frisches newfs-Abbild nach Abbruch+Replay korrupt (Plugin-Eigenschaft, Phase 2/3 beheben)"
+  say "=== lastMountedVersion: Abbruch nach Schreibbefehl N=$N (nach Journal-Commit, vor Rueckschreiben), frisches newfs-Abbild"
+  mkimg lmv0 600 1; cp -c "$W/lmv0.raw" "$W/lmv1.raw"
+  LIFS_SKIP_PREPARE=1 LIFS_DIE_AFTER_WRITES=$N "$L" "$W/lmv0.raw" put "$m" /m >/dev/null 2>&1
+  LIFS_DIE_AFTER_WRITES=$N "$L" "$W/lmv1.raw" put "$m" /m >/dev/null 2>&1
+  for st in lmv0 lmv1; do kmount "$W/$st.raw" "$W/mnt_j" && kumount || fail "lmv: Kernel-rw-Mount (Replay) von $st fehlgeschlagen"; done
+  fsck_ok "$W/lmv0.raw" && fail "ROT-PROBE lmv: ohne Fix unerwartet OK (Test ist nicht scharf)" || pass "ROT-PROBE lmv: ohne lifs_prepare_volume nach Abbruch+Replay korrupt (Fehler reproduziert)"
+  fsck_ok "$W/lmv1.raw" && pass "lmv: mit lifs_prepare_volume ueberlebt frisches Abbild den Abbruch" || fail "lmv: mit Fix trotzdem korrupt"
   rmw lmv0.raw lmv1.raw
+}
+
+# ================= 6. Zero-Fill: noetig? =================
+# Apples Allokation schreibt jeden neuen Extent vorab mit Nullen (raw_readwrite_zero_fill_fill, "KBZ: for now"). Messung: Geraeteverkehr je Nutzbyte
+# mit/ohne, und ob eine Datei mit Luft (sparse) ohne Nullen Plattenreste zeigt.
+t_zerofill() {
+  local NZ=$M/build/nozf/lifs_cli st a b
+  say "=== ZERO-FILL: Messvariante bauen (nur Aufrufstelle in lf_hfs_volume_allocation.c ohne Nullen)"
+  ( cd "$M" && make -s B=build/nozf ZFSKIP=-Draw_readwrite_zero_fill_fill=lifs_zerofill_skip >>"$LOG" 2>&1 )
+  mkimg zf 700 1; head -c 300000000 /dev/urandom > "$W/junk.bin"
+  "$L" "$W/zf.raw" put "$W/junk.bin" /junk >/dev/null 2>&1; "$L" "$W/zf.raw" rm /junk >/dev/null 2>&1       # freigegebene Bloecke tragen Zufallsdaten
+  cp -c "$W/zf.raw" "$W/zf2.raw"
+  "$L" "$W/zf.raw" sparse /h 134217728 >/dev/null 2>&1; "$L" -r "$W/zf.raw" get /h "$W/zf.out" 2>/dev/null
+  head -c 100000000 "$W/zf.out" | cmp -s - <(head -c 100000000 /dev/zero) && pass "ZEROFILL stock: Luft vor Offset 128 MiB liest Nullen" || fail "ZEROFILL stock: Luft enthaelt Plattenreste"
+  "$NZ" "$W/zf2.raw" sparse /h 134217728 >/dev/null 2>&1; "$NZ" -r "$W/zf2.raw" get /h "$W/zf2.out" 2>/dev/null
+  if head -c 100000000 "$W/zf2.out" | cmp -s - <(head -c 100000000 /dev/zero); then say "   Variante ohne Zero-Fill: Luft ebenfalls Nullen (hier kein Beleg fuer Notwendigkeit)"
+  else pass "ZEROFILL ohne Zero-Fill zeigt die Luft Plattenreste (Zero-Fill ist fuer Luecken noetig, nicht pauschal entfernbar)"; fi
+  for v in stock nozf; do
+    mkimg zfp 600 1; local bin=$L; [ $v = nozf ] && bin=$NZ
+    st=$("$bin" -s "$W/zfp.raw" put "$W/src/mid/m3.bin" /m 2>&1 | grep '^STATS'); a=$(echo "$st" | sed -n 's/.*[ ]bytes=\([0-9]*\) .*/\1/p'); b=$(echo "$st" | sed -n 's/.*nutz_MB=\([0-9.]*\) .*/\1/p')
+    say "   Geraeteverkehr $v: dev_bytes=$a nutz_MB=$b -> Faktor $(python3 -c "print('%.2f' % ($a/($b*1048576)))")"
+  done
+  rmw zf.raw zf2.raw zf.out zf2.out zfp.raw junk.bin
 }
 
 main() {
   [ -x "$L" ] || { echo "erst make"; exit 2; }
   [ -d "$W/src" ] || mksrc "$W/src"
   case "${1:-alles}" in
-    lesen) t_lesen;; schreiben) t_schreiben;; kappung) t_kappung;; absturz) t_absturz;; befund) t_befund_lmv;;
-    alles) t_lesen; t_schreiben; t_kappung; t_absturz; t_befund_lmv;;
+    lesen) t_lesen;; schreiben) t_schreiben;; kappung) t_kappung;; absturz) t_absturz;; befund) t_befund_lmv;; zerofill) t_zerofill;;
+    alles) t_lesen; t_schreiben; t_kappung; t_absturz; t_befund_lmv; t_zerofill;;
   esac
   say "=== ERGEBNIS PASS=$NPASS FAIL=$NFAIL (Log: $LOG)"
   [ "$NFAIL" = 0 ]

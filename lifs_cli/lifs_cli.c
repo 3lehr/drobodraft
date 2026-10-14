@@ -7,6 +7,7 @@
  */
 #include <UserFS/UserVFS.h>
 #include "lifs_devio.h"
+#include "lifs_glue.h"
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -15,7 +16,7 @@
 #include <unistd.h>
 #include <time.h>
 
-extern UVFSFSOps HFS_fsOps;
+
 #define OPS HFS_fsOps
 #define CHUNK (1u << 20)
 #define MODE_ALL (UVFS_FA_MODE_OTH(UVFS_FA_MODE_RWX) | UVFS_FA_MODE_GRP(UVFS_FA_MODE_RWX) | UVFS_FA_MODE_USR(UVFS_FA_MODE_RWX))
@@ -217,6 +218,13 @@ static int run(int argc, char **argv)
     } else if (!strcmp(cmd, "put")) {
         NEED(2); if ((err = resolve(argv[2], 1, &a))) return die("put dir", err);
         err = put_file(a, leaf(argv[2]), argv[1]); release(a);
+    } else if (!strcmp(cmd, "sparse")) {   /* sparse <pfad> <offset>: legt Datei an, schreibt 4096 x 'X' erst ab <offset> (Luft davor) */
+        NEED(2); if ((err = resolve(argv[1], 1, &a))) return die("sparse dir", err);
+        if (!(err = create_node(a, leaf(argv[1]), 0, &b))) {
+            static char x[4096]; memset(x, 'X', sizeof x); size_t act = 0;
+            err = OPS.fsops_write(b, strtoull(argv[2], NULL, 10), sizeof x, x, &act); OPS.fsops_reclaim(b, 0);
+        }
+        release(a);
     } else if (!strcmp(cmd, "import")) {
         NEED(2); if ((err = resolve(argv[2], 0, &a))) return die("import dir", err);
         err = import_dir(a, argv[1]); release(a);
@@ -254,16 +262,16 @@ int main(int argc, char **argv)
     if (fd < 0) return die("open", errno);
     int rc;
     if ((rc = OPS.fsops_init())) return die("init", rc);
+    if (!ro && !getenv("LIFS_SKIP_PREPARE") && (rc = lifs_prepare_volume(fd)) < 0)   /* Env nur fuer die Rot-Probe in eich.sh */
+        return die("prepare", -rc);   /* lastMountedVersion=HFSJ vor dem ersten Journal-Schreiben */
     if ((rc = OPS.fsops_taste(fd))) return die("taste (kein HFS+?)", rc);
     UVFSScanVolsRequest rq = {0}; UVFSScanVolsReply rp; memset(&rp, 0, sizeof rp);
     if ((rc = OPS.fsops_scanvols(fd, &rq, &rp))) return die("scanvols", rc);
     if ((rc = OPS.fsops_mount(fd, rp.sr_volid, ro ? UVFS_MOUNT_RDONLY : 0, NULL, &g_root))) return die("mount", rc);
     struct timespec t0, t1; clock_gettime(CLOCK_MONOTONIC, &t0);
     rc = run(argc - i - 1, argv + i + 1);
-    int r2 = ro ? 0 : OPS.fsops_sync(g_root);
-    clock_gettime(CLOCK_MONOTONIC, &t1);
-    if (r2) rc = rc ? rc : die("sync", r2);
-    r2 = OPS.fsops_unmount(g_root, UVFSUnmountHintNone);
+    int r2 = ro ? OPS.fsops_unmount(g_root, UVFSUnmountHintNone) : lifs_unmount_clean(g_root);   /* sync + Journal vollstaendig einspielen */
+    clock_gettime(CLOCK_MONOTONIC, &t1);                  /* Zeit inklusive Sync/Journal-Schliessen */
     if (r2) rc = rc ? rc : die("unmount", r2);
     OPS.fsops_fini();
     if (stats) {

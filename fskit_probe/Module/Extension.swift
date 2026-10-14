@@ -2,6 +2,6 @@ import ExtensionFoundation
 import FSKit
 
 @main
-struct DroboFSProbeExtension: UnaryFileSystemExtension {
-    var fileSystem: ProbeFileSystem { ProbeFileSystem() }
+struct DroboHFSExtension: UnaryFileSystemExtension {
+    var fileSystem: HFSFileSystem { HFSFileSystem() }
 }

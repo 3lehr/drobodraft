@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleDevelopmentRegion</key><string>$(DEVELOPMENT_LANGUAGE)</string>
-    <key>CFBundleDisplayName</key><string>drobofsprobe</string>
+    <key>CFBundleDisplayName</key><string>hfsdrobo</string>
     <key>CFBundleExecutable</key><string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
@@ -20,14 +20,14 @@
         <key>FSMediaTypes</key><dict/>
         <key>FSPersonalities</key>
         <dict>
-            <key>DroboFSProbe</key>
+            <key>HFSDrobo</key>
             <dict>
-                <key>FSfileObjectsAreCaseSensitive</key><true/>
-                <key>FSName</key><string>DroboFSProbe</string>
+                <key>FSfileObjectsAreCaseSensitive</key><false/>
+                <key>FSName</key><string>HFS+ (Drobo-Erprobung)</string>
             </dict>
         </dict>
         <key>FSRequiresSecurityScopedPathURLResources</key><false/>
-        <key>FSShortName</key><string>drobofsprobe</string>
+        <key>FSShortName</key><string>hfsdrobo</string>
         <key>FSSupportsBlockResources</key><true/>
         <key>FSSupportsGenericURLResources</key><false/>
         <key>FSSupportsPathURLs</key><false/>
