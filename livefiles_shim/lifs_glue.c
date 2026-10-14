@@ -222,7 +222,8 @@ int lifs_map_read(UVFSFileNode node, uint64_t off, uint64_t len, lifs_extent_t *
     if (!vp || !vnode_isreg(vp)) return 1;
     struct cnode *cp = VTOC(vp);
     struct filefork *fp = VTOF(vp);
-    if (!cp || !fp || (cp->c_bsdflags & UF_COMPRESSED)) return 1;
+    if (!cp || !fp) return 1;
+    if (cp->c_bsdflags & UF_COMPRESSED) return 2;                                       /* decmpfs: nie ueber die Datengabel lesen */
     if (fp->ff_unallocblocks != 0 || !TAILQ_EMPTY(&fp->ff_invalidranges)) return 1;     /* ungeschriebene/ungueltige Bereiche: nur der alte Weg */
     uint64_t fsz = fp->ff_size;
     if (off >= fsz) return 0;
@@ -239,4 +240,10 @@ int lifs_map_read(UVFSFileNode node, uint64_t off, uint64_t len, lifs_extent_t *
     }
     *total = done;
     return 0;
+}
+
+int lifs_is_compressed(UVFSFileNode node)
+{
+    vnode_t vp = (vnode_t)node;
+    return vp && vnode_isreg(vp) && VTOC(vp) && (VTOC(vp)->c_bsdflags & UF_COMPRESSED) ? 1 : 0;
 }

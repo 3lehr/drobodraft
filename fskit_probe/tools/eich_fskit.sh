@@ -2,7 +2,7 @@
 # Phase 2 Eichung: HFS+ ueber das FSKit-Modul (mount -F -t hfsdrobo) an Test-Abbildern; der macOS-Kernel richtet danach (fsck_hfs -fn, ro-Mount, md5).
 # Beruehrt NUR Abbilddateien unter $W. Es werden nur selbst angehaengte Geraete benutzt.  Aufruf: bash eich_fskit.sh [normal|absturz|alles]
 set -u
-cd "$(dirname "$0")" || exit 2
+cd "$(dirname "${BASH_SOURCE[0]}")" || exit 2
 M=$(cd ../.. && pwd)                         # macos/
 W=${W:-/Volumes/daten/xcode/drobo/eichfs}; mkdir -p "$W"
 SHORT=hfsdrobo
@@ -224,11 +224,62 @@ t_freigabe_modul() {
   rmw "$n.img" mnt_fgm
 }
 
+# Phase 5a: HFS-komprimierte Dateien (decmpfs Typ 7/8, LZVN). Kernel = Orakel (md5 der Kernel-Entpackung == md5 der Quelle, Modul muss gleich liefern);
+# Negativproben (unbekannter Typ, kaputte Offsettabelle, abgeschnittener/ungueltiger Block): EIO und KEINE Bytes. Fixtures: decmpfs_fixtures.py
+DCFIX="$PWD/decmpfs_fixtures.py"
+dc_make() { # name journaled -> $W/name.img (ohne Marker), setzt VUUID; Manifest $W/name.tsv
+  local n=$1 f=$W/$1.img d; rmw "$n.img"; truncate -s 160m "$f"
+  d=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nomount "$f" | awk 'NR==1{print $1}'); newfs_hfs $([ "$2" = 1 ] && echo -J) -v "DC_$n" "${d/disk/rdisk}" >>"$LOG" 2>&1; hdiutil detach "$d" >>"$LOG" 2>&1
+  mkdir -p "$W/mnt_$n"; d=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nobrowse -mountpoint "$W/mnt_$n" "$f" | awk 'NR==1{print $1}')
+  VUUID=$(diskutil info "$d" | awk '/Volume UUID/{print $3}')
+  python3 -I "$DCFIX" "$W/mnt_$n" "$W/$n.tsv" "$W/$n.good" >>"$LOG" 2>&1; local rc=$?; sync; hdiutil detach "$d" >>"$LOG" 2>&1; return $rc
+}
+dc_pruefe() { # label mnt manifest : Modul-Mount gegen Manifest
+  local lab=$1 mnt=$2 tsv=$3 good=${3%.tsv}.good kind name size md5s typ desc got out err
+  while IFS=$'\t' read -r kind name size md5s typ desc; do
+    [ "$(stat -f %z "$mnt/$name" 2>/dev/null)" = "$size" ] && pass "$lab $name: Groesse $size" || fail "$lab $name: Groesse $(stat -f %z "$mnt/$name" 2>&1) != $size"
+    if [ "$kind" = P ]; then
+      got=$(md5 -q "$mnt/$name" 2>/dev/null); [ "$got" = "$md5s" ] && pass "$lab $name (Typ $typ): md5 gleich Kernel/Quelle" || fail "$lab $name (Typ $typ): md5 $got != $md5s"
+    else
+      cat "$mnt/$name" >"$W/dc_out.bin" 2>"$W/dc_err.txt"; err=$(cat "$W/dc_err.txt"); out=$(wc -c < "$W/dc_out.bin" | tr -d ' ')
+      # erlaubt: EIO, davor hoechstens ein byte-genauer Praefix der gueltigen Bloecke (spaetere Lesungen scheitern), nie falsche Bytes
+      { echo "$err" | grep -q "Input/output error" && [ "$out" -le "$(wc -c < "$good/$name" | tr -d ' ')" ] && { [ "$out" = 0 ] || cmp -s -n "$out" "$W/dc_out.bin" "$good/$name"; }; } \
+        && pass "$lab $name ($desc): EIO nach $out Bytes (korrekter Praefix)" || fail "$lab $name ($desc): $out Bytes, Fehler '$err'"
+    fi
+  done < "$tsv"
+}
+t_decmpfs() {
+  local J n img sha0 st
+  trap fg_zurueck RETURN; fg_sichern
+  for J in 0 1; do
+    n=dc$J; img=$W/$n.img; say "=== DECMPFS journaled=$J"
+    dc_make "$n" $J && pass "$n Fixtures erzeugt (Kernel-Orakel hat jede positive Datei gegen die Quelle geprueft)" || { fail "$n Fixtures"; continue; }
+    sha0=$(sha "$img")
+    # Kernel-ro-Mount: eigene md5 je positive Datei muss der Quelle entsprechen (zweite Orakel-Lesung, anderer Mount)
+    mkdir -p "$W/kro_$n"; local kd; kd=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nobrowse -readonly -mountpoint "$W/kro_$n" "$img" | awk 'NR==1{print $1}')
+    if [ -n "$kd" ]; then local bad=0 k nm sz m; while IFS=$'\t' read -r k nm sz m _; do [ "$k" = P ] && [ "$(md5 -q "$W/kro_$n/$nm")" != "$m" ] && bad=1; done < "$W/$n.tsv"; [ $bad = 0 ] && pass "$n Kernel-ro md5 == Quelle (alle positiven)" || fail "$n Kernel-ro md5 weicht ab"; hdiutil detach "$kd" >>"$LOG" 2>&1; else fail "$n Kernel-ro-Mount"; fi
+    # (a) Modul nurlesen (Freigabe)
+    fg_set "[{\"volume_uuid\":\"$VUUID\",\"modus\":\"nurlesen\",\"max_bytes\":1073741824}]"
+    fg_mount "$img" "-o rdonly" && pass "$n mount -F -o rdonly (nurlesen)" || { fail "$n mount nurlesen"; hdiutil detach "$DEV" >/dev/null; continue; }
+    dc_pruefe "$n nurlesen" "$MNT" "$W/$n.tsv"
+    umount "$MNT"; sleep 1; hdiutil detach "$DEV" >>"$LOG" 2>&1; st=$(stats_line 2); say "   $st"
+    chk "$n nurlesen: Schreibzaehler 0" test "$(fld "$st" dev_writes)" = 0 -a "$(fld "$st" dev_schreibversuche)" = 0
+    chk "$n nurlesen: Abbild-SHA256 vorher == nachher" test "$sha0" = "$(sha "$img")"
+    # (b) Modul beschreibbar (Marker-Kopie)
+    local im=$W/${n}_m.img; cp "$img" "$im"; printf 'DROBOFSPROBE' | dd of="$im" bs=1 count=12 conv=notrunc 2>/dev/null
+    attach "$im"; MNT=$W/mnt_dcm; fmount "$DEV" "$MNT" && pass "$n mount -F (Marker, rw)" || { fail "$n mount rw"; hdiutil detach "$DEV" >/dev/null; continue; }
+    dc_pruefe "$n rw" "$MNT" "$W/$n.tsv"
+    umount "$MNT"; sleep 1; hdiutil detach "$DEV" >>"$LOG" 2>&1
+    chk "$n fsck_hfs -fn nach rw-Mount OK" fsck_ok "$im"
+    rmw "$n.img" "${n}_m.img" "mnt_$n" "kro_$n" "mnt_dcm"
+  done
+}
+
 NJ_OK=0; NJ_BAD=0
 
 main() {
   mksrc
-  case "${1:-alles}" in normal) t_normal;; absturz) t_absturz;; sperre) t_sperre;; freigabe) t_freigabe;; freigabe-modul) t_freigabe_modul;; alles) t_sperre; t_freigabe; t_normal; t_absturz;; esac
+  case "${1:-alles}" in normal) t_normal;; absturz) t_absturz;; sperre) t_sperre;; freigabe) t_freigabe;; freigabe-modul) t_freigabe_modul;; decmpfs) t_decmpfs;; alles) t_sperre; t_freigabe; t_decmpfs; t_normal; t_absturz;; esac
   say "=== ERGEBNIS PASS=$NPASS FAIL=$NFAIL (Log: $LOG)"; [ "$NFAIL" = 0 ]
 }
 [ "${BASH_SOURCE[0]}" = "$0" ] && main "$@"

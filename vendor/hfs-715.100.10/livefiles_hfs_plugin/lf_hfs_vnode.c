@@ -215,7 +215,7 @@ void vnode_GetAttrInternal (vnode_t vp, UVFSFileAttributes *psOutAttr )
                 Hdr.attr_size = (uint32_t) attr_size;
                 Hdr.compression_magic = *((uint32_t*)data);
                 Hdr.compression_type  = *((uint32_t*)(data + sizeof(uint32_t)));
-                Hdr.uncompressed_size = *((uint32_t*)(data + sizeof(uint64_t)));
+                Hdr.uncompressed_size = *((uint64_t*)(data + sizeof(uint64_t)));   /* livefiles-Shim P5a: war uint32_t -> Groesse >= 4 GiB abgeschnitten */
 
 fail:
                 if (iErr)

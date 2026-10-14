@@ -43,7 +43,10 @@ int lifs_journal_dirty(int fd);
 /* Hebel B (Phase 5): Zuordnung Datei-Bereich -> Geraete-Bereiche, NUR LESEN, unter libLock aufzurufen (liest ggf. den Extents-Baum ueber das Geraet).
  * off/len = gewuenschter Bereich der Datendatei; gekappt auf die Dateigroesse. out[0..*n) = zusammenhaengende Geraete-Stuecke in Dateireihenfolge
  * (benachbarte werden verschmolzen), *total = Summe der Laengen. Rueckgabe 0 = Zuordnung vollstaendig (auch *total==0 bei off >= Dateigroesse),
- * 1 = KEIN DIREKTWEG (keine regulaere Datei, komprimiert, Luecke/ERANGE/Fehler im Mapping, mehr als max Stuecke) -> Aufrufer nimmt fsops_read. */
+ * 2 = komprimierte Datei (UF_COMPRESSED): Aufrufer liest ueber decmpfs, NIE ueber Datengabel/Direktweg.
+ * 1 = KEIN DIREKTWEG (keine regulaere Datei, Luecke/ERANGE/Fehler im Mapping, mehr als max Stuecke) -> Aufrufer nimmt fsops_read. */
 typedef struct { uint64_t dev_off, len; } lifs_extent_t;
 int lifs_map_read(UVFSFileNode node, uint64_t off, uint64_t len, lifs_extent_t *out, int max, int *n, uint64_t *total);
+/* 1 = regulaere Datei mit UF_COMPRESSED (unter libLock aufrufen). */
+int lifs_is_compressed(UVFSFileNode node);
 #endif

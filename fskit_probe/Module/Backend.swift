@@ -25,7 +25,7 @@ final class DeviceBackend {
     /// HFSVolume.read-Aufrufe am libLock: Anzahl, gleichzeitig wartend (jetzt/max), Summe Wartezeit; Direktweg-/Rueckfall-Lesungen (Hebel B).
     let statLock = NSLock()
     var volReads = 0, waiting = 0, maxWaiting = 0, waitNanos: UInt64 = 0
-    var directReads = 0, fallbackReads = 0
+    var directReads = 0, fallbackReads = 0, decmpfsReads = 0
     /// Zweite Sperre (Modus nurlesen): dev.write wird NIE erreicht, jeder Versuch zaehlt und scheitert mit EROFS.
     let forcedReadOnly: Bool
 

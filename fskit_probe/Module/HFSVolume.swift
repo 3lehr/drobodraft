@@ -163,7 +163,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         let st = lifs_dev_stats
         log.notice("STATS unmount=\(r) nutz_geschrieben=\(self.userBytesWritten) dev_writes=\(st.writes) dev_bytes=\(st.bytes) max_cmd=\(st.max_cmd) max_call=\(st.max_call) chunked=\(st.chunked_calls) syncs=\(st.syncs) ro=\(self.readOnly ? 1 : 0) ro_blockiert=\(self.roBlocked) dev_schreibversuche=\(self.backend.writeAttempts) swift_dev_writes=\(self.backend.devWrites) swift_max=\(self.backend.devMax)")
         let be = backend
-        log.notice("STATS-LESEN dev_reads=\(be.rdCalls) dev_read_bytes=\(be.rdBytes) hist_le128k=\(be.rdHist[0]) hist_le512k=\(be.rdHist[1]) hist_le1m=\(be.rdHist[2]) dev_read_ms=\(be.rdNanos / 1_000_000) vol_reads=\(be.volReads) max_wartend=\(be.maxWaiting) lock_wait_ms=\(be.waitNanos / 1_000_000) direkt_reads=\(be.directReads) fallback_reads=\(be.fallbackReads) max_dev_read_parallel=\(be.maxInflight) direktweg=\(self.directRead ? 1 : 0) latenz_bau=\(latenzBau)")
+        log.notice("STATS-LESEN dev_reads=\(be.rdCalls) dev_read_bytes=\(be.rdBytes) hist_le128k=\(be.rdHist[0]) hist_le512k=\(be.rdHist[1]) hist_le1m=\(be.rdHist[2]) dev_read_ms=\(be.rdNanos / 1_000_000) vol_reads=\(be.volReads) max_wartend=\(be.maxWaiting) lock_wait_ms=\(be.waitNanos / 1_000_000) direkt_reads=\(be.directReads) fallback_reads=\(be.fallbackReads) decmpfs_reads=\(be.decmpfsReads) max_dev_read_parallel=\(be.maxInflight) direktweg=\(self.directRead ? 1 : 0) latenz_bau=\(latenzBau)")
         backend.unregister()
         try check(r)
     }
@@ -370,11 +370,29 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
                 b.statLock.lock(); b.directReads += 1; b.statLock.unlock()
                 return Int(total)
             }
+            if rc == 2 { return try readCompressed(node, offset, want, buffer) }
         }
         b.statLock.lock(); b.fallbackReads += 1; b.statLock.unlock()
-        let r: Int32 = timedLock(b) { buffer.withUnsafeMutableBytes { HFS_fsOps.fsops_read!(it.node, UInt64(offset), want, $0.baseAddress, &act) } }
+        var comp = false
+        let r: Int32 = timedLock(b) {
+            if lifs_is_compressed(it.node) != 0 { comp = true; return 0 }                   // nie ueber die (leere) Datengabel: liefert 0 Bytes ohne Fehler
+            return buffer.withUnsafeMutableBytes { HFS_fsOps.fsops_read!(it.node, UInt64(offset), want, $0.baseAddress, &act) }
+        }
+        if comp { return try readCompressed(it.node, offset, want, buffer) }
         try check(r)
+        if act < want {                                                                      // Kurzlesung ist nur am Dateiende zulaessig; sonst wuerde FSKit den ungefuellten Puffer ausliefern
+            var u = UVFSFileAttributes()
+            _ = locked { HFS_fsOps.fsops_getattr!(it.node, &u) }
+            if UInt64(offset) + UInt64(act) < u.fa_size { log.error("Kurzlesung off=\(offset) want=\(want) act=\(act) size=\(u.fa_size)"); throw posixError(EIO) }
+        }
         return act
+    }
+
+    /// Komprimierte Datei (decmpfs Typ 7/8), siehe Decmpfs.swift. Fehler -> EIO, keine Bytes.
+    private func readCompressed(_ node: Node, _ offset: off_t, _ want: Int, _ buffer: FSMutableFileDataBuffer) throws -> Int {
+        let b = backend
+        b.statLock.lock(); b.decmpfsReads += 1; b.statLock.unlock()
+        return try locked { try buffer.withUnsafeMutableBytes { try Decmpfs.read(node: node, offset: UInt64(offset), want: want, dst: $0.baseAddress!) } }
     }
 
     func write(contents: Data, to item: FSItem, at offset: off_t) async throws -> Int {
