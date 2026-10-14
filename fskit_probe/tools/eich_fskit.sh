@@ -146,8 +146,10 @@ mkplain() { # name journaled MiB -> Abbild OHNE Marker, vom Kernel gefuellt; set
 }
 fg_set() { printf '%s' "$1" > "$FREIGABE"; }
 # Betreiber-Freigabeliste (z. B. Drobo-Eintrag) vor der Eichung sichern und danach zurueckstellen, nie loeschen.
-fg_sichern() { [ -f "$FREIGABE.eich_sicherung" ] || { [ -f "$FREIGABE" ] && cp -p "$FREIGABE" "$FREIGABE.eich_sicherung"; }; rm -f "$FREIGABE"; }
-fg_zurueck() { trap - RETURN; if [ -f "$FREIGABE.eich_sicherung" ]; then mv -f "$FREIGABE.eich_sicherung" "$FREIGABE"; else rm -f "$FREIGABE"; fi; }
+# Die RETURN-Falle feuert in bash 5.3 zweimal (Ende der Funktion und danach noch einmal): FG_FERTIG macht fg_zurueck idempotent, sonst loescht der
+# zweite Aufruf (ohne Sicherung) die gerade zurueckgestellte Liste (Befund 2026-10-14, P5 Schritt 2).
+fg_sichern() { FG_FERTIG=0; [ -f "$FREIGABE.eich_sicherung" ] || { [ -f "$FREIGABE" ] && cp -p "$FREIGABE" "$FREIGABE.eich_sicherung"; }; rm -f "$FREIGABE"; }
+fg_zurueck() { trap - RETURN; [ "${FG_FERTIG:-0}" = 1 ] && return 0; FG_FERTIG=1; if [ -f "$FREIGABE.eich_sicherung" ]; then mv -f "$FREIGABE.eich_sicherung" "$FREIGABE"; else rm -f "$FREIGABE"; fi; }
 fg_mount() { # img [extra-mount-opts] -> rc ; setzt DEV MNT
   attach "$1"; MNT=$W/mnt_fg; mkdir -p "$MNT"
   mount -F -t $SHORT $2 "$DEV" "$MNT" >>"$LOG" 2>&1 || { sleep 3; mount -F -t $SHORT $2 "$DEV" "$MNT" >>"$LOG" 2>&1; }
