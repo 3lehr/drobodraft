@@ -62,6 +62,26 @@ def show(v, parent=2):
             flags, val, fid = be('HII', rec, 2)
             print("DIR  %-22r id=%d valence=%d" % (name, fid, val))
 
+def extent_stats(v):
+    """Extents-Ueberlaufdatei (VH+192): Zahl der Satzgruppen und Extents je fileID (nur Datenfork 0x00/0xFF)."""
+    size, blocks, ext = v.fork(192)
+    data = v.read_fork(size, ext)
+    nodesz = be('H', data, 32)[0]; node = be('I', data, 24)[0]
+    per = {}
+    recs = 0
+    while node:
+        nd = data[node * nodesz:(node + 1) * nodesz]
+        flink, blink, kind, height, nrec = be('IIbbH', nd, 0)
+        for i in range(nrec):
+            o = be('H', nd, nodesz - 2 * (i + 1))[0]
+            fid = be('I', nd, o + 4)[0]
+            n = sum(1 for j in range(8) if be('II', nd, o + 12 + 8 * j)[1])
+            per[fid] = per.get(fid, 0) + n; recs += 1
+        node = flink
+    return recs, per
+
 if __name__ == '__main__':
     v = Vol(sys.argv[1]); vh_info(v)
     if len(sys.argv) > 2 and sys.argv[2] == 'root': show(v, 2)
+    if len(sys.argv) > 2 and sys.argv[2] == 'extents':
+        r, per = extent_stats(v); print('Extents-Ueberlauf: %d Saetze; Extents je fileID (ohne die 8 im Katalog): %s' % (r, dict(sorted(per.items(), key=lambda kv: -kv[1])[:5])))

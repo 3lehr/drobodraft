@@ -3,11 +3,11 @@ import FSKit
 import Foundation
 
 /// Sperre fuer die Erprobung: das Modul nimmt NUR Test-Abbilder an.
-/// Bedingung: Marker "DROBOFSPROBE" im ersten Sektor (liegt in den 1024 unbenutzten Boot-Bytes des HFS+-Volumes) UND Groesse <= 8 GiB.
+/// Bedingung: Marker "DROBOFSPROBE" im ersten Sektor (liegt in den 1024 unbenutzten Boot-Bytes des HFS+-Volumes) UND Groesse <= 24 GiB (Phase 3: 20-GiB-Abbild fuer Dateien > 16 GiB).
 /// Die Drobo (64 TiB), CF-Karte, T7 und Backup 1 tragen weder Marker noch passende Groesse. Freigabe fuer die Drobo erfolgt spaeter ausdruecklich.
 enum Gate {
     static let marker = Array("DROBOFSPROBE".utf8)
-    static let maxBytes: UInt64 = 8 << 30
+    static let maxBytes: UInt64 = 24 << 30
 
     static func deviceBytes(_ dev: FSBlockDeviceResource) -> UInt64 { dev.blockCount * dev.blockSize }
 

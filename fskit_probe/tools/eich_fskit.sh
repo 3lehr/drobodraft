@@ -18,8 +18,8 @@ mbps() { python3 -c "print('%.1f' % ($1/1048576.0/max($2,1e-9)))"; }   # MiB, Se
 mdlist() { ( cd "$1" && find . \( -name .fseventsd -o -name .Spotlight-V100 -o -name .Trashes -o -name '.HFS+ Private Directory Data*' -o -name .DS_Store -o -name .metadata_never_index -o -name .TemporaryItems \) -prune -o -type f -print0 | LC_ALL=C sort -z | xargs -0 md5 -r ); }
 dlist()  { ( cd "$1" && find . \( -name .fseventsd -o -name .Spotlight-V100 -o -name .Trashes -o -name '.HFS+ Private Directory Data*' -o -name .TemporaryItems \) -prune -o -type d -print | LC_ALL=C sort ); }
 
-mkimg() { # name journaled -> $W/name.img (4 GiB, Marker, vom Kernel formatiert)
-  local f=$W/$1.img; rmw "$1.img"; truncate -s 4g "$f"
+mkimg() { # name journaled [groesse=4g] -> $W/name.img (Marker, vom Kernel formatiert)
+  local f=$W/$1.img; rmw "$1.img"; truncate -s "${3:-4g}" "$f"
   local dev; dev=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nomount "$f" | awk 'NR==1{print $1}')
   newfs_hfs $([ "$2" = 1 ] && echo -J) -v "EICHFS_$1" "${dev/disk/rdisk}" >>"$LOG" 2>&1
   hdiutil detach "$dev" >>"$LOG" 2>&1
@@ -118,7 +118,7 @@ t_absturz() {
 # Probe-Sperre: ohne Marker und ueber 8 GiB darf das Modul NICHTS einhaengen (Drobo = 64 TiB ohne Marker; CF-Karte/T7/Backup tragen keinen Marker).
 t_sperre() {
   local n img MNT sz mk
-  for c in "keinmarker:4g:0" "markergross:9g:1"; do
+  for c in "keinmarker:4g:0" "markergross:25g:1"; do
     n=sp_${c%%:*}; sz=$(echo "$c" | cut -d: -f2); mk=$(echo "$c" | cut -d: -f3); img=$W/$n.img; MNT=$W/mnt_$n
     say "=== SPERRE $n (Groesse $sz, Marker=$mk)"
     rmw "$n.img"; truncate -s "$sz" "$img"
@@ -140,4 +140,4 @@ main() {
   case "${1:-alles}" in normal) t_normal;; absturz) t_absturz;; sperre) t_sperre;; alles) t_sperre; t_normal; t_absturz;; esac
   say "=== ERGEBNIS PASS=$NPASS FAIL=$NFAIL (Log: $LOG)"; [ "$NFAIL" = 0 ]
 }
-main "$@"
+[ "${BASH_SOURCE[0]}" = "$0" ] && main "$@"
