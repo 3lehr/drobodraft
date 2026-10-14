@@ -1,0 +1,427 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		360CF15100A501DB43593A9C /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB7FCB2A6FF099691E0B6AAC /* App.swift */; };
+		7E74941246F41A7CD3DDA71B /* MaxWriteProbe.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED5C3241B4C1F4099DF8A507 /* MaxWriteProbe.cpp */; };
+		B2DE1862C2BE35F2BB3A6CBA /* MaxWriteProbe.iig in Sources */ = {isa = PBXBuildFile; fileRef = F1DFE8324BA4ADD93E33F8EC /* MaxWriteProbe.iig */; };
+		C5A8F8FB75797DD010B05B06 /* DextProbeDext.dext in Embed System Extensions */ = {isa = PBXBuildFile; fileRef = 997C6FFFD884E8B73BCB1963 /* DextProbeDext.dext */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		01DDC25A551E929BA0F4C95A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E721518B53B14DD65F17A6B6 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4F1A3DD32C28DA9DE421EF5D;
+			remoteInfo = DextProbeDext;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		1B94E7E806D84E6554F0D2EE /* Embed System Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(SYSTEM_EXTENSIONS_FOLDER_PATH)";
+			dstSubfolderSpec = 16;
+			files = (
+				C5A8F8FB75797DD010B05B06 /* DextProbeDext.dext in Embed System Extensions */,
+			);
+			name = "Embed System Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		25C4A4B96E5A31E53E96284F /* DextProbeHost.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DextProbeHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4408D9CA0FEF5AFD51AEA352 /* Dext.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Dext.entitlements; sourceTree = "<group>"; };
+		997C6FFFD884E8B73BCB1963 /* DextProbeDext.dext */ = {isa = PBXFileReference; explicitFileType = "wrapper.driver-extension"; includeInIndex = 0; path = DextProbeDext.dext; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB7FCB2A6FF099691E0B6AAC /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
+		C4D0CC1046F2455C80910122 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		ED5C3241B4C1F4099DF8A507 /* MaxWriteProbe.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = MaxWriteProbe.cpp; sourceTree = "<group>"; };
+		F1DFE8324BA4ADD93E33F8EC /* MaxWriteProbe.iig */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.iig; path = MaxWriteProbe.iig; sourceTree = "<group>"; };
+		FEC984CCE3DEEAAD70B80B8C /* Host.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Host.entitlements; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		382786EEA7DD3CF746CC1E82 /* Host */ = {
+			isa = PBXGroup;
+			children = (
+				BB7FCB2A6FF099691E0B6AAC /* App.swift */,
+				FEC984CCE3DEEAAD70B80B8C /* Host.entitlements */,
+			);
+			path = Host;
+			sourceTree = "<group>";
+		};
+		BB783B2663BE5D13FBEBA7E4 /* Dext */ = {
+			isa = PBXGroup;
+			children = (
+				4408D9CA0FEF5AFD51AEA352 /* Dext.entitlements */,
+				C4D0CC1046F2455C80910122 /* Info.plist */,
+				ED5C3241B4C1F4099DF8A507 /* MaxWriteProbe.cpp */,
+				F1DFE8324BA4ADD93E33F8EC /* MaxWriteProbe.iig */,
+			);
+			path = Dext;
+			sourceTree = "<group>";
+		};
+		CD617ED654159414481FDC2A = {
+			isa = PBXGroup;
+			children = (
+				BB783B2663BE5D13FBEBA7E4 /* Dext */,
+				382786EEA7DD3CF746CC1E82 /* Host */,
+				F25B2C4AA5EFBB9A2D740E1E /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		F25B2C4AA5EFBB9A2D740E1E /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				997C6FFFD884E8B73BCB1963 /* DextProbeDext.dext */,
+				25C4A4B96E5A31E53E96284F /* DextProbeHost.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		4F1A3DD32C28DA9DE421EF5D /* DextProbeDext */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8C39AB365143B96BB1E11524 /* Build configuration list for PBXNativeTarget "DextProbeDext" */;
+			buildPhases = (
+				CACE4A315E3AC35FB441C4B7 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = DextProbeDext;
+			packageProductDependencies = (
+			);
+			productName = DextProbeDext;
+			productReference = 997C6FFFD884E8B73BCB1963 /* DextProbeDext.dext */;
+			productType = "com.apple.product-type.driver-extension";
+		};
+		9AFDAD7E74536EE45BF52E17 /* DextProbeHost */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AACC6701642C37859249BBAC /* Build configuration list for PBXNativeTarget "DextProbeHost" */;
+			buildPhases = (
+				F7FD189334F1B8A29EDB22E0 /* Sources */,
+				1B94E7E806D84E6554F0D2EE /* Embed System Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DE6C01E5779260EF9B0CE233 /* PBXTargetDependency */,
+			);
+			name = DextProbeHost;
+			packageProductDependencies = (
+			);
+			productName = DextProbeHost;
+			productReference = 25C4A4B96E5A31E53E96284F /* DextProbeHost.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E721518B53B14DD65F17A6B6 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					4F1A3DD32C28DA9DE421EF5D = {
+						DevelopmentTeam = JR9H9Q532P;
+						ProvisioningStyle = Automatic;
+					};
+					9AFDAD7E74536EE45BF52E17 = {
+						DevelopmentTeam = JR9H9Q532P;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 0BB1EB797FF0D7A9E3B7E08D /* Build configuration list for PBXProject "DextProbe" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = CD617ED654159414481FDC2A;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = F25B2C4AA5EFBB9A2D740E1E /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				9AFDAD7E74536EE45BF52E17 /* DextProbeHost */,
+				4F1A3DD32C28DA9DE421EF5D /* DextProbeDext */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		CACE4A315E3AC35FB441C4B7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7E74941246F41A7CD3DDA71B /* MaxWriteProbe.cpp in Sources */,
+				B2DE1862C2BE35F2BB3A6CBA /* MaxWriteProbe.iig in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F7FD189334F1B8A29EDB22E0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				360CF15100A501DB43593A9C /* App.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		DE6C01E5779260EF9B0CE233 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4F1A3DD32C28DA9DE421EF5D /* DextProbeDext */;
+			targetProxy = 01DDC25A551E929BA0F4C95A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		1F4D228E5C24BFBE7B549656 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_ENTITLEMENTS = Dext/Dext.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				DRIVERKIT_DEPLOYMENT_TARGET = 23.0;
+				INFOPLIST_FILE = Dext/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				OTHER_LDFLAGS = "-framework DriverKit -framework SCSIPeripheralsDriverKit";
+				PRODUCT_BUNDLE_IDENTIFIER = de.begod.drobo.dextprobe.dext;
+				PRODUCT_NAME = de.begod.drobo.dextprobe;
+				SDKROOT = driverkit;
+			};
+			name = Release;
+		};
+		27B377B928C92E2B894FEA8A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_ENTITLEMENTS = Dext/Dext.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				DRIVERKIT_DEPLOYMENT_TARGET = 23.0;
+				INFOPLIST_FILE = Dext/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				OTHER_LDFLAGS = "-framework DriverKit -framework SCSIPeripheralsDriverKit";
+				PRODUCT_BUNDLE_IDENTIFIER = de.begod.drobo.dextprobe.dext;
+				PRODUCT_NAME = de.begod.drobo.dextprobe;
+				SDKROOT = driverkit;
+			};
+			name = Debug;
+		};
+		508201BA88F3D539B72606CA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Host/Host.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = de.begod.drobo.dextprobe;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		625F827E71F3AAC4ABEA84C1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = JR9H9Q532P;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		7F0F2706D9B22336EFAE191C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Host/Host.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = de.begod.drobo.dextprobe;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		9638E981096F44C92C30C78A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = JR9H9Q532P;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0BB1EB797FF0D7A9E3B7E08D /* Build configuration list for PBXProject "DextProbe" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				625F827E71F3AAC4ABEA84C1 /* Debug */,
+				9638E981096F44C92C30C78A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		8C39AB365143B96BB1E11524 /* Build configuration list for PBXNativeTarget "DextProbeDext" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				27B377B928C92E2B894FEA8A /* Debug */,
+				1F4D228E5C24BFBE7B549656 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		AACC6701642C37859249BBAC /* Build configuration list for PBXNativeTarget "DextProbeHost" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7F0F2706D9B22336EFAE191C /* Debug */,
+				508201BA88F3D539B72606CA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = E721518B53B14DD65F17A6B6 /* Project object */;
+}
