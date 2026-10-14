@@ -89,7 +89,7 @@ fi
 HOSTSUM() { python3 -I - "$RDEV" "$DEV" <<'PY'
 import hashlib, os, plistlib, subprocess, sys
 rdev, dev = sys.argv[1:3]
-size = plistlib.loads(subprocess.check_output(["diskutil", "info", "-plist", dev]))["TotalSize"]
+size = plistlib.loads(subprocess.check_output(["diskutil", "info", "-plist", dev]))["IOKitSize"]  # Partitionsgroesse; TotalSize ist im Mount die (kleinere) Volume-Groesse
 fd = os.open(rdev, os.O_RDONLY); M = 1 << 20
 vh = os.pread(fd, 4096, 0)[1024:1536]
 print("VH", hashlib.sha256(vh).hexdigest()[:32], "erstes_MiB", hashlib.sha256(os.pread(fd, M, 0)).hexdigest()[:32], "letztes_MiB", hashlib.sha256(os.pread(fd, M, size - M)).hexdigest()[:32])
@@ -141,7 +141,7 @@ PY
 else echo "Leseliste $LISTE fehlt -> nur Verzeichnisliste:"; ls -la "$MNT" | head -20; RES=8; fi
 
 # ---- 7. Aushaengen, Wirt-Vergleich, Modul-Zaehler ----
-umount "$MNT" || { sleep 2; umount "$MNT"; }; sleep 2
+umount "$MNT" 2>/dev/null || diskutil unmount "$MNT" || { sleep 5; diskutil unmount "$MNT"; }; sleep 2
 POST=$(HOSTSUM); echo "Wirt nachher: $POST"
 [ "$PRE" = "$POST" ] && echo "Wirt-Pruefsummen vorher == nachher: OK" || { echo "WARNUNG: Wirt-Pruefsummen ABWEICHEND"; RES=9; }
 ST=$(/usr/bin/log show --last 15m --info --style compact --predicate 'subsystem == "de.begod.drobofsprobe"' 2>/dev/null | grep "STATS unmount" | tail -1 | sed 's/.*STATS/STATS/')
