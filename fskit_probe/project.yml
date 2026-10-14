@@ -1,0 +1,38 @@
+# xcodegen: `xcodegen` erzeugt DroboFSProbe.xcodeproj (nicht eingecheckt).
+name: DroboFSProbe
+options:
+  bundleIdPrefix: de.begod
+  deploymentTarget:
+    macOS: "15.4"
+settings:
+  base:
+    DEVELOPMENT_TEAM: JR9H9Q532P
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.0"
+    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "1.0"
+targets:
+  DroboFSProbe:
+    type: application
+    platform: macOS
+    sources: [App]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: de.begod.drobofsprobe
+        GENERATE_INFOPLIST_FILE: YES
+        ENABLE_HARDENED_RUNTIME: YES
+    dependencies:
+      - target: DroboFSProbeModule
+        embed: true
+  DroboFSProbeModule:
+    type: app-extension
+    platform: macOS
+    sources: [Module]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: de.begod.drobofsprobe.fsmodule
+        ENABLE_APP_SANDBOX: YES
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_ENTITLEMENTS: Module/DroboFSProbeModule.entitlements
+        INFOPLIST_FILE: Module/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
