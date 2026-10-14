@@ -8,8 +8,8 @@
 	<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
 	<key>CFBundleName</key><string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key><string>DEXT</string>
-	<key>CFBundleShortVersionString</key><string>1.3</string>
-	<key>CFBundleVersion</key><string>4</string>
+	<key>CFBundleShortVersionString</key><string>1.4</string>
+	<key>CFBundleVersion</key><string>5</string>
 	<key>OSBundleUsageDescription</key><string>Test-Dext: begrenzt Schreibbefehle auf 512 KiB.</string>
 	<key>IOKitPersonalities</key>
 	<dict>
