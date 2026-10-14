@@ -14,7 +14,16 @@ diskutil info "$DEV" | grep -E "Virtual|Disk Image|Protocol" || true
 printf 'DROBOFSPROBE' | dd of="${DEV/disk/rdisk}" bs=512 count=1 conv=sync 2>&1 | tail -1
 mkdir -p "$MNT"
 echo "--- mount -F"
-mount -F -t drobofsprobe "$DEV" "$MNT" && { ls -la "$MNT"; echo "--- messung.txt"; cat "$MNT/messung.txt"; umount "$MNT"; } || echo "mount-Fehler rc=$?"
+# WAIT=<Sekunden>: solange wiederholen, wie das Modul noch nicht vom Betreiber aktiviert ist ("is disabled!")
+DEADLINE=$((SECONDS + ${WAIT:-0}))
+while :; do
+  if MOUT=$(mount -F -t drobofsprobe "$DEV" "$MNT" 2>&1); then
+    ls -la "$MNT"; echo "--- messung.txt"; cat "$MNT/messung.txt"; umount "$MNT"; break
+  fi
+  echo "mount-Fehler: $MOUT"
+  case "$MOUT" in *"is disabled"*) [ $SECONDS -lt $DEADLINE ] && { sleep 15; continue; };; esac
+  break
+done
 echo "--- Log"
 /usr/bin/log show --last 5m --predicate 'subsystem == "de.begod.drobofsprobe"' --info --style compact | tail -30
 hdiutil detach "$DEV"
