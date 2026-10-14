@@ -22,8 +22,8 @@
 			<key>IOUserClass</key><string>MaxWriteProbe</string>
 			<key>IOUserServerName</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 			<key>Peripheral Device Type</key><integer>0</integer>
-			<key>Vendor Identification</key><string>NODEVICE</string>
-			<key>Product Identification</key><string>PLATZHALTER-0000</string>
+			<key>Vendor Identification</key><string>ABT</string>
+			<key>Product Identification</key><string>CFX Card Reader</string>
 		</dict>
 	</dict>
 </dict>
