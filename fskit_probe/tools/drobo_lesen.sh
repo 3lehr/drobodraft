@@ -5,11 +5,15 @@
 #          bash drobo_lesen.sh --freigabe-anlegen   Eintrag {uuid, nurlesen, max_bytes} in die Freigabeliste des Moduls schreiben
 #          bash drobo_lesen.sh                      Lesetest (mount -F -t hfsdrobo -o rdonly, Leseliste, umount, Wirt-Vergleich)
 # Umgebung (fuer Tests am Abbild): DROBO_UUID, DEV (z. B. /dev/disk7s2; Pflicht: diskutil zeigt dort DROBO_UUID), MNT, LISTE.
+# Phase 5b (decmpfs): ist DECMPFS_LISTE (Vorgabe: tools/drobo_decmpfs_auswahl.json, erzeugt von decmpfs_liste.py aus der Katalogsicherung) vorhanden und
+#   DECMPFS != aus, dann VOR dem Modul-Mount: Kernel-ro-Mount (diskutil mount readOnly), SHA-256 der ausgewaehlten komprimierten Dateien, aushaengen;
+#   NACH dem Modul-Mount dieselben Dateien hashen und vergleichen -> "Decmpfs: N gleich, M abweichend/Fehler" (EIO zaehlt als Fehler), bei M > 0 Code 11.
 set -u
 UUID=${DROBO_UUID:-C2E343A1-0D4C-3B35-B5DC-0325C1E1E1B1}
 LISTE=${LISTE:-$HOME/Desktop/drobo_leseliste.json}
 MNT=${MNT:-$HOME/drobo_lesen_mnt}
 FREIGABE="$HOME/Library/Containers/de.begod.drobofsprobe.fsmodule/Data/freigabe.json"
+DCL=${DECMPFS_LISTE:-$(cd "$(dirname "$0")" && pwd)/drobo_decmpfs_auswahl.json}; DCSCRATCH=${DECMPFS_SCRATCH:-${TMPDIR:-/tmp}}
 MODE=lesen; case "${1:-}" in --trocken) MODE=trocken;; --freigabe-anlegen) MODE=anlegen;; "") ;; *) sed -n 2,9p "$0"; exit 2;; esac
 stop() { echo "STOP: $*"; exit "${CODE:-1}"; }
 now() { python3 -c 'import time;print(time.time())'; }
@@ -97,6 +101,43 @@ PY
 }
 PRE=$(HOSTSUM) || stop "Wirt-Pruefsumme vorher fehlgeschlagen"; echo "Wirt vorher:  $PRE"
 
+# ---- 4b. Phase 5b: komprimierte Dateien ueber den KERNEL hashen (Orakel), danach aushaengen ----
+DCHASH() { # mnt liste out.json : SHA-256 je Datei der Auswahl ("sha:<hex>" oder "ERR:<Text>"); fehlende/unlesbare Dateien brechen nichts ab
+python3 -I - "$1" "$2" "$3" <<'PY'
+import hashlib, json, os, sys
+mnt, liste, out = sys.argv[1:4]
+res = {}
+for e in json.load(open(liste))["auswahl"]:
+    p = os.path.join(mnt, e["pfad"].lstrip("/"))
+    try:
+        h = hashlib.sha256()
+        with open(p, "rb") as f:
+            while True:
+                b = f.read(8 << 20)
+                if not b: break
+                h.update(b)
+        res[e["pfad"]] = "sha:" + h.hexdigest()
+    except Exception as ex:
+        res[e["pfad"]] = "ERR:%s" % (getattr(ex, "strerror", None) or ex)
+json.dump(res, open(out, "w"))
+print("  %d Dateien gehasht, %d Fehler" % (len(res), sum(1 for v in res.values() if v.startswith("ERR:"))))
+PY
+}
+DCK=""
+if [ "${DECMPFS:-an}" != aus ] && [ -f "$DCL" ]; then
+  DCK=$(mktemp "$DCSCRATCH/decmpfs_kernel.XXXXXX") || stop "kein Scratch fuer die Kernel-Pruefsummen"
+  echo "Decmpfs-Vergleich: Liste $DCL"
+  KOUT=$(diskutil mount readOnly "$DEV" 2>&1) || { echo "$KOUT"; stop "Kernel-ro-Mount fehlgeschlagen (nichts geschrieben)"; }
+  echo "  $KOUT"
+  KMP=$(diskutil info -plist "$DEV" | python3 -I -c 'import plistlib,sys;print(plistlib.loads(sys.stdin.buffer.read()).get("MountPoint",""))')
+  [ -n "$KMP" ] || { diskutil unmount "$DEV" >/dev/null 2>&1; stop "Kernel-Mountpunkt nicht ermittelbar"; }
+  mount | grep -iF " $KMP " | grep -q read-only || { diskutil unmount "$DEV" >/dev/null 2>&1; stop "Kernel-Mount ist NICHT read-only gemeldet -> ausgehaengt"; }
+  echo "  Kernel-ro-Mount: $KMP"; DCHASH "$KMP" "$DCL" "$DCK"
+  diskutil unmount "$DEV" >/dev/null 2>&1 || { sleep 3; diskutil unmount "$DEV" >/dev/null 2>&1; }
+  diskutil info "$DEV" | grep -qE "Mounted: *Yes" && stop "Kernel-Mount liess sich nicht aushaengen ($DEV) - Modul-Mount nicht versucht"
+  echo "  Kernel-Mount ausgehaengt"
+elif [ "${DECMPFS:-an}" != aus ]; then echo "Decmpfs-Vergleich uebersprungen: Liste $DCL fehlt"; fi
+
 # ---- 5. Mount, nur lesend ----
 mkdir -p "$MNT"
 MOUT=$(mount -F -t hfsdrobo -o rdonly "$DEV" "$MNT" 2>&1); RC=$?
@@ -139,6 +180,27 @@ print("Leseliste: %d OK, %d Abweichung/Fehler, %.1f MiB in %.1f s = %.1f MB/s ge
 sys.exit(0 if bad == 0 and ok > 0 else 7)
 PY
 else echo "Leseliste $LISTE fehlt -> nur Verzeichnisliste:"; ls -la "$MNT" | head -20; RES=8; fi
+
+# ---- 6b. Phase 5b: dieselben komprimierten Dateien ueber das MODUL hashen und gegen den Kernel vergleichen ----
+if [ -n "$DCK" ]; then
+  DCM=$(mktemp "$DCSCRATCH/decmpfs_modul.XXXXXX"); echo "Decmpfs: Modul-Pruefsummen"; DCHASH "$MNT" "$DCL" "$DCM"
+  python3 -I - "$DCL" "$DCK" "$DCM" <<'PY' || { [ $RES = 0 ] && RES=11; }
+import json, sys
+liste, kf, mf = sys.argv[1:4]
+auswahl = json.load(open(liste))["auswahl"]; k = json.load(open(kf)); m = json.load(open(mf))
+gleich = 0; schlecht = []
+for e in auswahl:
+    p = e["pfad"]; a = k.get(p, "ERR:nicht gehasht"); b = m.get(p, "ERR:nicht gehasht")
+    if a.startswith("sha:") and a == b: gleich += 1
+    elif a.startswith("sha:") and b.startswith("sha:"): schlecht.append("ABWEICHUNG Typ %s %s  kernel %s modul %s" % (e["typ"], p, a[4:16], b[4:16]))
+    else: schlecht.append("FEHLER Typ %s %s  kernel %s | modul %s" % (e["typ"], p, a, b))
+for z in schlecht[:40]: print("  " + z)
+if len(schlecht) > 40: print("  ... und %d weitere" % (len(schlecht) - 40))
+print("Decmpfs: %d gleich, %d abweichend/Fehler (von %d)" % (gleich, len(schlecht), len(auswahl)))
+sys.exit(0 if not schlecht and gleich > 0 else 11)
+PY
+  rm -f "$DCK" "$DCM"
+fi
 
 # ---- 7. Aushaengen, Wirt-Vergleich, Modul-Zaehler ----
 umount "$MNT" 2>/dev/null || diskutil unmount "$MNT" || { sleep 5; diskutil unmount "$MNT"; }; sleep 2
