@@ -209,7 +209,7 @@
 				);
 				OTHER_LDFLAGS = "-framework DriverKit -framework SCSIPeripheralsDriverKit";
 				PRODUCT_BUNDLE_IDENTIFIER = de.begod.drobo.dextprobe.dext;
-				PRODUCT_NAME = de.begod.drobo.dextprobe;
+				PRODUCT_NAME = de.begod.drobo.dextprobe.dext;
 				SDKROOT = driverkit;
 			};
 			name = Release;
@@ -229,7 +229,7 @@
 				);
 				OTHER_LDFLAGS = "-framework DriverKit -framework SCSIPeripheralsDriverKit";
 				PRODUCT_BUNDLE_IDENTIFIER = de.begod.drobo.dextprobe.dext;
-				PRODUCT_NAME = de.begod.drobo.dextprobe;
+				PRODUCT_NAME = de.begod.drobo.dextprobe.dext;
 				SDKROOT = driverkit;
 			};
 			name = Debug;

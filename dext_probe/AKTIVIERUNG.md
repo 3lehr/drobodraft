@@ -20,3 +20,6 @@ Bleibt die Anzeige "Neustart erforderlich" oder "Sicherheitseinstellungen verhin
 - Vorher-Stand (gemessen 2026-10-14T08:06:24+0200): Nub des Lesers IOMaximumByteCountWrite = 131072, BlockCount 256. Ziel des Dext: 524288 / 1024.
 - Ablauf: `tools/test_cf.sh show` und `sudo tools/test_cf.sh dd` VOR Aktivierung, Dext aktivieren (Klickfolge oben), Leser abziehen und wieder anstecken (Nub wird neu erzeugt; Annahme, nicht belegt), dann `show` und `dd` erneut, Zahlen vergleichen.
 - Systemeinstellungen-Schalter haben bei FSKit nicht persistiert (Lehre L-6f678f). Beim Dext massgeblich ist `systemextensionsctl list` (Zeile de.begod.drobo.dextprobe, [activated enabled]), nicht die Schalterstellung.
+
+## Ordnername des Dext
+sysextd findet den Dext nur, wenn der Ordner `<CFBundleIdentifier>.dext` heisst (Fehler OSSystemExtensionErrorDomain Code=4 "Extension not found in App bundle"). Belegt an Blackmagic: ID `com.blackmagic-design.BlackmagicIO.DExt` liegt im Ordner `...BlackmagicIO.DExt.dext`. Hier daher PRODUCT_NAME = `de.begod.drobo.dextprobe.dext` -> Ordner `de.begod.drobo.dextprobe.dext.dext`, ID unveraendert (Profil bleibt gueltig). Nach Austausch der App in /Applications die laufende DextProbe-Instanz beenden und neu oeffnen.

@@ -28,7 +28,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: de.begod.drobo.dextprobe.dext
-        PRODUCT_NAME: de.begod.drobo.dextprobe
+        PRODUCT_NAME: de.begod.drobo.dextprobe.dext
         CODE_SIGN_ENTITLEMENTS: Dext/Dext.entitlements
         INFOPLIST_FILE: Dext/Info.plist
         SDKROOT: driverkit
