@@ -115,7 +115,20 @@ t_gross() {
   chk "$n Groesse 18253611008" test "$(stat -f %z "$MNT/huge.bin")" = 18253611008
   t0=$(now); chk "$n 17-GiB-Datei ueber den Mount md5 gleich" test "$(md5 -q "$MNT/huge.bin")" = "$want"; t1=$(now)
   say "   lesen+md5: $(python3 -c "print('%.0f MB/s' % (17408/($t1-$t0)))")"
-  hunmount "$n"; kjudge "$n" "$img" huge.bin "$want"; rmw "$n.img" "mnt_$n"
+  hunmount "$n"; kjudge "$n" "$img" huge.bin "$want"
+  # Direktweg (Hebel B) ueber 4 GiB: dasselbe Abbild NUR LESEND ueber die Freigabeliste (Marker entfernen), md5 == Referenz, direkt_reads > 0
+  trap fg_zurueck RETURN; fg_sichern
+  printf '\0\0\0\0\0\0\0\0\0\0\0\0' | dd of="$img" bs=1 count=12 conv=notrunc 2>/dev/null
+  attach "$img"; local vu; vu=$(diskutil info "$DEV" | awk '/Volume UUID/{print $3}'); hdiutil detach "$DEV" >>"$LOG" 2>&1
+  fg_set "[{\"volume_uuid\":\"$vu\",\"modus\":\"nurlesen\",\"max_bytes\":22548578304}]"
+  if fg_mount "$img" "-o rdonly"; then
+    t0=$(now); chk "$n nurlesen (Direktweg): 17-GiB-Datei md5 gleich Referenz" test "$(md5 -q "$MNT/huge.bin")" = "$want"; t1=$(now)
+    say "   nurlesen lesen+md5: $(python3 -c "print('%.0f MB/s' % (17408/($t1-$t0)))")"
+    umount "$MNT"; sleep 2; hdiutil detach "$DEV" >>"$LOG" 2>&1
+    local sl; sl=$(/usr/bin/log show --last 5m --info --style compact --predicate 'subsystem == "de.begod.drobofsprobe"' 2>/dev/null | grep "STATS-LESEN" | tail -1 | sed 's/.*STATS-LESEN/STATS-LESEN/'); say "   $sl"
+    chk "$n nurlesen: direkt_reads=$(fld "$sl" direkt_reads) > 0, fallback_reads=$(fld "$sl" fallback_reads)" test "$(fld "$sl" direkt_reads)" -gt 0
+  else fail "$n nurlesen mount"; hdiutil detach "$DEV" >>"$LOG" 2>&1; fi
+  rmw "$n.img" "mnt_$n"
 }
 
 mainh() { case "${1:-alles}" in dauer) t_dauer;; frag) t_frag;; gross) t_gross;; alles) t_frag; t_dauer; t_gross;; esac
