@@ -3,10 +3,12 @@
 #include <os/log.h>
 #include "MaxWriteProbe.h"
 
-// Weg A (Plan Phase 0b): Schreibbefehle auf 512 KiB kappen, sonst Standardverhalten.
-// Die Drobo verdaut keine Schreibbefehle > 512 KiB, Kernel-HFS schickt 1 MiB.
-static constexpr uint64_t kMaxWriteBytes  = 524288;
-static constexpr uint64_t kMaxWriteBlocks = 1024;  // 1024 * 512 B = 524288
+// Weg A (Plan Phase 0b): Schreibbefehle begrenzen, sonst Standardverhalten.
+// Die Drobo verdaut keine Schreibbefehle > 512 KiB, Kernel-HFS schickt 1 MiB (Ziel 524288/1024).
+// v1.3: Testwert 65536/128 am USB-2-Leser (Protokollwert 131072): VERKLEINERN wie bei der Drobo.
+// v1.2 (524288, Vergroessern) wurde auf 131072 zurueckgesetzt, siehe AKTIVIERUNG.md.
+static constexpr uint64_t kMaxWriteBytes  = 65536;
+static constexpr uint64_t kMaxWriteBlocks = 128;  // 128 * 512 B = 65536
 
 kern_return_t IMPL(MaxWriteProbe, UserDetermineDeviceCharacteristics)
 {
