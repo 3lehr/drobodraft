@@ -26,6 +26,18 @@ final class DeviceBackend {
     let statLock = NSLock()
     var volReads = 0, waiting = 0, maxWaiting = 0, waitNanos: UInt64 = 0
     var directReads = 0, fallbackReads = 0, decmpfsReads = 0
+    /// Phase 5d Diagnose: Lage der Sonderdateien (sortiert nach Start; tag 0 Bitmap, 1 Extents-Ueberlauf, 2 Katalog, 3 Attribute); Lesungen <= 128 KiB werden danach
+    /// gezaehlt (klein[tag] = Anzahl, kleinKB[tag] = KiB; tag 4 = ausserhalb aller Sonderdateien: Daten, Journal, Volume-Header ...). Nach dem Mount unveraenderlich.
+    var ranges: [(start: Int64, end: Int64, tag: Int)] = []
+    var klein = [Int](repeating: 0, count: 5), kleinKB = [Int](repeating: 0, count: 5)
+    /// FSKit-Ebene (HFSVolume.read): ausgelieferte Bytes, nicht fortlaufende Lesungen, erneut ausgelieferte Bytes, Zahl verschiedener Dateien.
+    var volReadBytes: UInt64 = 0, volNonSeq = 0, volDoppeltBytes: UInt64 = 0, volDateien = 0
+    func tagFor(_ off: Int64) -> Int {
+        var lo = 0, hi = ranges.count
+        while lo < hi { let m = (lo + hi) / 2; if ranges[m].start <= off { lo = m + 1 } else { hi = m } }
+        if lo > 0, off < ranges[lo - 1].end { return ranges[lo - 1].tag }
+        return 4
+    }
     #if TEST_FEHLER
     /// Pruefbau (analog TEST_DROBO): Datei fehler.txt im Container "N modus" laesst die N-te GROSSE (> 128 KiB) Lesung ans Geraet scheitern
     /// (modus wirf = Fehler EIO) oder verkuerzt sie auf die Haelfte (modus kurz). Ohne Datei kein Eingriff.
@@ -76,7 +88,9 @@ final class DeviceBackend {
         defer {
             let dt = DispatchTime.now().uptimeNanoseconds - t0
             statLock.lock(); inflight -= 1; rdNanos += dt; rdCalls += 1; rdBytes += UInt64(span)
-            rdHist[span <= 131072 ? 0 : span <= 524288 ? 1 : 2] += 1; statLock.unlock()
+            rdHist[span <= 131072 ? 0 : span <= 524288 ? 1 : 2] += 1
+            if span <= 131072 { let t = tagFor(a0); klein[t] += 1; kleinKB[t] += span / 1024 }
+            statLock.unlock()
         }
         #if TEST_DROBO
         return try droboLesen(p, a0, span)

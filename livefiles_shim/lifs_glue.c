@@ -256,3 +256,30 @@ void lifs_geometry(UVFSFileNode node, uint32_t *logical, uint32_t *physical, uin
     *physical = hfsmp->hfs_physical_block_size;
     *io_pos_offset = HFSTOVCB(hfsmp)->hfsPlusIOPosOffset;
 }
+
+/* Alle Geraete-Stuecke einer Gabel fuer die ersten len Bytes: zaehlt ALLE (*ntot), schreibt die ersten max. 0 ok, 1 Mapping-Fehler. */
+static int map_run(struct hfsmount *hfsmp, struct filefork *fp, uint64_t len, lifs_extent_t *out, int max, int *ntot)
+{
+    uint64_t ss = hfsmp->hfs_logical_block_size, done = 0, lastEnd = 0;
+    *ntot = 0;
+    while (done < len) {
+        daddr64_t sec = 0; size_t avail = 0;
+        if (MapFileBlockC(HFSTOVCB(hfsmp), (FCB *)fp, (size_t)(len - done), (off_t)done, &sec, &avail) != 0 || avail == 0) return 1;
+        uint64_t doff = (uint64_t)sec * ss + done % ss;
+        if (*ntot > 0 && lastEnd == doff) { if (*ntot - 1 < max) out[*ntot - 1].len += avail; }
+        else { if (*ntot < max) { out[*ntot].dev_off = doff; out[*ntot].len = avail; } (*ntot)++; }
+        lastEnd = doff + avail; done += avail;
+    }
+    return 0;
+}
+
+int lifs_special_extents(UVFSFileNode root, int which, lifs_extent_t *out, int max, int *n)
+{
+    vnode_t vp = (vnode_t)root;
+    struct hfsmount *hfsmp = VTOHFS(vp);
+    struct vnode *sv = which == 0 ? hfsmp->hfs_allocation_vp : which == 1 ? hfsmp->hfs_extents_vp : which == 2 ? hfsmp->hfs_catalog_vp : hfsmp->hfs_attribute_vp;
+    *n = 0;
+    if (!sv) return 0;                                                         /* z. B. Volume ohne Attribute-Baum */
+    struct filefork *fp = VTOF(sv);
+    return map_run(hfsmp, fp, (uint64_t)fp->ff_blocks * hfsmp->blockSize, out, max, n);
+}

@@ -51,4 +51,7 @@ int lifs_map_read(UVFSFileNode node, uint64_t off, uint64_t len, lifs_extent_t *
 int lifs_is_compressed(UVFSFileNode node);
 /* Geometrie des Volumes fuer das Mount-Log (Phase 5c): Sektorgroessen der Bibliothek und Versatz des HFS+-Volumes im Geraet (0 = kein Wrapper). */
 void lifs_geometry(UVFSFileNode node, uint32_t *logical, uint32_t *physical, uint64_t *io_pos_offset);
+/* Phase 5d: Lage der Sonderdateien im Geraet (which 0 Allokationsbitmap, 1 Extents-Ueberlaufbaum, 2 Katalog, 3 Attribute), alle Stuecke inkl. Ueberlaufbaum.
+ * Schreibt die ersten max nach out, *n = Gesamtzahl (n > max: mit groesserem Feld wiederholen). Rueckgabe 0 ok, 1 Mapping-Fehler. Unter libLock. */
+int lifs_special_extents(UVFSFileNode root, int which, lifs_extent_t *out, int max, int *n);
 #endif

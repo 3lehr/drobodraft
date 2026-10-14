@@ -15,6 +15,7 @@ typealias Node = UnsafeMutableRawPointer
 final class HItem: FSItem {
     let node: Node
     var refs = 1
+    var lastEnd: Int64 = 0, gesehen = false, seiten: [UInt64] = []     // Diagnose (Phase 5d), unter statLock; seiten = Bitmap der ausgelieferten 4-KiB-Seiten
     init(_ n: Node) { node = n }
 }
 
@@ -82,6 +83,17 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         _ = lifs_volinfo(root, &info)
         var gl: UInt32 = 0, gp: UInt32 = 0, go: UInt64 = 0
         lifs_geometry(root, &gl, &gp, &go)
+        var rng: [(start: Int64, end: Int64, tag: Int)] = []
+        for w in 0..<4 {
+            var cap = 4096, nn: Int32 = 0
+            var buf = [lifs_extent_t](repeating: lifs_extent_t(), count: cap)
+            var r = lifs_special_extents(root, Int32(w), &buf, Int32(cap), &nn)
+            if r == 0 && Int(nn) > cap { cap = Int(nn); buf = [lifs_extent_t](repeating: lifs_extent_t(), count: cap); r = lifs_special_extents(root, Int32(w), &buf, Int32(cap), &nn) }
+            if r == 0 { for e in buf[0..<min(Int(nn), cap)] { rng.append((Int64(e.dev_off), Int64(e.dev_off + e.len), w)) } }
+            log.notice("SONDERDATEI \(["bitmap", "extents", "katalog", "attribute"][w], privacy: .public) stuecke=\(nn) r=\(r)")
+        }
+        rng.sort { $0.start < $1.start }
+        backend.ranges = rng
         log.notice("GEOM dev.blockSize=\(dev.blockSize) dev.physicalBlockSize=\(dev.physicalBlockSize) hfs_logical_block_size=\(gl) hfs_physical_block_size=\(gp) hfsPlusIOPosOffset=\(go) blockCount=\(dev.blockCount)")
         let name = withUnsafePointer(to: &info.name) { $0.withMemoryRebound(to: CChar.self, capacity: 256) { String(cString: $0) } }
         self.dev = dev; self.backend = backend; self.readOnly = ro
@@ -173,8 +185,10 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         let be = backend
         be.statLock.lock()                                   // Direktweg-Lesungen koennen noch zaehlen: Werte konsistent kopieren
         let c = (be.rdCalls, be.rdBytes, be.rdHist, be.rdNanos, be.volReads, be.maxWaiting, be.waitNanos, be.directReads, be.fallbackReads, be.decmpfsReads, be.maxInflight)
+        let kl = be.klein, kk = be.kleinKB, vr = (be.volReadBytes, be.volNonSeq, be.volDoppeltBytes, be.volDateien)
         be.statLock.unlock()
         log.notice("STATS-LESEN dev_reads=\(c.0) dev_read_bytes=\(c.1) hist_le128k=\(c.2[0]) hist_le512k=\(c.2[1]) hist_le1m=\(c.2[2]) dev_read_ms=\(c.3 / 1_000_000) vol_reads=\(c.4) max_wartend=\(c.5) lock_wait_ms=\(c.6 / 1_000_000) direkt_reads=\(c.7) fallback_reads=\(c.8) decmpfs_reads=\(c.9) max_dev_read_parallel=\(c.10) direktweg=\(self.directRead ? 1 : 0) drobo_bau=\(droboBau) fehler_bau=\(fehlerBau)")
+        log.notice("STATS-KLEIN le128k nach Bereich: bitmap=\(kl[0])/\(kk[0])KiB extents=\(kl[1])/\(kk[1])KiB katalog=\(kl[2])/\(kk[2])KiB attribute=\(kl[3])/\(kk[3])KiB sonst=\(kl[4])/\(kk[4])KiB | FSKit-Ebene: vol_read_bytes=\(vr.0) vol_nonseq=\(vr.1) vol_doppelt_bytes=\(vr.2) vol_dateien=\(vr.3)")
         backend.unregister()
         try check(r)
     }
@@ -361,7 +375,22 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
     // MARK: Lesen / Schreiben
     func read(from item: FSItem, at offset: off_t, length: Int, into buffer: FSMutableFileDataBuffer) async throws -> Int {
         let it = try self.item(item)
-        let want = min(length, buffer.length)
+        let n = try readCore(it, offset, min(length, buffer.length), buffer)
+        let b = backend, end = Int64(offset) + Int64(n)                // Diagnose: ausgelieferte Bytes, Reihenfolge, Doppellesungen
+        b.statLock.lock()
+        if !it.gesehen { it.gesehen = true; b.volDateien += 1 }
+        if Int64(offset) != it.lastEnd { b.volNonSeq += 1 }
+        if n > 0 && end <= 1 << 36 {                                      // Seiten, die schon einmal ausgeliefert wurden (nicht: nur spaeter einlaufende Lesungen)
+            let p0 = Int(Int64(offset) >> 12), p1 = Int((end - 1) >> 12)
+            if it.seiten.count <= p1 >> 6 { it.seiten += [UInt64](repeating: 0, count: (p1 >> 6) + 1 - it.seiten.count) }
+            for p in p0...p1 { let w = p >> 6, m = UInt64(1) << UInt64(p & 63); if it.seiten[w] & m != 0 { b.volDoppeltBytes += 4096 } else { it.seiten[w] |= m } }
+        }
+        it.lastEnd = end; b.volReadBytes += UInt64(n)
+        b.statLock.unlock()
+        return n
+    }
+
+    private func readCore(_ it: HItem, _ offset: off_t, _ want: Int, _ buffer: FSMutableFileDataBuffer) throws -> Int {
         var act = 0
         let b = backend
         b.statLock.lock(); b.volReads += 1; b.statLock.unlock()
