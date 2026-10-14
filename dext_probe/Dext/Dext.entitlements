@@ -6,12 +6,5 @@
 	<true/>
 	<key>com.apple.developer.driverkit.family.scsicontroller</key>
 	<true/>
-	<key>com.apple.developer.driverkit.transport.usb</key>
-	<array>
-		<dict>
-			<key>idVendor</key>
-			<integer>65535</integer>
-		</dict>
-	</array>
 </dict>
 </plist>

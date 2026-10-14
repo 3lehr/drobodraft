@@ -23,3 +23,6 @@ Bleibt die Anzeige "Neustart erforderlich" oder "Sicherheitseinstellungen verhin
 
 ## Ordnername des Dext
 sysextd findet den Dext nur, wenn der Ordner `<CFBundleIdentifier>.dext` heisst (Fehler OSSystemExtensionErrorDomain Code=4 "Extension not found in App bundle"). Belegt an Blackmagic: ID `com.blackmagic-design.BlackmagicIO.DExt` liegt im Ordner `...BlackmagicIO.DExt.dext`. Hier daher PRODUCT_NAME = `de.begod.drobo.dextprobe.dext` -> Ordner `de.begod.drobo.dextprobe.dext.dext`, ID unveraendert (Profil bleibt gueltig). Nach Austausch der App in /Applications die laufende DextProbe-Instanz beenden und neu oeffnen.
+
+## Erster Aktivierungslauf: AMFI lehnte den Dext ab (gemessen 2026-10-14T08:23)
+`log show` (nutze /usr/bin/log, in zsh ist `log` ein Builtin): kernel erzeugte MaxWriteProbe (Matching OK, auch ohne IOProbeScore), kernelmanagerd startete den Prozess, amfid: "Restricted entitlements not validated ... Code=-413 No matching profile found" (unsatisfiedEntitlements privat), ASP "Security policy would not allow process", spawn error=163. Verdacht (nicht bewiesen): signiertes usb-Entitlement idVendor 65535 gegen Profilwert idVendor '*'. Das usb-Entitlement ist fuer einen SCSI-Peripheral-Dext unnoetig und wurde entfernt. Version 1.1/2 und IOProbeScore 10000 gesetzt (Apples IOSCSIPeripheralDeviceType00 hat 5000).
