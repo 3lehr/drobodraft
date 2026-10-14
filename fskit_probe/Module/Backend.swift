@@ -31,13 +31,20 @@ final class DeviceBackend {
     var ranges: [(start: Int64, end: Int64, tag: Int)] = []
     var klein = [Int](repeating: 0, count: 5), kleinKB = [Int](repeating: 0, count: 5)
     /// FSKit-Ebene (HFSVolume.read): ausgelieferte Bytes, nicht fortlaufende Lesungen, erneut ausgelieferte Bytes, Zahl verschiedener Dateien.
+    /// FSKit-Operationen (Zahl der Aufrufe): getattr, lookup, readdir, reclaim - zeigt Fremdzugriffe (Crawler) neben den Lesungen.
+    var opGetattr = 0, opLookup = 0, opReaddir = 0, opReclaim = 0
+    func opZaehlen(_ k: Int) { statLock.lock(); switch k { case 0: opGetattr += 1; case 1: opLookup += 1; case 2: opReaddir += 1; default: opReclaim += 1 }; statLock.unlock() }
     var volReadBytes: UInt64 = 0, volNonSeq = 0, volDoppeltBytes: UInt64 = 0, volDateien = 0
-    func tagFor(_ off: Int64) -> Int {
+    /// Diagnose (Phase 5e): Datei stack_katalog im Modulcontainer -> die ersten 40 Katalog-Lesungen <= 128 KiB loggen ihren Aufrufweg (STACK-KATALOG).
+    let stackProbe = FileManager.default.fileExists(atPath: NSHomeDirectory() + "/stack_katalog")
+    var stackGeloggt = 0
+    func rangeIdx(_ off: Int64) -> Int {
         var lo = 0, hi = ranges.count
         while lo < hi { let m = (lo + hi) / 2; if ranges[m].start <= off { lo = m + 1 } else { hi = m } }
-        if lo > 0, off < ranges[lo - 1].end { return ranges[lo - 1].tag }
-        return 4
+        return lo > 0 && off < ranges[lo - 1].end ? lo - 1 : -1
     }
+    func tagFor(_ off: Int64) -> Int { let i = rangeIdx(off); return i >= 0 ? ranges[i].tag : 4 }
+
     #if TEST_FEHLER
     /// Pruefbau (analog TEST_DROBO): Datei fehler.txt im Container "N modus" laesst die N-te GROSSE (> 128 KiB) Lesung ans Geraet scheitern
     /// (modus wirf = Fehler EIO) oder verkuerzt sie auf die Haelfte (modus kurz). Ohne Datei kein Eingriff.
@@ -89,7 +96,14 @@ final class DeviceBackend {
             let dt = DispatchTime.now().uptimeNanoseconds - t0
             statLock.lock(); inflight -= 1; rdNanos += dt; rdCalls += 1; rdBytes += UInt64(span)
             rdHist[span <= 131072 ? 0 : span <= 524288 ? 1 : 2] += 1
-            if span <= 131072 { let t = tagFor(a0); klein[t] += 1; kleinKB[t] += span / 1024 }
+            if span <= 131072 {
+                let t = tagFor(a0); klein[t] += 1; kleinKB[t] += span / 1024
+                if t == 2 && stackProbe && stackGeloggt < 40 {
+                    stackGeloggt += 1
+                    let fr = Thread.callStackSymbols.prefix(40).map { $0.split(separator: " ", maxSplits: 3, omittingEmptySubsequences: true).dropFirst(3).first.map(String.init) ?? $0 }
+                    log.notice("STACK-KATALOG off=\(a0) span=\(span): \(fr.joined(separator: " < "), privacy: .public)")
+                }
+            }
             statLock.unlock()
         }
         #if TEST_DROBO
