@@ -17,6 +17,7 @@ public enum Fehler: Error, CustomStringConvertible {
     case nichtEingehaengt(String)           // 19
     case aushaengenFehlgeschlagen(String)   // 20
     case freigabeDatei(String)              // 21
+    case helfer(String)                     // 22
 
     public var code: Int32 {
         switch self {
@@ -33,6 +34,7 @@ public enum Fehler: Error, CustomStringConvertible {
         case .nichtEingehaengt: return 19
         case .aushaengenFehlgeschlagen: return 20
         case .freigabeDatei: return 21
+        case .helfer: return 22
         }
     }
 
@@ -51,6 +53,7 @@ public enum Fehler: Error, CustomStringConvertible {
         case .nichtEingehaengt(let u): return "Volume \(u) ist nicht eingehaengt"
         case .aushaengenFehlgeschlagen(let s): return "Aushaengen fehlgeschlagen: \(s)"
         case .freigabeDatei(let s): return "Freigabeliste: \(s)"
+        case .helfer(let s): return "Hilfsdienst: \(s)"
         }
     }
 }

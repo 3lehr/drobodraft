@@ -74,6 +74,9 @@ public struct Kern {
     public var freigabePfad: String
     public var modul: () -> ModulStatus
     public var home: [String]
+    /// Hilfsdienst (freigeben|zurueckgeben): nil = ok, sonst Fehlertext. Nie fatal: reicht der Zugriff trotzdem, geht es weiter.
+    public var helfer: (String, String) -> String? = { helferAufruf($0, uuid: $1) }
+    public var meldung: (String) -> Void = { FileHandle.standardError.write(Data("HINWEIS: \($0)\n".utf8)) }
 
     public static func umgebung(_ k: String) -> String? { ProcessInfo.processInfo.environment[k].flatMap { $0.isEmpty ? nil : $0 } }
 
@@ -127,6 +130,7 @@ public struct Kern {
         let mod = modul()
         if !mod.installiert { throw Fehler.modul("Modul \(modulKennung) nicht installiert (tools/install_module.sh)") }
         if !mod.freigeschaltet { throw Fehler.modul("Modul \(modulKennung) nicht freigeschaltet (Systemeinstellungen, Betreiber)") }
+        if let h = helfer("freigeben", uuid) { meldung("Hilfsdienst: \(h)") }
         let t = try torpruefung(pfad: m.rohgeraet)
         if !t.ok { throw Fehler.tor(t.probleme) }
         try FileManager.default.createDirectory(atPath: ort, withIntermediateDirectories: true)
@@ -146,5 +150,6 @@ public struct Kern {
         var (rc, out) = ausfuehren("/sbin/umount", [e.ort])
         if rc != 0 { (rc, out) = ausfuehren("/usr/sbin/diskutil", ["unmount", e.ort]) }
         if rc != 0 || einhaengungen()[m.geraet] != nil { throw Fehler.aushaengenFehlgeschlagen(out) }
+        if let h = helfer("zurueckgeben", uuid) { meldung("Hilfsdienst: \(h). Knoten bleibt beim Nutzer; zurueck: sudo chown root:operator \(m.geraet) \(m.rohgeraet)") }
     }
 }
