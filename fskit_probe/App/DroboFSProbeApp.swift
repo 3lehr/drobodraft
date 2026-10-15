@@ -24,8 +24,9 @@ struct DroboFSProbeApp: App {
     init() {
         // Kopflauf ohne Fenster: DroboFSProbe --helfer-status | --helfer-registrieren
         let a = CommandLine.arguments
-        if a.contains("--helfer-registrieren") { print(helferRegistrieren()) }
-        if a.contains("--helfer-status") || a.contains("--helfer-registrieren") { print("status=\(helferStatusText())"); exit(0) }
+        if a.contains("--helfer-neu") { try? SMAppService.daemon(plistName: helferPlist).unregister(); print("unregister status=\(helferStatusText())") }
+        if a.contains("--helfer-registrieren") || a.contains("--helfer-neu") { print(helferRegistrieren()) }
+        if a.contains("--helfer-status") || a.contains("--helfer-registrieren") || a.contains("--helfer-neu") { print("status=\(helferStatusText())"); exit(0) }
     }
     var body: some Scene { WindowGroup { HelferAnsicht() } }
 }

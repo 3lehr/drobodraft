@@ -2,6 +2,9 @@ import Foundation
 import os
 
 // Privilegierter Hilfsdienst: genau zwei XPC-Aufrufe (freigeben/zurueckgeben), Logik in HelferLogik.swift (Kern-Paket, dort getestet).
+// Leerlauf-Ende: nach 30 s ohne Verbindung beendet sich der Dienst; launchd startet ihn beim naechsten Aufruf neu (so wirkt ein Update).
+var aktiv = 0
+var letzte = Date()
 let log = Logger(subsystem: "de.begod.drobohelper", category: "dienst")
 
 final class Dienst: NSObject, NSXPCListenerDelegate, DroboHelferProtokoll {
@@ -15,6 +18,8 @@ final class Dienst: NSObject, NSXPCListenerDelegate, DroboHelferProtokoll {
         log.notice("verbindung uid=\(d.uid, privacy: .public) pid=\(c.processIdentifier, privacy: .public)")
         c.exportedInterface = NSXPCInterface(with: DroboHelferProtokoll.self)
         c.exportedObject = d
+        aktiv += 1; letzte = Date()
+        c.invalidationHandler = { aktiv -= 1; letzte = Date() }
         c.resume()
         return true
     }
@@ -40,4 +45,5 @@ let dienst = Dienst()
 let listener = NSXPCListener(machServiceName: helferDienst)
 listener.delegate = dienst
 listener.resume()
+Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { _ in if aktiv <= 0 && Date().timeIntervalSince(letzte) > 30 { log.notice("leerlauf: beende"); exit(0) } }
 RunLoop.main.run()
