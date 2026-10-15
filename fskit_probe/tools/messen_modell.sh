@@ -39,11 +39,11 @@ while not os.path.exists(stop):
 ' "$M" "$W/.crawler_stop" ) & CP=$!; echo $CP > "$W/.crawler_pid"
     elif [ "${CRAWLER:-0}" = 1 ]; then rm -f "$W/.crawler_stop"; ( while [ ! -f "$W/.crawler_stop" ]; do find "$M" -ls >/dev/null 2>&1 & echo $! > "$W/.crawler_pid"; wait $!; done ) & CP=$!; fi
     t0=$(python3 -c 'import time;print(time.time())'); tot=0
-    for f in "$M"/d*.bin; do n=$(dd if="$f" bs=1m of=/dev/null 2>&1 | awk '/bytes transferred/{print $1}'); tot=$((tot+n)); done
+    for f in "$M"/${DATEIEN:-d*.bin}; do n=$(dd if="$f" bs=1m of=/dev/null 2>&1 | awk '/bytes transferred/{print $1}'); tot=$((tot+n)); done
     t1=$(python3 -c 'import time;print(time.time())')
     if [ -n "$CP" ]; then touch "$W/.crawler_stop"; kill $(cat "$W/.crawler_pid") 2>/dev/null; wait $CP 2>/dev/null; rm -f "$W/.crawler_stop" "$W/.crawler_pid"; fi
     say "$v${CRAWLER:+ +crawler} lauf$i $(python3 -c "print('%.1f MB/s (%d MiB in %.1f s)' % ($tot/1e6/($t1-$t0), $tot/1048576, $t1-$t0))")"
-    if [ "$i" = 1 ]; then ok=0; bad=0; while read -r h n; do g=$(shasum -a 256 "$M/$n" | cut -d' ' -f1); [ "$g" = "$h" ] && ok=$((ok+1)) || bad=$((bad+1)); done < "$SHA"; say "   sha256: $ok OK, $bad abweichend"; fi
+    if [ "$i" = 1 ] && [ -z "${DATEIEN:-}" ]; then ok=0; bad=0; while read -r h n; do g=$(shasum -a 256 "$M/$n" | cut -d' ' -f1); [ "$g" = "$h" ] && ok=$((ok+1)) || bad=$((bad+1)); done < "$SHA"; say "   sha256: $ok OK, $bad abweichend"; fi
     umount "$M"; sleep 2; hdiutil detach "$d" >/dev/null
     /usr/bin/log show --last 2m --info --style compact --predicate 'subsystem == "de.begod.drobofsprobe"' 2>/dev/null | grep -E "STATS-(LESEN|KLEIN|LOCK)" | tail -3 | sed 's/.*STATS-/   STATS-/' | tee -a "$RES"
   done

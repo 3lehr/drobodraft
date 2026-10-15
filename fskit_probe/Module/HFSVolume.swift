@@ -475,6 +475,9 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
                         var lo = 0, hi = l.starts.count                       // letztes Stueck mit start <= off
                         while lo < hi { let m = (lo + hi) / 2; if l.starts[m] <= off { lo = m + 1 } else { hi = m } }
                         var k = lo - 1, pos = 0, cur = off
+                        let mehrere = k >= 0 && k < l.ext.count && Int(l.ext[k].len - (off - l.starts[k])) < total
+                        if mehrere { b.stueckeLock.lock() }                   // mehrere Stuecke: nicht mit anderen Lesungen verschraenken
+                        defer { if mehrere { b.stueckeLock.unlock() } }
                         while pos < total {
                             guard k < l.ext.count else { throw posixError(EIO) }
                             let inExt = cur - l.starts[k]

@@ -25,6 +25,9 @@ final class DeviceBackend {
     /// HFSVolume.read-Aufrufe am libLock: Anzahl, gleichzeitig wartend (jetzt/max), Summe Wartezeit; Direktweg-/Rueckfall-Lesungen (Hebel B).
     let statLock = NSLock()
     var volReads = 0, waiting = 0, maxWaiting = 0, waitNanos: UInt64 = 0
+    /// Phase 5i: Lesungen aus MEHREREN Geraetestuecken (zerstueckelte Datei) halten diesen Lock fuer alle ihre Stuecke, damit sich die Stuecke paralleler Lesungen am Geraet
+    /// nicht verschraenken (jeder Wechsel zwischen Lesungen waere auf einem seriellen Geraet ein Sprung, ~35 ms).
+    let stueckeLock = NSLock()
     var directReads = 0, fallbackReads = 0, decmpfsReads = 0, lageTreffer = 0, lageNeu = 0
     /// Phase 5d Diagnose: Lage der Sonderdateien (sortiert nach Start; tag 0 Bitmap, 1 Extents-Ueberlauf, 2 Katalog, 3 Attribute); Lesungen <= 128 KiB werden danach
     /// gezaehlt (klein[tag] = Anzahl, kleinKB[tag] = KiB; tag 4 = ausserhalb aller Sonderdateien: Daten, Journal, Volume-Header ...). Nach dem Mount unveraenderlich.
