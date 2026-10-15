@@ -38,15 +38,31 @@ private func withName<R>(_ n: FSFileName, _ f: (UnsafePointer<CChar>) -> R) -> R
 }
 private func check(_ r: Int32) throws { if r != 0 { throw posixError(r > 0 ? r : EIO) } }
 /// Wie locked{}, zaehlt aber Wartende und Wartezeit am libLock (nur fuer HFSVolume.read; Phase-5-Messung).
-private func timedLock<T>(_ b: DeviceBackend, _ f: () -> T) -> T {
+private func timedLock<T>(_ b: DeviceBackend, _ tag: Int = 2, _ f: () -> T) -> T {
     let t0 = DispatchTime.now().uptimeNanoseconds
     b.statLock.lock(); b.waiting += 1; b.maxWaiting = max(b.maxWaiting, b.waiting); b.statLock.unlock()
-    libLock.lock(); defer { libLock.unlock() }
+    libLock.lock()
     let t1 = DispatchTime.now().uptimeNanoseconds
+    defer { let t2 = DispatchTime.now().uptimeNanoseconds; libLock.unlock(); LockStat.buchen(tag, t1 - t0, t2 - t1) }
     b.statLock.lock(); b.waiting -= 1; b.waitNanos += t1 - t0; b.statLock.unlock()
     return f()
 }
-private func locked<T>(_ f: () throws -> T) rethrows -> T { libLock.lock(); defer { libLock.unlock() }; return try f() }
+/// Phase 5i: libLock-Statistik je Aufrufer (0 lifs_map_all, 1 lifs_map_read, 2 fsops_read alt, 3 Decmpfs, 4 getattr, 5 lookup, 6 reclaim, 7 readdir, 8 -, 9 sonst):
+/// Anzahl, Wartezeit, Haltezeit (ns). Eigener Lock nur fuer die Zahlen.
+enum LockStat {
+    static let l = NSLock()
+    static var n = [Int](repeating: 0, count: 10), wait = [UInt64](repeating: 0, count: 10), hold = [UInt64](repeating: 0, count: 10)
+    static let namen = ["map_all", "map_read", "read_alt", "decmpfs", "getattr", "lookup", "reclaim", "readdir", "-", "sonst"]
+    static func buchen(_ t: Int, _ w: UInt64, _ h: UInt64) { l.lock(); n[t] += 1; wait[t] += w; hold[t] += h; l.unlock() }
+}
+private func lockedT<T>(_ t: Int, _ f: () throws -> T) rethrows -> T {
+    let t0 = DispatchTime.now().uptimeNanoseconds
+    libLock.lock()
+    let t1 = DispatchTime.now().uptimeNanoseconds
+    defer { let t2 = DispatchTime.now().uptimeNanoseconds; libLock.unlock(); LockStat.buchen(t, t1 - t0, t2 - t1) }
+    return try f()
+}
+private func locked<T>(_ f: () throws -> T) rethrows -> T { try lockedT(9, f) }
 
 #if TEST_DROBO
 private let droboBau = 1
@@ -111,6 +127,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         }
         rng.sort { $0.start < $1.start }
         backend.ranges = rng
+        LockStat.l.lock(); LockStat.n = [Int](repeating: 0, count: 10); LockStat.wait = LockStat.n.map { _ in 0 }; LockStat.hold = LockStat.wait; LockStat.l.unlock()
         log.notice("GEOM dev.blockSize=\(dev.blockSize) dev.physicalBlockSize=\(dev.physicalBlockSize) hfs_logical_block_size=\(gl) hfs_physical_block_size=\(gp) hfsPlusIOPosOffset=\(go) blockCount=\(dev.blockCount)")
         let name = withUnsafePointer(to: &info.name) { $0.withMemoryRebound(to: CChar.self, capacity: 256) { String(cString: $0) } }
         self.dev = dev; self.backend = backend; self.readOnly = ro
@@ -209,6 +226,10 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         be.statLock.unlock()
         log.notice("STATS-LESEN dev_reads=\(c.0) dev_read_bytes=\(c.1) hist_le128k=\(c.2[0]) hist_le512k=\(c.2[1]) hist_le1m=\(c.2[2]) dev_read_ms=\(c.3 / 1_000_000) vol_reads=\(c.4) max_wartend=\(c.5) lock_wait_ms=\(c.6 / 1_000_000) direkt_reads=\(c.7) fallback_reads=\(c.8) decmpfs_reads=\(c.9) lage_treffer=\(lg.0) lage_neu=\(lg.1) max_dev_read_parallel=\(c.10) direktweg=\(self.directRead ? 1 : 0) drobo_bau=\(droboBau) fehler_bau=\(fehlerBau)")
         log.notice("STATS-KLEIN le128k nach Bereich: bitmap=\(kl[0])/\(kk[0])KiB extents=\(kl[1])/\(kk[1])KiB katalog=\(kl[2])/\(kk[2])KiB attribute=\(kl[3])/\(kk[3])KiB sonst=\(kl[4])/\(kk[4])KiB | FSKit-Ebene: vol_read_bytes=\(vr.0) vol_nonseq=\(vr.1) vol_doppelt_bytes=\(vr.2) vol_dateien=\(vr.3) | Knoten: anfragen=\(kn.0) eindeutig=\(kn.1) treffer=\(kn.2) cache=\(be.knotenCacheAn ? "an" : "aus", privacy: .public) | Enum: chunks=\(en.0) fortsetzungen=\(en.1) eintraege=\(en.2) | Operationen: getattr=\(ops.0) lookup=\(ops.1) readdir=\(ops.2) reclaim=\(ops.3)")
+        LockStat.l.lock()
+        let ls = (0..<10).filter { LockStat.n[$0] > 0 }.map { "\(LockStat.namen[$0])=\(LockStat.n[$0])/w\(LockStat.wait[$0] / 1_000_000)/h\(LockStat.hold[$0] / 1_000_000)" }.joined(separator: " ")
+        LockStat.l.unlock()
+        log.notice("STATS-LOCK (Anzahl/Wartezeit ms/Haltezeit ms je Aufrufer): \(ls, privacy: .public)")
         backend.unregister()
         try check(r)
     }
@@ -243,7 +264,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         backend.opZaehlen(0)
         let it = try self.item(item)
         var u = UVFSFileAttributes()
-        try locked { HFS_fsOps.fsops_getattr!(it.node, &u) }.check()
+        try lockedT(4) { HFS_fsOps.fsops_getattr!(it.node, &u) }.check()
         return convert(u)
     }
 
@@ -270,7 +291,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
     func lookupItem(named name: FSFileName, inDirectory directory: FSItem) async throws -> (FSItem, FSFileName) {
         backend.opZaehlen(1)
         let d = try item(directory)
-        return try locked { () throws -> (FSItem, FSFileName) in
+        return try lockedT(5) { () throws -> (FSItem, FSFileName) in
             var out: Node? = nil
             let r = withName(name) { HFS_fsOps.fsops_lookup!(d.node, $0, &out) }
             try check(r)
@@ -282,7 +303,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
     func reclaimItem(_ item: FSItem) async throws {
         backend.opZaehlen(3)
         let it = try self.item(item)
-        locked {
+        lockedT(6) {
             if it === rootItem { return }                      // Wurzel gehoert dem Mount (LFHFS_Unmount)
             items[it.node] = nil
             for _ in 0..<it.refs { _ = HFS_fsOps.fsops_reclaim!(it.node, 0) }
@@ -384,7 +405,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         }
         while true {
             var n: Int32 = 0
-            let r = locked { lifs_readdir_chunk(d.node, cur, &ver, wantAttrs ? 1 : 0, chunk, 32, &n) }
+            let r = lockedT(7) { lifs_readdir_chunk(d.node, cur, &ver, wantAttrs ? 1 : 0, chunk, 32, &n) }
             chunks += 1
             if r == -1 { break }                                  // UVFS_READDIR_EOF_REACHED
             if r != 0 { throw posixError(r > 0 ? r : EIO) }
@@ -434,8 +455,8 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
             if l == nil {
                 var cap = 4096, n: Int32 = 0, fsz: UInt64 = 0
                 var buf = [lifs_extent_t](repeating: lifs_extent_t(), count: cap)
-                var rc: Int32 = timedLock(b) { lifs_map_all(it.node, &buf, Int32(cap), &n, &fsz) }
-                if rc == 0 && Int(n) > cap { cap = Int(n); buf = [lifs_extent_t](repeating: lifs_extent_t(), count: cap); rc = timedLock(b) { lifs_map_all(it.node, &buf, Int32(cap), &n, &fsz) } }
+                var rc: Int32 = timedLock(b, 0) { lifs_map_all(it.node, &buf, Int32(cap), &n, &fsz) }
+                if rc == 0 && Int(n) > cap { cap = Int(n); buf = [lifs_extent_t](repeating: lifs_extent_t(), count: cap); rc = timedLock(b, 0) { lifs_map_all(it.node, &buf, Int32(cap), &n, &fsz) } }
                 let nn = rc == 0 ? min(Int(n), cap) : 0
                 let neu = Lage(kind: rc == 0 ? 0 : rc == 2 ? 1 : 2, size: fsz, ext: Array(buf[0..<nn]))
                 lageLock.lock()
@@ -470,7 +491,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
             var ext = [lifs_extent_t](repeating: lifs_extent_t(), count: 16)
             var n: Int32 = 0, total: UInt64 = 0
             let node = it.node
-            let rc: Int32 = timedLock(b) { lifs_map_read(node, UInt64(offset), UInt64(want), &ext, 16, &n, &total) }
+            let rc: Int32 = timedLock(b, 1) { lifs_map_read(node, UInt64(offset), UInt64(want), &ext, 16, &n, &total) }
             if rc == 0 {
                 if total > 0 {
                     try buffer.withUnsafeMutableBytes { raw in
@@ -493,7 +514,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         try check(r)
         if act < want {                                                                      // Kurzlesung ist nur am Dateiende zulaessig; sonst wuerde FSKit den ungefuellten Puffer ausliefern
             var u = UVFSFileAttributes()
-            _ = locked { HFS_fsOps.fsops_getattr!(it.node, &u) }
+            _ = lockedT(4) { HFS_fsOps.fsops_getattr!(it.node, &u) }
             if UInt64(offset) + UInt64(act) < u.fa_size { log.error("Kurzlesung off=\(offset) want=\(want) act=\(act) size=\(u.fa_size)"); throw posixError(EIO) }
         }
         return act
@@ -503,7 +524,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
     private func readCompressed(_ node: Node, _ offset: off_t, _ want: Int, _ buffer: FSMutableFileDataBuffer) throws -> Int {
         let b = backend
         b.statLock.lock(); b.decmpfsReads += 1; b.statLock.unlock()
-        return try locked { try buffer.withUnsafeMutableBytes { try Decmpfs.read(node: node, offset: UInt64(offset), want: want, dst: $0.baseAddress!) } }
+        return try lockedT(3) { try buffer.withUnsafeMutableBytes { try Decmpfs.read(node: node, offset: UInt64(offset), want: want, dst: $0.baseAddress!) } }
     }
 
     func write(contents: Data, to item: FSItem, at offset: off_t) async throws -> Int {

@@ -45,7 +45,7 @@ while not os.path.exists(stop):
     say "$v${CRAWLER:+ +crawler} lauf$i $(python3 -c "print('%.1f MB/s (%d MiB in %.1f s)' % ($tot/1e6/($t1-$t0), $tot/1048576, $t1-$t0))")"
     if [ "$i" = 1 ]; then ok=0; bad=0; while read -r h n; do g=$(shasum -a 256 "$M/$n" | cut -d' ' -f1); [ "$g" = "$h" ] && ok=$((ok+1)) || bad=$((bad+1)); done < "$SHA"; say "   sha256: $ok OK, $bad abweichend"; fi
     umount "$M"; sleep 2; hdiutil detach "$d" >/dev/null
-    /usr/bin/log show --last 2m --info --style compact --predicate 'subsystem == "de.begod.drobofsprobe"' 2>/dev/null | grep -E "STATS-(LESEN|KLEIN)" | tail -2 | sed 's/.*STATS-/   STATS-/' | tee -a "$RES"
+    /usr/bin/log show --last 2m --info --style compact --predicate 'subsystem == "de.begod.drobofsprobe"' 2>/dev/null | grep -E "STATS-(LESEN|KLEIN|LOCK)" | tail -3 | sed 's/.*STATS-/   STATS-/' | tee -a "$RES"
   done
 done
 rm -f "$C/direktweg_aus" "$C/extentcache_aus" "$C/knotencache_aus" "$C/lage_aus"; cp "$W/freigabe.orig.json" "$F"
