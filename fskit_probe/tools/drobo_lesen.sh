@@ -11,7 +11,7 @@
 set -u
 UUID=${DROBO_UUID:-C2E343A1-0D4C-3B35-B5DC-0325C1E1E1B1}
 LISTE=${LISTE:-$HOME/Desktop/drobo_leseliste.json}
-MNT=${MNT:-$HOME/drobo_lesen_mnt}
+MNT=${MNT:-/private/tmp/drobo_lesen_mnt}  # NICHT unter $HOME: Spotlight indexiert den Benutzerordner und laeuft in den Mount (766k Eintraege/90 s, 2026-10-15)
 FREIGABE="$HOME/Library/Containers/de.begod.drobofsprobe.fsmodule/Data/freigabe.json"
 DCL=${DECMPFS_LISTE:-$(cd "$(dirname "$0")" && pwd)/drobo_decmpfs_auswahl.json}; DCSCRATCH=${DECMPFS_SCRATCH:-${TMPDIR:-/tmp}}
 MODE=lesen; case "${1:-}" in --trocken) MODE=trocken;; --freigabe-anlegen) MODE=anlegen;; "") ;; *) sed -n 2,9p "$0"; exit 2;; esac
