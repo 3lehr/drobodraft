@@ -24,7 +24,7 @@ final class HelferTests: XCTestCase {
         var l = HelferLogik()
         l.finden = { u in bsd.map { Medium(bsd: $0, uuid: u.uppercased(), groesse: 1) } }
         l.ordnerVon = { _ in self.home }
-        l.knotenArt = { $0.hasPrefix("/dev/r") ? S_IFCHR : art }
+        l.knotenArt = { $0.hasPrefix("/dev/r") ? S_IFCHR : ($0.hasPrefix("/dev/") ? art : S_IFDIR) }
         l.chown = { p, u, g in self.calls.append("chown \(p) \(u):\(g)"); return chownRC }
         l.chmod = { p, m in self.calls.append("chmod \(p) \(String(m, radix: 8))"); return 0 }
         l.operatorGID = { 5 }
@@ -87,5 +87,58 @@ final class HelferTests: XCTestCase {
     }
     func testTempHomeNichtEchtesHome() {
         XCTAssertFalse(home.hasPrefix(NSHomeDirectory()), "Temp-Home darf nicht das echte Home sein")
+    }
+
+    // MARK: Freigabeliste ueber den Dienst
+
+    var listePfad: String { home + "/Library/Containers/\(modulKennung)/Data/freigabe.json" }
+    func eintraege() throws -> [[String: Any]] { try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: listePfad))) as! [[String: Any]] }
+    func listeMitEigner() -> HelferLogik {
+        var l = logik(); l.datei = { _ in (501, 20) }; l.eigner = { p, u, g in self.calls.append("eigner \(p == self.listePfad) \(u):\(g)"); return 0 }; return l
+    }
+    let fremd = "11111111-1111-1111-1111-111111111111"
+
+    func testLesen() throws {
+        try liste(gut)
+        XCTAssertEqual(try logik().freigabeLesen(U, uid: 501), "nurlesen")
+        XCTAssertEqual(try logik().freigabeLesen(fremd, uid: 501), "")
+    }
+    func testLesenKaputtUndUngueltig() throws {
+        try liste("{kaputt")
+        XCTAssertThrowsError(try logik().freigabeLesen(U, uid: 501))
+        XCTAssertThrowsError(try logik().freigabeLesen("../x", uid: 501))
+    }
+    func testSetzenNeuBehaeltAndereUndGibtDateiAnNutzerZurueck() throws {
+        try liste(gut)
+        try listeMitEigner().freigabeSetzen(fremd, modus: "schreiben", maxBytes: 99, uid: 501)
+        let e = try eintraege()
+        XCTAssertEqual(e.count, 2)
+        XCTAssertEqual(e.first { $0["volume_uuid"] as? String == U }?["modus"] as? String, "nurlesen")
+        XCTAssertEqual(e.first { $0["volume_uuid"] as? String == fremd }?["max_bytes"] as? Int, 99)
+        XCTAssertEqual(calls, ["eigner true 501:20"])
+    }
+    func testSetzenAendertModusUndEntfernen() throws {
+        try liste(gut)
+        try listeMitEigner().freigabeSetzen(U, modus: "schreiben", maxBytes: 0, uid: 501)
+        XCTAssertEqual(try eintraege()[0]["modus"] as? String, "schreiben")
+        try listeMitEigner().freigabeSetzen(U, modus: "entfernen", maxBytes: 0, uid: 501)
+        XCTAssertEqual(try eintraege().count, 0)
+    }
+    func testSetzenKaputteListeNieUeberschreiben() throws {
+        try liste("{kaputt")
+        XCTAssertThrowsError(try listeMitEigner().freigabeSetzen(U, modus: "schreiben", maxBytes: 5, uid: 501))
+        XCTAssertThrowsError(try listeMitEigner().freigabeSetzen(U, modus: "entfernen", maxBytes: 0, uid: 501))
+        XCTAssertEqual(try String(contentsOfFile: listePfad, encoding: .utf8), "{kaputt")
+    }
+    func testSetzenAbgelehnt() throws {
+        try liste(gut)
+        let vorher = try String(contentsOfFile: listePfad, encoding: .utf8)
+        XCTAssertThrowsError(try listeMitEigner().freigabeSetzen(U, modus: "root", maxBytes: 5, uid: 501))          // unbekannter Modus
+        XCTAssertThrowsError(try listeMitEigner().freigabeSetzen("../x", modus: "schreiben", maxBytes: 5, uid: 501)) // ungueltige UUID
+        XCTAssertThrowsError(try listeMitEigner().freigabeSetzen(fremd, modus: "schreiben", maxBytes: 0, uid: 501)) // neu ohne max_bytes
+        var l = listeMitEigner(); l.knotenArt = { _ in nil }
+        XCTAssertThrowsError(try l.freigabeSetzen(U, modus: "schreiben", maxBytes: 5, uid: 501))                    // Container fehlt
+        XCTAssertEqual(try String(contentsOfFile: listePfad, encoding: .utf8), vorher)
+        XCTAssertEqual(calls, [])
     }
 }

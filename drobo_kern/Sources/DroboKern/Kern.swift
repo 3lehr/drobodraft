@@ -71,7 +71,9 @@ public struct Zustand {
 /// Alles, was sich im Test austauschen laesst, steht hier; die Vorgaben sind die echten Systemaufrufe.
 public struct Kern {
     public var uuid: String
-    public var freigabePfad: String
+    /// Freigabeliste: Datei (Tests, DROBO_FREIGABE) oder Standard = ueber den Hilfsdienst (Container ist fuer die Shell gesperrt).
+    public var listeLesen: (String) throws -> Modus?
+    public var listeSetzen: (String, String, UInt64?) throws -> Void   // Modus: nurlesen|schreiben|entfernen
     public var modul: () -> ModulStatus
     public var home: [String]
     /// Hilfsdienst (freigeben|zurueckgeben): nil = ok, sonst Fehlertext. Nie fatal: reicht der Zugriff trotzdem, geht es weiter.
@@ -81,14 +83,22 @@ public struct Kern {
     public static func umgebung(_ k: String) -> String? { ProcessInfo.processInfo.environment[k].flatMap { $0.isEmpty ? nil : $0 } }
 
     public init(uuid: String = Kern.umgebung("DROBO_UUID") ?? vorgabeUUID,
-                freigabePfad: String = Freigabe.standardPfad,
+                freigabePfad: String? = Kern.umgebung("DROBO_FREIGABE"),
                 modul: @escaping () -> ModulStatus = modulStatus,
                 home: [String] = [NSHomeDirectory(), ProcessInfo.processInfo.environment["HOME"] ?? NSHomeDirectory()]) {
-        self.uuid = uuid.uppercased(); self.freigabePfad = freigabePfad; self.modul = modul; self.home = home
+        self.uuid = uuid.uppercased()
+        if let p = freigabePfad {
+            listeLesen = { try Freigabe.lesen(uuid: $0, pfad: p) }
+            listeSetzen = { $1 == "entfernen" ? try Freigabe.entfernen(uuid: $0, pfad: p) : try Freigabe.setzen(uuid: $0, modus: Modus(rawValue: $1)!, maxBytes: $2, pfad: p) }
+        } else {
+            listeLesen = { try helferFreigabeLesen(uuid: $0) }
+            listeSetzen = { try helferFreigabeSetzen(uuid: $0, modus: $1, maxBytes: $2 ?? 0) }
+        }
+        self.modul = modul; self.home = home
     }
 
     public func zustand() throws -> Zustand {
-        let fr = try Freigabe.lesen(uuid: uuid, pfad: freigabePfad)
+        let fr = try listeLesen(uuid)
         let v: Zustand.Verbindung
         if let m = finden(uuid: uuid) {
             if let e = einhaengungen()[m.geraet] { v = .eingehaengt(m, e) } else { v = .angeschlossen(m) }
@@ -103,8 +113,10 @@ public struct Kern {
         case .angeschlossen(let m), .eingehaengt(let m, _): mb = m.groesse + (1 << 30)
         case .nichtAngeschlossen: break
         }
-        try Freigabe.setzen(uuid: uuid, modus: modus, maxBytes: mb, pfad: freigabePfad)
+        try listeSetzen(uuid, modus.rawValue, mb)
     }
+
+    public func freigabeEntfernen() throws { try listeSetzen(uuid, "entfernen", nil) }
 
     /// Ort liegt unter Home? Aufgeloest ueber Symlinks (der naechste vorhandene Vorfahr), damit /var/.. oder Links nicht taeuschen.
     static func aufgeloest(_ pfad: String) -> String {
@@ -123,7 +135,7 @@ public struct Kern {
         if unterHome(ort) { throw Fehler.ortUnterHome(ort) }
         guard let m = finden(uuid: uuid) else { throw Fehler.nichtGefunden(uuid) }
         if let e = einhaengungen()[m.geraet] { throw Fehler.eingehaengt("\(m.geraet) auf \(e.ort) (\(e.nurlesen ? "ro" : "rw"))") }
-        guard let f = try Freigabe.lesen(uuid: uuid, pfad: freigabePfad) else { throw Fehler.keineFreigabe(uuid) }
+        guard let f = try listeLesen(uuid) else { throw Fehler.keineFreigabe(uuid) }
         if modus == .schreiben && f != .schreiben {
             throw Fehler.freigabeReichtNicht("Freigabe fuer \(uuid) steht auf nurlesen, Schreiben verlangt. Aendern: drobo freigabe schreiben")
         }

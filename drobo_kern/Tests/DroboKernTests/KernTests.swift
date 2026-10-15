@@ -276,6 +276,7 @@ final class KernTests: XCTestCase {
     /// Abbild OHNE Marker: das Modul entscheidet nur nach seiner Freigabeliste (echte Datei im Container; sie wird hier absichtlich ergaenzt und im tearDown byteweise zurueckgestellt).
     func testEinhaengenNurlesenDurchHfsdroboMitEchterFreigabe() throws {
         try XCTSkipUnless(modulStatus().freigeschaltet, "Modul nicht freigeschaltet")
+        try XCTSkipUnless(vorher != nil, "Container fuer die Shell gesperrt (App-Daten-Schutz, kTCCServiceSystemPolicyAppData): Liste nur ueber den Hilfsdienst les-/schreibbar -> Ersatz: Integrationslauf CLI+Dienst (signierte CLI)")
         erlaubt = true
         let dev = try anhaengen(try abbild("n", journal: false, marker: false)); let u = try uuid(dev)
         let k = Kern(uuid: u, freigabePfad: Self.betreiberListe)

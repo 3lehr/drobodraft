@@ -6,7 +6,8 @@ func hilfe() -> Never {
     drobo status [--json] [--uuid U]
     drobo einhaengen [--schreiben] [--ort PFAD] [--uuid U]     (Vorgabe nurlesen, Ort \(vorgabeOrt), nie unter $HOME)
     drobo aushaengen [--uuid U]
-    drobo freigabe nurlesen|schreiben [--uuid U]
+    drobo freigabe nurlesen|schreiben|entfernen [--uuid U]
+    drobo helfer freigeben|zurueckgeben [--uuid U]      (Diagnose: ruft den Hilfsdienst direkt)
     Umgebung: DROBO_UUID, DROBO_FREIGABE. Exit-Codes: 0 ok, 2 Eingabe, 10-21 siehe Meldung.
     """)
     exit(2)
@@ -33,8 +34,13 @@ do {
     case "aushaengen":
         try kern.aushaengen(); print("ausgehaengt")
     case "freigabe":
+        if args.first == "entfernen" { try kern.freigabeEntfernen(); print("Freigabe \(kern.uuid): entfernt"); break }
         guard let m = args.first.flatMap(Modus.init(rawValue:)) else { hilfe() }
         try kern.freigabeSetzen(m); print("Freigabe \(kern.uuid): \(m.rawValue)")
+    case "helfer":
+        guard let a = args.first, a == "freigeben" || a == "zurueckgeben" else { hilfe() }
+        if let f = helferAufruf(a, uuid: kern.uuid) { throw Fehler.helfer(f) }
+        print("\(a) ok")
     default: hilfe()
     }
 } catch let f as Fehler {

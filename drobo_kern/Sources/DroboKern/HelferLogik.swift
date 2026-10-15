@@ -11,6 +11,10 @@ public let helferAnforderung = "anchor apple generic and certificate leaf[subjec
 @objc public protocol DroboHelferProtokoll {
     func freigeben(_ volumeUUID: String, reply: @escaping (String?) -> Void)
     func zurueckgeben(_ volumeUUID: String, reply: @escaping (String?) -> Void)
+    /// Freigabeliste des Aufrufers (der Container ist fuer die Shell durch den App-Daten-Schutz gesperrt). Antwort: (Modus, "" = kein Eintrag; Fehlertext).
+    func freigabeLesen(_ volumeUUID: String, reply: @escaping (String?, String?) -> Void)
+    /// modus: nurlesen | schreiben | entfernen. maxBytes nur fuer neue Eintraege.
+    func freigabeSetzen(_ volumeUUID: String, modus: String, maxBytes: UInt64, reply: @escaping (String?) -> Void)
 }
 
 public struct HelferFehler: Error, CustomStringConvertible, Equatable {
@@ -28,14 +32,43 @@ public struct HelferLogik {
     public var operatorGID: () -> gid_t? = { getgrnam("operator").map { $0.pointee.gr_gid } }
     public init() {}
 
+    public var datei: (String) -> (uid_t, gid_t)? = { var s = stat(); return stat($0, &s) == 0 ? (s.st_uid, s.st_gid) : nil }
+    public var eigner: (String, uid_t, gid_t) -> Int32 = { Darwin.chown($0, $1, $2) }
+
     static let uuidMuster = #"^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"#
     static let partition = #"^disk[0-9]+s[0-9]+$"#
 
-    /// Liste des ANFRAGENDEN Nutzers; kaputt, fehlend oder ohne Eintrag = Ablehnung.
-    func pruefen(_ uuid: String, uid: uid_t) throws -> Medium {
+    func listenPfad(_ uuid: String, uid: uid_t) throws -> String {
         guard uuid.range(of: Self.uuidMuster, options: .regularExpression) != nil else { throw HelferFehler("keine gueltige UUID") }
         guard let home = ordnerVon(uid) else { throw HelferFehler("kein Home fuer uid \(uid)") }
-        let pfad = home + "/Library/Containers/\(appKennung).fsmodule/Data/freigabe.json"
+        return home + "/Library/Containers/\(appKennung).fsmodule/Data/freigabe.json"
+    }
+
+    public func freigabeLesen(_ uuid: String, uid: uid_t) throws -> String {
+        let p = try listenPfad(uuid, uid: uid)
+        do { return try Freigabe.lesen(uuid: uuid, pfad: p)?.rawValue ?? "" } catch { throw HelferFehler("Freigabeliste unbrauchbar: \(error)") }
+    }
+
+    /// Schreibt als root in die Liste des Aufrufers: Container muss existieren (wird nicht angelegt), kaputte Liste nie ueberschrieben, Eigentuemer der Datei bleibt/wird der Nutzer.
+    public func freigabeSetzen(_ uuid: String, modus: String, maxBytes: UInt64, uid: uid_t) throws {
+        let p = try listenPfad(uuid, uid: uid)
+        let dir = (p as NSString).deletingLastPathComponent
+        guard knotenArt(dir) == S_IFDIR else { throw HelferFehler("Container \(dir) fehlt (Modul nie gestartet?)") }
+        let alt = datei(p)
+        do {
+            if modus == "entfernen" { try Freigabe.entfernen(uuid: uuid, pfad: p) }
+            else {
+                guard let m = Modus(rawValue: modus) else { throw HelferFehler("Modus \(modus) unbekannt") }
+                try Freigabe.setzen(uuid: uuid, modus: m, maxBytes: maxBytes == 0 ? nil : maxBytes, pfad: p)
+            }
+        } catch let h as HelferFehler { throw h } catch { throw HelferFehler("Freigabeliste: \(error)") }
+        let (u, g) = alt ?? (uid, datei(dir)?.1 ?? 20)
+        if datei(p) != nil, eigner(p, u, g) != 0 { throw HelferFehler("chown \(p): \(String(cString: strerror(errno)))") }
+    }
+
+    /// Liste des ANFRAGENDEN Nutzers; kaputt, fehlend oder ohne Eintrag = Ablehnung.
+    func pruefen(_ uuid: String, uid: uid_t) throws -> Medium {
+        let pfad = try listenPfad(uuid, uid: uid)
         do { guard try Freigabe.lesen(uuid: uuid, pfad: pfad) != nil else { throw HelferFehler("UUID nicht in der Freigabeliste") } }
         catch let h as HelferFehler { throw h }
         catch { throw HelferFehler("Freigabeliste unbrauchbar: \(error)") }

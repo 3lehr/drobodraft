@@ -37,4 +37,14 @@ public enum Freigabe {
         try FileManager.default.createDirectory(atPath: (pfad as NSString).deletingLastPathComponent, withIntermediateDirectories: true)
         try d.write(to: URL(fileURLWithPath: pfad), options: .atomic)
     }
+
+    /// Entfernt den Eintrag der UUID (Rest unveraendert); fehlende Datei/Eintrag = nichts zu tun. Kaputte Liste wirft, wird nie ueberschrieben.
+    public static func entfernen(uuid: String, pfad: String = standardPfad) throws {
+        var (liste, alsDict) = try laden(pfad)
+        let n = liste.count
+        liste.removeAll { ($0["volume_uuid"] as? String)?.uppercased() == uuid.uppercased() }
+        guard liste.count != n else { return }
+        let d = try JSONSerialization.data(withJSONObject: alsDict ? ["eintraege": liste] : liste, options: [.prettyPrinted, .sortedKeys])
+        try d.write(to: URL(fileURLWithPath: pfad), options: .atomic)
+    }
 }
