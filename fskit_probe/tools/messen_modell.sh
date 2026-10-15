@@ -1,10 +1,11 @@
 #!/bin/bash
 # Phase 5d: Lesedurchsatz am Testabbild (frag_abbild.sh) je Variante, 3 Laeufe frisch gemountet, dd bs=1m ueber alle d*.bin nacheinander, danach sha256-Abgleich.
-# Varianten (Schalterdateien im Modulcontainer): alt = direktweg_aus + fenster_aus (alter fsops_read-Weg), B = Direktweg ohne Baumfenster, Bfenster = Direktweg mit Baumfenster (Phase 5e).
-# CRAWLER=1: waehrend des Lesens laeuft `find MOUNT -ls` in Schleife (Fremdzugriff auf den Katalog, Phase 5e); Name im Ergebnis mit Suffix +crawler.
+# Varianten (Schalterdateien im Modulcontainer): alt = direktweg_aus + knotencache_aus (alter fsops_read-Weg), B = Direktweg ohne Knotencache, Bcache = Direktweg mit Knotencache (Phase 5f).
+# CRAWLER=1: waehrend des Lesens laeuft `find MOUNT -ls` in Schleife (Fremdzugriff auf den Katalog, Phase 5e); CRAWLER=scandir: Python os.scandir + stat
+# ueber alle Verzeichnisse in Schleife (grosse Verzeichnisse per readdir in Chunks, Phase 5f); Name im Ergebnis mit Suffix +crawler.
 # Aufruf: bash messen_modell.sh IMG SHAFILE LABEL [VARIANTEN="alt B cache"]   Ergebnis: $W/modell_LABEL.txt
 set -u
-IMG=$1; SHA=$2; LAB=$3; VAR=${4:-"alt B Bfenster"}; W=${W:-/Volumes/daten/xcode/drobo/p5d}; RUNS=${RUNS:-3}
+IMG=$1; SHA=$2; LAB=$3; VAR=${4:-"alt B Bcache"}; W=${W:-/Volumes/daten/xcode/drobo/p5d}; RUNS=${RUNS:-3}
 C="$HOME/Library/Containers/de.begod.drobofsprobe.fsmodule/Data"; F=$C/freigabe.json; RES=$W/modell_$LAB.txt; : > "$RES"; M=$W/mnt_modell
 say() { echo "$*" | tee -a "$RES"; }
 [ -f "$W/freigabe.orig.json" ] || cp "$F" "$W/freigabe.orig.json"
@@ -15,11 +16,20 @@ l = json.load(open(sys.argv[2])); l.append({"volume_uuid": sys.argv[3].upper(), 
 PY
 say "== $(date +%Y-%m-%dT%H:%M:%S%z) Abbild $LAB =="
 for v in $VAR; do
-  rm -f "$C/direktweg_aus" "$C/extentcache_aus" "$C/fenster_aus"; case $v in alt) touch "$C/direktweg_aus" "$C/fenster_aus";; B) touch "$C/extentcache_aus" "$C/fenster_aus";; Bfenster) ;; esac
+  rm -f "$C/direktweg_aus" "$C/extentcache_aus" "$C/knotencache_aus"; case $v in alt) touch "$C/direktweg_aus" "$C/knotencache_aus";; B) touch "$C/extentcache_aus" "$C/knotencache_aus";; Bcache) ;; esac
   for i in $(seq 1 $RUNS); do
     d=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nomount "$IMG" | awk 'NR==1{print $1}'); mkdir -p "$M"
     mount -F -t hfsdrobo -o rdonly "$d" "$M" || { sleep 3; mount -F -t hfsdrobo -o rdonly "$d" "$M"; }
-    CP=""; if [ "${CRAWLER:-0}" = 1 ]; then rm -f "$W/.crawler_stop"; ( while [ ! -f "$W/.crawler_stop" ]; do find "$M" -ls >/dev/null 2>&1 & echo $! > "$W/.crawler_pid"; wait $!; done ) & CP=$!; fi
+    CP=""; if [ "${CRAWLER:-0}" = scandir ]; then rm -f "$W/.crawler_stop"; ( python3 -I -c '
+import os, sys
+m, stop = sys.argv[1:3]
+ds = sorted(e.path for e in os.scandir(m) if e.is_dir())[:int(os.environ.get("CRAWLDIRS", "9999"))]   # CRAWLDIRS=1: nur ein Verzeichnis -> Katalogteil passt in den Knotencache
+while not os.path.exists(stop):
+    for d in ds:
+        if os.path.exists(stop): break
+        for e in os.scandir(d): e.stat()
+' "$M" "$W/.crawler_stop" ) & CP=$!; echo $CP > "$W/.crawler_pid"
+    elif [ "${CRAWLER:-0}" = 1 ]; then rm -f "$W/.crawler_stop"; ( while [ ! -f "$W/.crawler_stop" ]; do find "$M" -ls >/dev/null 2>&1 & echo $! > "$W/.crawler_pid"; wait $!; done ) & CP=$!; fi
     t0=$(python3 -c 'import time;print(time.time())'); tot=0
     for f in "$M"/d*.bin; do n=$(dd if="$f" bs=1m of=/dev/null 2>&1 | awk '/bytes transferred/{print $1}'); tot=$((tot+n)); done
     t1=$(python3 -c 'import time;print(time.time())')
@@ -30,4 +40,4 @@ for v in $VAR; do
     /usr/bin/log show --last 2m --info --style compact --predicate 'subsystem == "de.begod.drobofsprobe"' 2>/dev/null | grep -E "STATS-(LESEN|KLEIN)" | tail -2 | sed 's/.*STATS-/   STATS-/' | tee -a "$RES"
   done
 done
-rm -f "$C/direktweg_aus" "$C/extentcache_aus" "$C/fenster_aus"; cp "$W/freigabe.orig.json" "$F"
+rm -f "$C/direktweg_aus" "$C/extentcache_aus" "$C/knotencache_aus"; cp "$W/freigabe.orig.json" "$F"
