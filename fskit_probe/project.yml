@@ -15,8 +15,13 @@ targets:
   DroboFSProbe:
     type: application
     platform: macOS
+    info:
+      path: App/Info.plist
+      properties:
+        NSRemovableVolumesUsageDescription: "Die Drobo-App braucht Zugriff auf das Laufwerk, um es nur lesend einzuhaengen."
     sources:
       - App
+      - ../drobo_kern/Sources/DroboKern/Medium.swift
       - path: Helper/de.begod.drobohelper.plist
         buildPhase:
           copyFiles:
@@ -28,6 +33,7 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         ENABLE_HARDENED_RUNTIME: YES
     dependencies:
+      - sdk: DiskArbitration.framework
       - target: DroboFSProbeModule
         embed: true
       - target: DroboFSProbeHelper
