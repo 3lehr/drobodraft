@@ -12,7 +12,19 @@ private let VOL_CAP_FMT_JOURNAL_: UInt64 = 0x8, VOL_CAP_FMT_JOURNAL_ACTIVE_: UIn
 
 typealias Node = UnsafeMutableRawPointer
 
+/// Phase 5g: vollstaendige Lage (Extents) einer Datei, nur nurlesen (unveraenderlich); kind 0 Direktweg, 1 komprimiert, 2 kein Direktweg (Sonderfall -> alter Weg).
+final class Lage {
+    let kind: Int, size: UInt64, ext: [lifs_extent_t], starts: [UInt64]
+    init(kind: Int, size: UInt64, ext: [lifs_extent_t]) {
+        self.kind = kind; self.size = size; self.ext = ext
+        var st = [UInt64](), a: UInt64 = 0
+        for e in ext { st.append(a); a += e.len }
+        starts = st
+    }
+}
+
 final class HItem: FSItem {
+    var lage: Lage?
     let node: Node
     var refs = 1
     var lastEnd: Int64 = 0, gesehen = false, seiten: [UInt64] = []     // Diagnose (Phase 5d), unter statLock; seiten = Bitmap der ausgelieferten 4-KiB-Seiten
@@ -60,6 +72,11 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
     private var roBlocked = 0
     /// Hebel B nur im Modus nurlesen; Messschalter: Datei direktweg_aus im Container des Moduls schaltet ihn ab (alter Weg zum Vergleich).
     private let directRead: Bool
+    /// Lagecache: Dateien mit gespeicherter Lage (FIFO-Verdraengung, aelteste zuerst), eigener Lock nur dafuer.
+    /// ponytail: 1024 Dateien; eine Lage kostet 16 B je Extent (Drobo: Dateien mit einigen hundert Extents -> wenige MB); FIFO statt LRU, erst bei Messung ersetzen.
+    private let lageLock = NSLock(), lageAn = !FileManager.default.fileExists(atPath: NSHomeDirectory() + "/lage_aus")
+    private var lageFifo: [HItem] = []
+    private static let lageMax = 1024
     private func rofail() throws -> Never { roBlocked += 1; throw posixError(EROFS) }
 
     init(dev: FSBlockDeviceResource, backend: DeviceBackend, containerUUID: UUID, nurlesen: Bool = false) throws {
@@ -185,11 +202,12 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         let be = backend
         be.statLock.lock()                                   // Direktweg-Lesungen koennen noch zaehlen: Werte konsistent kopieren
         let c = (be.rdCalls, be.rdBytes, be.rdHist, be.rdNanos, be.volReads, be.maxWaiting, be.waitNanos, be.directReads, be.fallbackReads, be.decmpfsReads, be.maxInflight)
+        let lg = (be.lageTreffer, be.lageNeu)
         let kn = (be.knotenAnfragen, be.knotenEindeutigZahl, be.knotenTreffer), en = (be.enumChunks, be.enumFortsetzungen, be.enumEintraege)
         let ops = (be.opGetattr, be.opLookup, be.opReaddir, be.opReclaim)
         let kl = be.klein, kk = be.kleinKB, vr = (be.volReadBytes, be.volNonSeq, be.volDoppeltBytes, be.volDateien)
         be.statLock.unlock()
-        log.notice("STATS-LESEN dev_reads=\(c.0) dev_read_bytes=\(c.1) hist_le128k=\(c.2[0]) hist_le512k=\(c.2[1]) hist_le1m=\(c.2[2]) dev_read_ms=\(c.3 / 1_000_000) vol_reads=\(c.4) max_wartend=\(c.5) lock_wait_ms=\(c.6 / 1_000_000) direkt_reads=\(c.7) fallback_reads=\(c.8) decmpfs_reads=\(c.9) max_dev_read_parallel=\(c.10) direktweg=\(self.directRead ? 1 : 0) drobo_bau=\(droboBau) fehler_bau=\(fehlerBau)")
+        log.notice("STATS-LESEN dev_reads=\(c.0) dev_read_bytes=\(c.1) hist_le128k=\(c.2[0]) hist_le512k=\(c.2[1]) hist_le1m=\(c.2[2]) dev_read_ms=\(c.3 / 1_000_000) vol_reads=\(c.4) max_wartend=\(c.5) lock_wait_ms=\(c.6 / 1_000_000) direkt_reads=\(c.7) fallback_reads=\(c.8) decmpfs_reads=\(c.9) lage_treffer=\(lg.0) lage_neu=\(lg.1) max_dev_read_parallel=\(c.10) direktweg=\(self.directRead ? 1 : 0) drobo_bau=\(droboBau) fehler_bau=\(fehlerBau)")
         log.notice("STATS-KLEIN le128k nach Bereich: bitmap=\(kl[0])/\(kk[0])KiB extents=\(kl[1])/\(kk[1])KiB katalog=\(kl[2])/\(kk[2])KiB attribute=\(kl[3])/\(kk[3])KiB sonst=\(kl[4])/\(kk[4])KiB | FSKit-Ebene: vol_read_bytes=\(vr.0) vol_nonseq=\(vr.1) vol_doppelt_bytes=\(vr.2) vol_dateien=\(vr.3) | Knoten: anfragen=\(kn.0) eindeutig=\(kn.1) treffer=\(kn.2) cache=\(be.knotenCacheAn ? "an" : "aus", privacy: .public) | Enum: chunks=\(en.0) fortsetzungen=\(en.1) eintraege=\(en.2) | Operationen: getattr=\(ops.0) lookup=\(ops.1) readdir=\(ops.2) reclaim=\(ops.3)")
         backend.unregister()
         try check(r)
@@ -411,7 +429,44 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         let b = backend
         b.statLock.lock(); b.volReads += 1; b.statLock.unlock()
         // Hebel B (nur nurlesen): unter libLock nur die Zuordnung Datei -> Geraet, das Lesen selbst ausserhalb, parallel. Alles andere: alter Weg.
-        if directRead {
+        if directRead && lageAn {
+            lageLock.lock(); var l = it.lage; lageLock.unlock()
+            if l == nil {
+                var cap = 4096, n: Int32 = 0, fsz: UInt64 = 0
+                var buf = [lifs_extent_t](repeating: lifs_extent_t(), count: cap)
+                var rc: Int32 = timedLock(b) { lifs_map_all(it.node, &buf, Int32(cap), &n, &fsz) }
+                if rc == 0 && Int(n) > cap { cap = Int(n); buf = [lifs_extent_t](repeating: lifs_extent_t(), count: cap); rc = timedLock(b) { lifs_map_all(it.node, &buf, Int32(cap), &n, &fsz) } }
+                let nn = rc == 0 ? min(Int(n), cap) : 0
+                let neu = Lage(kind: rc == 0 ? 0 : rc == 2 ? 1 : 2, size: fsz, ext: Array(buf[0..<nn]))
+                lageLock.lock()
+                if it.lage == nil { it.lage = neu; lageFifo.append(it); if lageFifo.count > Self.lageMax { lageFifo.removeFirst().lage = nil } }
+                l = it.lage ?? neu
+                lageLock.unlock()
+                b.statLock.lock(); b.lageNeu += 1; b.statLock.unlock()
+            } else { b.statLock.lock(); b.lageTreffer += 1; b.statLock.unlock() }
+            if let l = l {
+                if l.kind == 1 { return try readCompressed(it.node, offset, want, buffer) }
+                if l.kind == 0 {                                              // Zuordnung ohne libLock, Lesen ausserhalb
+                    let off = UInt64(offset)
+                    if off >= l.size { return 0 }
+                    let total = Int(min(UInt64(want), l.size - off))
+                    try buffer.withUnsafeMutableBytes { raw in
+                        var lo = 0, hi = l.starts.count                       // letztes Stueck mit start <= off
+                        while lo < hi { let m = (lo + hi) / 2; if l.starts[m] <= off { lo = m + 1 } else { hi = m } }
+                        var k = lo - 1, pos = 0, cur = off
+                        while pos < total {
+                            guard k < l.ext.count else { throw posixError(EIO) }
+                            let inExt = cur - l.starts[k]
+                            let len = min(Int(l.ext[k].len - inExt), total - pos)
+                            try b.readDirect(raw.baseAddress! + pos, len, Int64(l.ext[k].dev_off + inExt))
+                            pos += len; cur += UInt64(len); k += 1
+                        }
+                    }
+                    b.statLock.lock(); b.directReads += 1; b.statLock.unlock()
+                    return total
+                }
+            }
+        } else if directRead {
             var ext = [lifs_extent_t](repeating: lifs_extent_t(), count: 16)
             var n: Int32 = 0, total: UInt64 = 0
             let node = it.node

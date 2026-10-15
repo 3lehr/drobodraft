@@ -283,3 +283,17 @@ int lifs_special_extents(UVFSFileNode root, int which, lifs_extent_t *out, int m
     struct filefork *fp = VTOF(sv);
     return map_run(hfsmp, fp, (uint64_t)fp->ff_blocks * hfsmp->blockSize, out, max, n);
 }
+
+int lifs_map_all(UVFSFileNode node, lifs_extent_t *out, int max, int *n, uint64_t *fsize)
+{
+    *n = 0; *fsize = 0;
+    vnode_t vp = (vnode_t)node;
+    if (!vp || !vnode_isreg(vp)) return 1;
+    struct cnode *cp = VTOC(vp);
+    struct filefork *fp = VTOF(vp);
+    if (!cp || !fp) return 1;
+    if (cp->c_bsdflags & UF_COMPRESSED) return 2;
+    if (fp->ff_unallocblocks != 0 || !TAILQ_EMPTY(&fp->ff_invalidranges)) return 1;
+    *fsize = fp->ff_size;
+    return map_run(VTOHFS(vp), fp, fp->ff_size, out, max, n);
+}

@@ -54,4 +54,7 @@ void lifs_geometry(UVFSFileNode node, uint32_t *logical, uint32_t *physical, uin
 /* Phase 5d: Lage der Sonderdateien im Geraet (which 0 Allokationsbitmap, 1 Extents-Ueberlaufbaum, 2 Katalog, 3 Attribute), alle Stuecke inkl. Ueberlaufbaum.
  * Schreibt die ersten max nach out, *n = Gesamtzahl (n > max: mit groesserem Feld wiederholen). Rueckgabe 0 ok, 1 Mapping-Fehler. Unter libLock. */
 int lifs_special_extents(UVFSFileNode root, int which, lifs_extent_t *out, int max, int *n);
+/* Phase 5g: ALLE Geraete-Stuecke einer regulaeren Datei (Dateireihenfolge, benachbarte verschmolzen, inkl. Ueberlaufbaum) fuer den Lagecache.
+ * Rueckgabe wie lifs_map_read: 0 ok (*n Gesamtzahl, *fsize Dateigroesse; n > max -> mit groesserem Feld wiederholen), 1 kein Direktweg, 2 komprimiert. Unter libLock. */
+int lifs_map_all(UVFSFileNode node, lifs_extent_t *out, int max, int *n, uint64_t *fsize);
 #endif
