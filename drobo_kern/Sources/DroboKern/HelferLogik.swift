@@ -20,7 +20,7 @@ public struct HelferFehler: Error, CustomStringConvertible, Equatable {
 
 /// Die ganze Entscheidungslogik des Dienstes, ohne Root testbar: alles Systemnahe ist austauschbar.
 public struct HelferLogik {
-    public var finden: (String) -> Medium? = DroboKern.finden(uuid:)
+    public var finden: (String) -> Medium? = { sucheNachUUID($0) }
     public var ordnerVon: (uid_t) -> String? = { getpwuid($0).map { String(cString: $0.pointee.pw_dir) } }
     public var knotenArt: (String) -> mode_t? = { var s = stat(); return lstat($0, &s) == 0 ? s.st_mode & S_IFMT : nil }
     public var chown: (String, uid_t, gid_t) -> Int32 = { Darwin.chown($0, $1, $2) }
@@ -35,7 +35,7 @@ public struct HelferLogik {
     func pruefen(_ uuid: String, uid: uid_t) throws -> Medium {
         guard uuid.range(of: Self.uuidMuster, options: .regularExpression) != nil else { throw HelferFehler("keine gueltige UUID") }
         guard let home = ordnerVon(uid) else { throw HelferFehler("kein Home fuer uid \(uid)") }
-        let pfad = home + "/Library/Containers/\(modulKennung)/Data/freigabe.json"
+        let pfad = home + "/Library/Containers/\(appKennung).fsmodule/Data/freigabe.json"
         do { guard try Freigabe.lesen(uuid: uuid, pfad: pfad) != nil else { throw HelferFehler("UUID nicht in der Freigabeliste") } }
         catch let h as HelferFehler { throw h }
         catch { throw HelferFehler("Freigabeliste unbrauchbar: \(error)") }
@@ -60,3 +60,5 @@ public struct HelferLogik {
         }
     }
 }
+
+private func sucheNachUUID(_ u: String) -> Medium? { finden(uuid: u) }

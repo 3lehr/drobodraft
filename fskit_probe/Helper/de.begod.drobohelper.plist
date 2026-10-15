@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key><string>de.begod.drobohelper</string>
+	<key>BundleProgram</key><string>Contents/MacOS/drobohelper</string>
+	<key>MachServices</key><dict><key>de.begod.drobohelper</key><true/></dict>
+	<key>AssociatedBundleIdentifiers</key><array><string>de.begod.drobofsprobe</string></array>
+</dict>
+</plist>
