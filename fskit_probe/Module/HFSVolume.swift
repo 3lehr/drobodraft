@@ -185,11 +185,12 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         let be = backend
         be.statLock.lock()                                   // Direktweg-Lesungen koennen noch zaehlen: Werte konsistent kopieren
         let c = (be.rdCalls, be.rdBytes, be.rdHist, be.rdNanos, be.volReads, be.maxWaiting, be.waitNanos, be.directReads, be.fallbackReads, be.decmpfsReads, be.maxInflight)
+        let kn = (be.knotenAnfragen, be.knotenEindeutigZahl, be.knotenTreffer), en = (be.enumChunks, be.enumFortsetzungen, be.enumEintraege)
         let ops = (be.opGetattr, be.opLookup, be.opReaddir, be.opReclaim)
         let kl = be.klein, kk = be.kleinKB, vr = (be.volReadBytes, be.volNonSeq, be.volDoppeltBytes, be.volDateien)
         be.statLock.unlock()
         log.notice("STATS-LESEN dev_reads=\(c.0) dev_read_bytes=\(c.1) hist_le128k=\(c.2[0]) hist_le512k=\(c.2[1]) hist_le1m=\(c.2[2]) dev_read_ms=\(c.3 / 1_000_000) vol_reads=\(c.4) max_wartend=\(c.5) lock_wait_ms=\(c.6 / 1_000_000) direkt_reads=\(c.7) fallback_reads=\(c.8) decmpfs_reads=\(c.9) max_dev_read_parallel=\(c.10) direktweg=\(self.directRead ? 1 : 0) drobo_bau=\(droboBau) fehler_bau=\(fehlerBau)")
-        log.notice("STATS-KLEIN le128k nach Bereich: bitmap=\(kl[0])/\(kk[0])KiB extents=\(kl[1])/\(kk[1])KiB katalog=\(kl[2])/\(kk[2])KiB attribute=\(kl[3])/\(kk[3])KiB sonst=\(kl[4])/\(kk[4])KiB | FSKit-Ebene: vol_read_bytes=\(vr.0) vol_nonseq=\(vr.1) vol_doppelt_bytes=\(vr.2) vol_dateien=\(vr.3) | Baumfenster: treffer=\(be.fensterTreffer) lesungen=\(be.fensterLesungen) an=\(be.fensterAn ? 1 : 0) | Operationen: getattr=\(ops.0) lookup=\(ops.1) readdir=\(ops.2) reclaim=\(ops.3)")
+        log.notice("STATS-KLEIN le128k nach Bereich: bitmap=\(kl[0])/\(kk[0])KiB extents=\(kl[1])/\(kk[1])KiB katalog=\(kl[2])/\(kk[2])KiB attribute=\(kl[3])/\(kk[3])KiB sonst=\(kl[4])/\(kk[4])KiB | FSKit-Ebene: vol_read_bytes=\(vr.0) vol_nonseq=\(vr.1) vol_doppelt_bytes=\(vr.2) vol_dateien=\(vr.3) | Knoten: anfragen=\(kn.0) eindeutig=\(kn.1) treffer=\(kn.2) cache=\(be.knotenCacheAn ? "an" : "aus", privacy: .public) | Enum: chunks=\(en.0) fortsetzungen=\(en.1) eintraege=\(en.2) | Operationen: getattr=\(ops.0) lookup=\(ops.1) readdir=\(ops.2) reclaim=\(ops.3)")
         backend.unregister()
         try check(r)
     }
@@ -355,9 +356,18 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         var ver = UInt64(verifier.rawValue)
         let chunk = UnsafeMutablePointer<lifs_dirent_t>.allocate(capacity: 32)
         defer { chunk.deallocate() }
+        let startCookie = cur
+        var packed = 0, chunks = 0
+        let b = backend
+        defer {                                                  // Diagnose Phase 5f: Chunks, Fortsetzung (Cookie != 0), Eintraege; die ersten 20 Aufrufe einzeln mit Verzeichnis-ID
+            b.statLock.lock(); b.enumChunks += chunks; b.enumEintraege += packed; if startCookie != 0 { b.enumFortsetzungen += 1 }
+            let loggen = b.enumGeloggt < 20; if loggen { b.enumGeloggt += 1 }; b.statLock.unlock()
+            if loggen { var u = UVFSFileAttributes(); _ = locked { HFS_fsOps.fsops_getattr!(d.node, &u) }; log.notice("ENUM dir=\(u.fa_fileid) cookie=\(startCookie) chunks=\(chunks) eintraege=\(packed) attrs=\(wantAttrs ? 1 : 0)") }
+        }
         while true {
             var n: Int32 = 0
             let r = locked { lifs_readdir_chunk(d.node, cur, &ver, wantAttrs ? 1 : 0, chunk, 32, &n) }
+            chunks += 1
             if r == -1 { break }                                  // UVFS_READDIR_EOF_REACHED
             if r != 0 { throw posixError(r > 0 ? r : EIO) }
             if n == 0 { break }
@@ -370,6 +380,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
                                           nextCookie: FSDirectoryCookie(rawValue: e.nextcookie),
                                           attributes: wantAttrs ? convert(e.attrs) : nil)
                 if !ok { return FSDirectoryVerifier(rawValue: ver == 0 ? 1 : ver) }
+                packed += 1
                 cur = e.nextcookie
             }
             if cur == UInt64.max { break }

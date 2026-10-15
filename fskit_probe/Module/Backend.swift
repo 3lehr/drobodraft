@@ -32,6 +32,7 @@ final class DeviceBackend {
     var klein = [Int](repeating: 0, count: 5), kleinKB = [Int](repeating: 0, count: 5)
     /// FSKit-Ebene (HFSVolume.read): ausgelieferte Bytes, nicht fortlaufende Lesungen, erneut ausgelieferte Bytes, Zahl verschiedener Dateien.
     /// FSKit-Operationen (Zahl der Aufrufe): getattr, lookup, readdir, reclaim - zeigt Fremdzugriffe (Crawler) neben den Lesungen.
+    var enumChunks = 0, enumFortsetzungen = 0, enumEintraege = 0, enumGeloggt = 0
     var opGetattr = 0, opLookup = 0, opReaddir = 0, opReclaim = 0
     func opZaehlen(_ k: Int) { statLock.lock(); switch k { case 0: opGetattr += 1; case 1: opLookup += 1; case 2: opReaddir += 1; default: opReclaim += 1 }; statLock.unlock() }
     var volReadBytes: UInt64 = 0, volNonSeq = 0, volDoppeltBytes: UInt64 = 0, volDateien = 0
@@ -45,34 +46,46 @@ final class DeviceBackend {
     }
     func tagFor(_ off: Int64) -> Int { let i = rangeIdx(off); return i >= 0 ? ranges[i].tag : 4 }
 
-    /// Phase 5e: Baumknoten (Extents-Ueberlauf, Katalog, Attribute) im Modus nurlesen in 4-MiB-Fenstern lesen und zwischenspeichern (8 Fenster = 32 MiB, LRU).
-    /// Grund: ein Fremdzugriff (Verzeichnisse auflisten, Lookups) liest 8-KiB-Knoten einzeln; auf einem Geraet, das Befehle seriell abarbeitet und jeden
-    /// Sprung mit ~35 ms bezahlt, kostet jeder Wechsel zwischen Datenstrom und Katalog einen Sprung. Ein Fenster = ein Befehl statt bis zu 512 Knotenbefehle.
-    /// Nur nurlesen: der Baum aendert sich dann nie. Unter `lock` (Aufrufer: read). nil = nicht zustaendig, normaler Weg.
-    private static let fensterGroesse = 4 << 20
-    private var fenster: [(start: Int64, len: Int, buf: UnsafeMutableRawPointer)] = []   // zuletzt benutzt = hinten
-    var fensterTreffer = 0, fensterLesungen = 0
-    /// Messschalter: Datei fenster_aus im Modulcontainer schaltet den Fensterweg ab (Vergleich vorher/nachher).
-    let fensterAn = !FileManager.default.fileExists(atPath: NSHomeDirectory() + "/fenster_aus")
-    private func fensterLesen(_ out: UnsafeMutableRawPointer, _ n: Int, _ off: Int64) -> Int? {
+    /// Phase 5f: Knotencache (nur nurlesen; Extents-Ueberlauf, Katalog, Attribute). Reads <= 32 KiB in diesen Bereichen (ein B-Baum-Knoten, bei der Drobo 8 KiB)
+    /// werden knotengenau zwischengespeichert, LRU nach Stempel. Grund: livefiles' eigener Buffer-Cache fasst nur 128-140 Eintraege (1-1,5 MiB); die Drobo
+    /// bezahlt jede Wiederholungslesung mit einem Sprung (~35 ms). Im Modus nurlesen aendert sich der Baum nie, der Cache bleibt gueltig.
+    /// ponytail: 64 MiB = 8192 Knoten gegen 2,7 GB Drobo-Katalog (2,4 %); Suchen der aeltesten Stempel ist linear (8192), erst bei Messung ersetzen.
+    static let knotenCacheBytes = 64 << 20
+    private struct KSlot { var off: Int64; var len: Int; var buf: UnsafeMutableRawPointer; var stamp: UInt64 }
+    private var kSlots: [KSlot] = [], kIndex: [Int64: Int] = [:], kBytes = 0, kStempel: UInt64 = 0
+    private var kEindeutig = Set<Int64>()
+    var knotenAnfragen = 0, knotenTreffer = 0, knotenEindeutigZahl = 0
+    /// Messschalter: Datei knotencache_aus im Modulcontainer schaltet den Cache ab (Vergleich).
+    let knotenCacheAn = !FileManager.default.fileExists(atPath: NSHomeDirectory() + "/knotencache_aus")
+    /// Zaehlt Anfragen/eindeutige Offsets (Obergrenze 1 Mio Offsets) und bedient aus dem Cache. nil = nicht zustaendig / Miss mit Fehler: normaler Weg.
+    private func knotenLesen(_ out: UnsafeMutableRawPointer, _ n: Int, _ off: Int64) -> Int? {
         let i = rangeIdx(off)
         guard i >= 0, ranges[i].tag >= 1, ranges[i].tag <= 3, off + Int64(n) <= ranges[i].end else { return nil }
-        if let k = fenster.firstIndex(where: { off >= $0.start && off + Int64(n) <= $0.start + Int64($0.len) }) {
-            let w = fenster.remove(at: k); fenster.append(w)
-            memcpy(out, w.buf + Int(off - w.start), n)
-            statLock.lock(); fensterTreffer += 1; statLock.unlock()
+        statLock.lock()
+        knotenAnfragen += 1
+        if kEindeutig.count < 1_000_000 { kEindeutig.insert(off) }
+        knotenEindeutigZahl = kEindeutig.count
+        statLock.unlock()
+        guard knotenCacheAn, off % Int64(phys) == 0, n % phys == 0 else { return nil }
+        kStempel += 1
+        if let k = kIndex[off], kSlots[k].len >= n {
+            kSlots[k].stamp = kStempel; memcpy(out, kSlots[k].buf, n)
+            statLock.lock(); knotenTreffer += 1; statLock.unlock()
             return n
         }
-        let ws = max(ranges[i].start, off - off % Int64(Self.fensterGroesse))
-        let wl = Int(min(ranges[i].end - ws, Int64(Self.fensterGroesse)))
-        guard off + Int64(n) <= ws + Int64(wl), wl % phys == 0 || ws + Int64(wl) == ranges[i].end else { return nil }
-        let span = (wl + phys - 1) / phys * phys
-        var slot: (start: Int64, len: Int, buf: UnsafeMutableRawPointer)
-        if fenster.count >= 8 { slot = fenster.removeFirst() } else { slot = (0, 0, UnsafeMutableRawPointer.allocate(byteCount: Self.fensterGroesse + 16384, alignment: 4096)) }
-        guard let got = try? devRead(slot.buf, ws, span), got >= wl else { slot.len = 0; fenster.insert(slot, at: 0); return nil }
-        slot.start = ws; slot.len = wl; fenster.append(slot)
-        memcpy(out, slot.buf + Int(off - ws), n)
-        statLock.lock(); fensterLesungen += 1; statLock.unlock()
+        let tmp = UnsafeMutableRawPointer.allocate(byteCount: n, alignment: 4096)
+        guard let got = try? devRead(tmp, off, n), got >= n else { tmp.deallocate(); return nil }
+        while kBytes + n > Self.knotenCacheBytes, !kSlots.isEmpty {                     // aeltesten Stempel verdraengen (Swap mit dem letzten Platz)
+            var m = 0
+            for q in 1..<kSlots.count where kSlots[q].stamp < kSlots[m].stamp { m = q }
+            kIndex[kSlots[m].off] = nil; kBytes -= kSlots[m].len; kSlots[m].buf.deallocate()
+            let last = kSlots.removeLast()
+            if m < kSlots.count { kSlots[m] = last; kIndex[last.off] = m }
+        }
+        if let old = kIndex[off] { kBytes -= kSlots[old].len; kSlots[old].buf.deallocate(); kSlots[old] = KSlot(off: off, len: n, buf: tmp, stamp: kStempel) }
+        else { kIndex[off] = kSlots.count; kSlots.append(KSlot(off: off, len: n, buf: tmp, stamp: kStempel)) }
+        kBytes += n
+        memcpy(out, tmp, n)
         return n
     }
     #if TEST_FEHLER
@@ -99,7 +112,7 @@ final class DeviceBackend {
         fehlerLesen()
         #endif
     }
-    deinit { bounce.deallocate(); for w in fenster { w.buf.deallocate() } }
+    deinit { bounce.deallocate(); for w in kSlots { w.buf.deallocate() } }
 
     func register() -> Bool {
         var b = lifs_backend_t()
@@ -193,7 +206,7 @@ final class DeviceBackend {
         lock.lock(); defer { lock.unlock() }
         if off < 0 || UInt64(off) >= bytes { return 0 }
         let want = Int(min(UInt64(n), bytes - UInt64(off)))
-        if forcedReadOnly && want == n && n <= 131072 && fensterAn, let r = fensterLesen(buf, n, off) { return r }
+        if forcedReadOnly && want == n && n <= 32768, let r = knotenLesen(buf, n, off) { return r }
         var done = 0
         do {
             while done < want {
