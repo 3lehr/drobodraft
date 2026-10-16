@@ -23,6 +23,11 @@ public var helferAnforderung: String { anforderung(prefix: Identitaet.prefix, te
     func ordnerEntfernen(_ volumeUUID: String, reply: @escaping (String?) -> Void)
     /// Prueft ohne Wirkung, ob der Dienst die Geraeteknoten dieser UUID aendern duerfte (chown auf den bisherigen Eigentuemer). nil = ja, sonst Fehlertext.
     func zugriffPruefen(_ volumeUUID: String, reply: @escaping (String?) -> Void)
+    /// Lokaler Loopback-Port, der zu host:port (nur IPv4 im privaten Netz, nur Port 3260) weiterleitet. Grund: das Modul hfsdropro bekommt wegen des Datenschutzes
+    /// "Lokales Netzwerk" kein Routing ins LAN, der Dienst nicht (gemessen, Plan DroboPro). Antwort (Port, Fehlertext); Port 0 = Fehler.
+    func iscsiWeiterleitung(_ host: String, port: UInt16, reply: @escaping (UInt16, String?) -> Void)
+    /// Wie freigabeSetzen, aber fuer den Container des iSCSI-Moduls (<Praefix>.drobofsprobe.iscsi). maxBytes ist Pflicht (Gate).
+    func iscsiFreigabeSetzen(_ volumeUUID: String, modus: String, maxBytes: UInt64, reply: @escaping (String?) -> Void)
 }
 
 public struct HelferFehler: Error, CustomStringConvertible, Equatable {
@@ -51,10 +56,10 @@ public struct HelferLogik {
     static let uuidMuster = #"^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"#
     static let partition = #"^disk[0-9]+s[0-9]+$"#
 
-    func listenPfad(_ uuid: String, uid: uid_t) throws -> String {
+    func listenPfad(_ uuid: String, uid: uid_t, modul: String = ".fsmodule") throws -> String {
         guard uuid.range(of: Self.uuidMuster, options: .regularExpression) != nil else { throw HelferFehler("keine gueltige UUID") }
         guard let home = ordnerVon(uid) else { throw HelferFehler("kein Home fuer uid \(uid)") }
-        return home + "/Library/Containers/\(appKennung).fsmodule/Data/freigabe.json"
+        return home + "/Library/Containers/\(appKennung)\(modul)/Data/freigabe.json"
     }
 
     public func freigabeLesen(_ uuid: String, uid: uid_t) throws -> String {
@@ -63,8 +68,9 @@ public struct HelferLogik {
     }
 
     /// Schreibt als root in die Liste des Aufrufers: Container muss existieren (wird nicht angelegt), kaputte Liste nie ueberschrieben, Eigentuemer der Datei bleibt/wird der Nutzer.
-    public func freigabeSetzen(_ uuid: String, modus: String, maxBytes: UInt64, uid: uid_t) throws {
-        let p = try listenPfad(uuid, uid: uid)
+    public func freigabeSetzen(_ uuid: String, modus: String, maxBytes: UInt64, uid: uid_t, modul: String = ".fsmodule") throws {
+        if modul == ".iscsi" && modus != "entfernen" && maxBytes == 0 { throw HelferFehler("iSCSI-Freigabe braucht max_bytes") }
+        let p = try listenPfad(uuid, uid: uid, modul: modul)
         let dir = (p as NSString).deletingLastPathComponent
         guard knotenArt(dir) == S_IFDIR else { throw HelferFehler("Container \(dir) fehlt (Modul nie gestartet?)") }
         let alt = datei(p)
@@ -146,3 +152,89 @@ public struct HelferLogik {
 }
 
 private func sucheNachUUID(_ u: String) -> Medium? { finden(uuid: u) }
+
+/// Weiterleitung 127.0.0.1:<System-Port> -> host:3260 fuer das iSCSI-Modul (siehe Protokoll `iscsiWeiterleitung`). Reine Byte-Pumpe, keine iSCSI-Kenntnis.
+/// Grenzen: Ziel nur IPv4-Literal in 10/8, 172.16/12, 192.168/16, 169.254/16, Port nur 3260; Listener nur Loopback; eine Weiterleitung je Ziel, wiederverwendet.
+/// Jeder lokale Prozess kann den Loopback-Port nutzen: gleichwertig zum direkten LAN-Zugang, keine neue Reichweite.
+/// ponytail: ein Thread je Verbindung (wenige Verbindungen: eine iSCSI-Sitzung je Mount); Weiterleitungen leben bis Dienstende (Leerlauf-Ende wartet auf `offen == 0`).
+public final class ISCSIWeiterleitung {
+    public static let zielPort: UInt16 = 3260
+    private let lock = NSLock()
+    private var listener: [String: UInt16] = [:]       // "host:port" -> lokaler Port
+    private var _offen = 0
+    private let loopbackErlaubt: Bool
+    /// Zahl gerade weitergeleiteter Verbindungen (Leerlauf-Ende des Dienstes wartet auf 0).
+    public var offen: Int { lock.lock(); defer { lock.unlock() }; return _offen }
+
+    /// Leerlauf-Ende des Dienstes: keine XPC-Verbindung, keine weitergeleitete Verbindung, seit `letzte` mehr als 30 s Ruhe.
+    public func beendenErlaubt(aktiv: Int, letzte: Date, jetzt: Date = Date()) -> Bool { aktiv <= 0 && offen == 0 && jetzt.timeIntervalSince(letzte) > 30 }
+
+    public init() { loopbackErlaubt = false }
+    /// Nur Tests: 127.0.0.1 als Ziel zulassen (Python-Pruefziel). Der Dienst nutzt `init()`.
+    public init(testLoopbackErlaubt: Bool) { loopbackErlaubt = testLoopbackErlaubt }
+
+    /// nil = erlaubt, sonst Ablehnungsgrund.
+    public func zielPruefen(host: String, port: UInt16) -> String? {
+        guard port == Self.zielPort else { return "port \(port) not allowed (only \(Self.zielPort))" }
+        var a = in_addr()
+        guard inet_pton(AF_INET, host, &a) == 1 else { return "not an IPv4 literal" }
+        let o = withUnsafeBytes(of: a.s_addr) { Array($0) }                       // Netzwerkreihenfolge
+        guard o.map(String.init).joined(separator: ".") == host else { return "IPv4 literal not in canonical form" }
+        let ok = o[0] == 10 || (o[0] == 172 && (16...31).contains(o[1])) || (o[0] == 192 && o[1] == 168) || (o[0] == 169 && o[1] == 254) || (loopbackErlaubt && o == [127, 0, 0, 1])
+        return ok ? nil : "address \(host) is not in a private range"
+    }
+
+    /// Lokaler Port fuer host:port; startet beim ersten Aufruf den Listener, danach wiederverwendet.
+    public func port(host: String, port: UInt16) throws -> UInt16 {
+        if let grund = zielPruefen(host: host, port: port) { throw HelferFehler(grund) }
+        lock.lock(); defer { lock.unlock() }
+        let key = "\(host):\(port)"
+        if let p = listener[key] { return p }
+        let fd = socket(AF_INET, SOCK_STREAM, 0)
+        guard fd >= 0 else { throw HelferFehler("socket: \(String(cString: strerror(errno)))") }
+        var an: Int32 = 1
+        setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &an, socklen_t(MemoryLayout<Int32>.size))
+        var sa = sockaddr_in(); sa.sin_len = UInt8(MemoryLayout<sockaddr_in>.size); sa.sin_family = sa_family_t(AF_INET); sa.sin_port = 0
+        sa.sin_addr.s_addr = UInt32(0x7F00_0001).bigEndian
+        let r = withUnsafePointer(to: &sa) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) } }
+        var len = socklen_t(MemoryLayout<sockaddr_in>.size)
+        let g = withUnsafeMutablePointer(to: &sa) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { getsockname(fd, $0, &len) } }
+        guard r == 0, g == 0, listen(fd, 8) == 0 else { let e = String(cString: strerror(errno)); close(fd); throw HelferFehler("listener: \(e)") }
+        let lokal = UInt16(bigEndian: sa.sin_port)
+        listener[key] = lokal
+        Thread.detachNewThread { [self] in
+            while true {
+                let c = accept(fd, nil, nil)
+                if c < 0 { if errno == EINTR { continue }; return }
+                Thread.detachNewThread { self.leite(c, host: host, port: port) }
+            }
+        }
+        return lokal
+    }
+
+    private func leite(_ client: Int32, host: String, port: UInt16) {
+        lock.lock(); _offen += 1; lock.unlock()
+        defer { lock.lock(); _offen -= 1; lock.unlock() }
+        defer { close(client) }
+        let ziel = socket(AF_INET, SOCK_STREAM, 0)
+        guard ziel >= 0 else { return }
+        defer { close(ziel) }
+        var sa = sockaddr_in(); sa.sin_len = UInt8(MemoryLayout<sockaddr_in>.size); sa.sin_family = sa_family_t(AF_INET); sa.sin_port = port.bigEndian
+        inet_pton(AF_INET, host, &sa.sin_addr)
+        let c = withUnsafePointer(to: &sa) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { connect(ziel, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) } }
+        guard c == 0 else { return }
+        var an: Int32 = 1
+        for f in [client, ziel] { setsockopt(f, IPPROTO_TCP, TCP_NODELAY, &an, socklen_t(MemoryLayout<Int32>.size)); setsockopt(f, SOL_SOCKET, SO_NOSIGPIPE, &an, socklen_t(MemoryLayout<Int32>.size)) }
+        var puffer = [UInt8](repeating: 0, count: 1 << 17)
+        var p = [pollfd(fd: client, events: Int16(POLLIN), revents: 0), pollfd(fd: ziel, events: Int16(POLLIN), revents: 0)]
+        while poll(&p, 2, -1) >= 0 || errno == EINTR {
+            for i in 0..<2 where p[i].revents != 0 {
+                let (von, nach) = i == 0 ? (client, ziel) : (ziel, client)
+                let n = recv(von, &puffer, puffer.count, 0)
+                if n <= 0 { return }                                      // eine Seite schliesst (oder Fehler): beide zu
+                var off = 0
+                while off < n { let w = puffer[off..<n].withUnsafeBytes { send(nach, $0.baseAddress, $0.count, 0) }; if w <= 0 { return }; off += w }
+            }
+        }
+    }
+}

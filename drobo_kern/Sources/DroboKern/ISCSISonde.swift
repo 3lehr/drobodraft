@@ -5,13 +5,13 @@ private func hex(_ b: [UInt8]) -> String { b.map { String(format: "%02x", $0) }.
 /// Gegenprobe gegen ein echtes iSCSI-Ziel (DroboPro): Discovery, INQUIRY, LUNs, Kapazitaet, erste 8 Sektoren, Statusseiten 3A. Nur lesend.
 /// `schreibtest`: schreibt EINEN Sektor mit Muster auf LUN 1 bei `schreibtestLBA`, liest zurueck und stellt Nullen wieder her -
 /// nur wenn LUN 1 laut Lesen leer ist (erste 8 Sektoren Nullen, also weder MBR noch GPT); sonst wird nicht geschrieben und das gemeldet.
-public func iscsiSonde(host: String, schreibtest: Bool, schreibtestLBA: UInt64 = 64) throws -> String {
+public func iscsiSonde(host: String, port: UInt16 = 3260, schreibtest: Bool, schreibtestLBA: UInt64 = 64) throws -> String {
     var z: [String] = []
-    let d = try ISCSISitzung(host: host)
+    let d = try ISCSISitzung(host: host, port: port)
     let ziele = try d.ziele(); d.abmelden()
     z.append("targets: \(ziele.count)")
     guard let ziel = ziele.first else { return z.joined(separator: "\n") }
-    let s = try ISCSISitzung(host: host, ziel: ziel.name)
+    let s = try ISCSISitzung(host: host, port: port, ziel: ziel.name)
     defer { s.abmelden() }
     z.append("login keys: " + s.login.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: " "))
     try s.testUnitReady(lun: 0)
@@ -26,6 +26,8 @@ public func iscsiSonde(host: String, schreibtest: Bool, schreibtestLBA: UInt64 =
         z.append("lun \(l): blocks \(k.bloecke) x \(k.blockgroesse) B, first 8 sectors: allzero=\(nullen) mbr=\(hex(Array(b[510..<512]))) gpt=\(b[512..<520].elementsEqual(Array("EFI PART".utf8))) hfs@1024=\(hex(Array(b[1024..<1026]))) sha=\(Digest.kurz(b))")
         if l == 1 { leer1 = nullen }
     }
+    for l in luns { if let p = try? GPT.ersteHFS(lies: { try s.lesen(lun: l, lba: $0, bloecke: $1) }), let vh = try? s.lesen(lun: l, lba: p.ersterLBA + 2, bloecke: 1) {
+        z.append("lun \(l) HFS+ partition LBA \(p.ersterLBA)...\(p.letzterLBA) volume UUID \(hfsVolumeUUID(vh: vh) ?? "-")") } }
     for u in [UInt8]([0x01, 0x02, 0x06, 0x09]) { z.append("3A/\(String(format: "%02x", u)): " + hex(try s.modeSense3A(lun: 0, unterseite: u))) }
     if schreibtest {
         guard luns.contains(1) else { z.append("write test skipped: no LUN 1"); return z.joined(separator: "\n") }

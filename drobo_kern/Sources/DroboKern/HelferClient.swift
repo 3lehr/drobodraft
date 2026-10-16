@@ -53,3 +53,18 @@ public func helferZugriffPruefen(uuid: String) -> String? {
     let r = helferRPC { p, k in p.zugriffPruefen(uuid, reply: { k([$0]) }) }
     return r.fehler ?? r.antwort.first ?? nil
 }
+
+/// Lokaler Weiterleitungsport des Dienstes zu host:3260 (siehe DroboHelferProtokoll.iscsiWeiterleitung).
+public func helferISCSIWeiterleitung(host: String) throws -> UInt16 {
+    var port: UInt16 = 0
+    let r = helferRPC { p, k in p.iscsiWeiterleitung(host, port: 3260, reply: { port = $0; k([$1]) }) }
+    if let f = r.fehler ?? r.antwort.first ?? nil { throw Fehler.helfer(f) }
+    guard port != 0 else { throw Fehler.helfer("kein Port") }
+    return port
+}
+
+/// Freigabe im Container des iSCSI-Moduls setzen (modus nurlesen | schreiben | entfernen).
+public func helferISCSIFreigabeSetzen(uuid: String, modus: String, maxBytes: UInt64) throws {
+    let r = helferRPC { p, k in p.iscsiFreigabeSetzen(uuid, modus: modus, maxBytes: maxBytes, reply: { k([$0]) }) }
+    if let f = r.fehler ?? r.antwort.first ?? nil { throw Fehler.helfer(f) }
+}

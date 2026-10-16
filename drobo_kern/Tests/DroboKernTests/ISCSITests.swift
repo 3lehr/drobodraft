@@ -230,6 +230,10 @@ final class ISCSITests: XCTestCase {
         let teil = out.split(separator: "\n").compactMap { $0.split(separator: " ").first.map(String.init) }.first { $0.hasPrefix(dev + "s") } ?? ""
         let (r2, o2) = ausfuehren("/sbin/fsck_hfs", ["-fn", "/dev/r" + teil.dropFirst(5)])
         XCTAssertEqual(r2, 0, o2); XCTAssertTrue(o2.contains("appears to be OK"), o2)
+        let (_, pl) = ausfuehren("/usr/sbin/diskutil", ["info", "-plist", teil])
+        let uuidDiskutil = ((try? PropertyListSerialization.propertyList(from: Data(pl.utf8), format: nil)) as? [String: Any])?["VolumeUUID"] as? String
+        let vh = [UInt8](try Data(contentsOf: URL(fileURLWithPath: dir + "/lun1.img"))[(2048 * 512 + 1024)..<(2048 * 512 + 1536)])
+        XCTAssertNotNil(uuidDiskutil); XCTAssertEqual(hfsVolumeUUID(vh: vh), uuidDiskutil, "Volume-UUID wie diskutil")
         let (_, nf) = ausfuehren("/usr/sbin/diskutil", ["info", teil]); XCTAssertTrue(nf.contains("Journal:                  Not Journaled") || !nf.contains("Journal:                  Journaled"), nf)
     }
 }

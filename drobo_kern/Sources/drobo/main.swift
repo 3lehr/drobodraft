@@ -22,6 +22,9 @@ func hilfe() -> Never {
     drobo iscsi-format --lun 1 --name NAME [--partition-gib N] [--target IQN] [--execute]
                                                set up LUN 1 of an iSCSI target (DroboPro test device) with GPT + one HFS+ partition (no journal); dry run without --execute
     drobo iscsi-write-test [--lba N] [--sizes 4096,262144]   write, read back and compare on LUN 1 of a test target; stops at the first error
+    drobo iscsi-relay HOST                     ask the helper service for a loopback port that forwards to HOST:3260 (private IPv4 only)
+    drobo iscsi-mount --host H --lun N [--write] [--target IQN] [--mountpoint P]   mount a LUN of a network target through the helper service (read-only unless --write); default mountpoint /private/tmp/drobo_iscsi_mntN
+    drobo iscsi-unmount [--lun N] [--mountpoint P]
     drobo state | log | speed-history | drives
     drobo detect                               list connected Drobos (SCSI vendor "Drobo") that are not set up yet
     drobo add-drive UUID NAME [timemachine]
@@ -50,7 +53,7 @@ func meldung(_ s: String) { FileHandle.standardError.write(Data(s.utf8)) }
 do {
     var kern = Kern()
     if let u = opt("--uuid") { kern.uuid = u.uppercased() }
-    let ohneDrobo: Set<String> = ["detect", "add-drive", "drives", "uninstall", "backup-location", "log", "speed-history", "iscsi-probe", "iscsi-format", "iscsi-write-test"]
+    let ohneDrobo: Set<String> = ["detect", "add-drive", "drives", "uninstall", "backup-location", "log", "speed-history", "iscsi-probe", "iscsi-format", "iscsi-write-test", "iscsi-relay", "iscsi-mount", "iscsi-unmount"]
     if kern.uuid.isEmpty && !ohneDrobo.contains(cmd) { throw Fehler.eingabe("No Drobo set up. Run 'drobo detect', then 'drobo add-drive UUID NAME' (or pass --uuid / set DROBO_UUID).") }
     switch cmd {
     case "status":
@@ -137,10 +140,18 @@ do {
         print("\(a) ok")
     case "iscsi-probe":
         guard let h = ProcessInfo.processInfo.environment["DROBO_ISCSI_HOST"], !h.isEmpty else { throw Fehler.eingabe("set DROBO_ISCSI_HOST to the target's address") }
-        print(try iscsiSonde(host: h, schreibtest: flag("--write-test")))
+        print(try iscsiSonde(host: h, port: ProcessInfo.processInfo.environment["DROBO_ISCSI_PORT"].flatMap { UInt16($0) } ?? 3260, schreibtest: flag("--write-test")))
     case "iscsi-write-test":     // Testgeraet: schreibt auf LUN 1 ab --lba (Vorgabe 16 Mi), je Groesse (Byte, Vorgabe 4096,262144,524288), liest zurueck und vergleicht
         guard let h = ProcessInfo.processInfo.environment["DROBO_ISCSI_HOST"], !h.isEmpty else { throw Fehler.eingabe("set DROBO_ISCSI_HOST to the target's address") }
         try iscsiSchreibprobe(host: h, ablba: opt("--lba").flatMap { UInt64($0) } ?? 16 << 20, groessen: (opt("--sizes") ?? "4096,262144,524288").split(separator: ",").compactMap { Int($0) }, meldung: { print($0) })
+    case "iscsi-relay":      // Dienst-Weiterleitung 127.0.0.1:<Port> -> HOST:3260 anfordern und den lokalen Port ausgeben
+        guard let h = args.first, !h.hasPrefix("-") else { hilfe() }
+        print(try helferISCSIWeiterleitung(host: h))
+    case "iscsi-mount":
+        guard let h = opt("--host") ?? ProcessInfo.processInfo.environment["DROBO_ISCSI_HOST"], let l = opt("--lun").flatMap(Int.init) else { hilfe() }
+        try iscsiEinhaengen(host: h, lun: l, schreiben: flag("--write"), ziel: opt("--target"), ort: opt("--mountpoint"), meldung: { print($0) })
+    case "iscsi-unmount":
+        try iscsiAushaengen(ort: opt("--mountpoint") ?? "\(iscsiVorgabeOrt)\(opt("--lun") ?? "1")"); print("unmounted")
     case "iscsi-format":
         let env = ProcessInfo.processInfo.environment
         guard let h = env["DROBO_ISCSI_HOST"], !h.isEmpty else { throw Fehler.eingabe("set DROBO_ISCSI_HOST to the target's address") }

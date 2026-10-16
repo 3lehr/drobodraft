@@ -6,6 +6,7 @@ import os
 var aktiv = 0
 var letzte = Date()
 let log = Logger(subsystem: helferDienst, category: "dienst")
+let weiterleitung = ISCSIWeiterleitung()      // eine pro Prozess: Listener und offene Verbindungen ueberleben einzelne XPC-Verbindungen
 
 final class Dienst: NSObject, NSXPCListenerDelegate, DroboHelferProtokoll {
     let logik = HelferLogik()
@@ -43,6 +44,14 @@ final class Dienst: NSObject, NSXPCListenerDelegate, DroboHelferProtokoll {
         lauf("ordnerEntfernen", u, reply) { try self.logik.ordnerEntfernen(u, uid: self.uid) }
     }
 
+    func iscsiWeiterleitung(_ host: String, port: UInt16, reply: @escaping (UInt16, String?) -> Void) {
+        do { let p = try weiterleitung.port(host: host, port: port); log.notice("iscsiWeiterleitung uid=\(self.uid, privacy: .public) -> lokaler Port \(p, privacy: .public)"); reply(p, nil) }
+        catch { log.error("iscsiWeiterleitung uid=\(self.uid, privacy: .public): ABGELEHNT \("\(error)", privacy: .public)"); reply(0, "\(error)") }
+    }
+    func iscsiFreigabeSetzen(_ u: String, modus: String, maxBytes: UInt64, reply: @escaping (String?) -> Void) {
+        lauf("iscsiFreigabeSetzen(\(modus))", u, reply) { try self.logik.freigabeSetzen(u, modus: modus, maxBytes: maxBytes, uid: self.uid, modul: ".iscsi") }
+    }
+
     func zugriffPruefen(_ u: String, reply: @escaping (String?) -> Void) {
         lauf("zugriffPruefen", u, reply) { try self.logik.zugriffPruefen(u, uid: self.uid) }
     }
@@ -57,5 +66,5 @@ let dienst = Dienst()
 let listener = NSXPCListener(machServiceName: helferDienst)
 listener.delegate = dienst
 listener.resume()
-Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { _ in if aktiv <= 0 && Date().timeIntervalSince(letzte) > 30 { log.notice("leerlauf: beende"); exit(0) } }
+Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { _ in if weiterleitung.beendenErlaubt(aktiv: aktiv, letzte: letzte) { log.notice("leerlauf: beende"); exit(0) } }
 RunLoop.main.run()
