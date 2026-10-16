@@ -8,7 +8,7 @@ public final class AbziehWaechter {
     let ablage: Datenablage
     let uuid: String
     let bei: (Ereignis) -> Void
-    let queue = DispatchQueue(label: "de.begod.drobo.abziehen")
+    let queue = DispatchQueue(label: "drobodraft.abziehen")
     var session: DASession?
 
     public init(uuid: String, ablage: Datenablage, bei: @escaping (Ereignis) -> Void) { self.uuid = uuid.uppercased(); self.ablage = ablage; self.bei = bei }

@@ -1,13 +1,15 @@
 # xcodegen: `xcodegen` erzeugt DroboFSProbe.xcodeproj (nicht eingecheckt). Vorher: `make -C ../` (liblivefiles_hfs.a).
 name: DroboFSProbe
 options:
-  bundleIdPrefix: de.begod
   developmentLanguage: de
   deploymentTarget:
     macOS: "15.4"
+configFiles:
+  Debug: Identity.xcconfig
+  Release: Identity.xcconfig
 settings:
   base:
-    DEVELOPMENT_TEAM: JR9H9Q532P
+    DEVELOPMENT_TEAM: $(DROBO_TEAM)
     CODE_SIGN_STYLE: Automatic
     SWIFT_VERSION: "5.0"
     CURRENT_PROJECT_VERSION: "2"
@@ -32,14 +34,10 @@ targets:
         NSRemovableVolumesUsageDescription: "Die Drobo-App braucht Zugriff auf das Laufwerk, um es einzuhängen."
     sources:
       - App
-      - path: Helper/de.begod.drobohelper.plist
-        buildPhase:
-          copyFiles:
-            destination: wrapper
-            subpath: Contents/Library/LaunchDaemons
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: de.begod.drobofsprobe
+        PRODUCT_BUNDLE_IDENTIFIER: $(DROBO_BUNDLE_PREFIX).drobofsprobe
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_CFBundleName: DroboDraft
         INFOPLIST_KEY_CFBundleDisplayName: DroboDraft
@@ -48,6 +46,14 @@ targets:
         SWIFT_EMIT_LOC_STRINGS: YES
         GENERATE_INFOPLIST_FILE: NO
         ENABLE_HARDENED_RUNTIME: YES
+    postBuildScripts:
+      - name: Dienst-Beschreibung (launchd) mit Praefix erzeugen
+        script: |
+          D="${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/Library/LaunchDaemons"
+          mkdir -p "$D" && rm -f "$D"/*.plist
+          sed "s/@PREFIX@/${DROBO_BUNDLE_PREFIX}/g" "${SRCROOT}/Helper/drobohelper.plist.in" > "$D/${DROBO_BUNDLE_PREFIX}.drobohelper.plist"
+        inputFiles: [$(SRCROOT)/Helper/drobohelper.plist.in]
+        outputFiles: [$(TARGET_BUILD_DIR)/$(CONTENTS_FOLDER_PATH)/Library/LaunchDaemons/$(DROBO_BUNDLE_PREFIX).drobohelper.plist]
     dependencies:
       - package: DroboKern
         product: DroboKern
@@ -66,13 +72,14 @@ targets:
       - path: Helper
         excludes: ["*.plist"]
       - ../drobo_kern/Sources/DroboKern/HelferLogik.swift
+      - ../drobo_kern/Sources/DroboKern/Identitaet.swift
       - ../drobo_kern/Sources/DroboKern/Medium.swift
       - ../drobo_kern/Sources/DroboKern/Freigabe.swift
       - ../drobo_kern/Sources/DroboKern/Fehler.swift
     settings:
       base:
         PRODUCT_NAME: drobohelper
-        PRODUCT_BUNDLE_IDENTIFIER: de.begod.drobohelper
+        PRODUCT_BUNDLE_IDENTIFIER: $(DROBO_BUNDLE_PREFIX).drobohelper
         ENABLE_HARDENED_RUNTIME: YES
         CREATE_INFOPLIST_SECTION_IN_BINARY: YES
         GENERATE_INFOPLIST_FILE: YES
@@ -84,7 +91,7 @@ targets:
     sources: [Module]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: de.begod.drobofsprobe.fsmodule
+        PRODUCT_BUNDLE_IDENTIFIER: $(DROBO_BUNDLE_PREFIX).drobofsprobe.fsmodule
         ENABLE_APP_SANDBOX: YES
         ENABLE_HARDENED_RUNTIME: YES
         CODE_SIGN_ENTITLEMENTS: Module/DroboFSProbeModule.entitlements

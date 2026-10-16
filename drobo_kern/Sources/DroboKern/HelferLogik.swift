@@ -1,11 +1,13 @@
 import Foundation
 
-public let helferDienst = "de.begod.drobohelper"
-public let appKennung = "de.begod.drobofsprobe"
-public let cliKennung = "de.begod.drobo"
-public let teamID = "JR9H9Q532P"
-/// Peer muss mit einem Zertifikat desselben Teams signiert sein; Kennung App oder CLI (CLI nur, wenn mit `codesign -i de.begod.drobo` signiert: tools/sign_cli.sh).
-public let helferAnforderung = "anchor apple generic and certificate leaf[subject.OU] = \"\(teamID)\" and (identifier \"\(appKennung)\" or identifier \"\(cliKennung)\")"
+public var helferDienst: String { Identitaet.prefix + ".drobohelper" }
+public var appKennung: String { Identitaet.prefix + ".drobofsprobe" }
+public var modulKennung: String { appKennung + ".fsmodule" }
+public var cliKennung: String { Identitaet.prefix + ".drobo" }
+/// Name der launchd-Beschreibung im App-Bundle (Contents/Library/LaunchDaemons).
+public var helferPlistName: String { helferDienst + ".plist" }
+/// Der Aufrufer muss vom selben Team signiert sein wie der Dienst selbst (Team aus der eigenen Signatur); Kennung App oder CLI (CLI: `codesign -i <Praefix>.drobo`, tools/sign_cli.sh).
+public var helferAnforderung: String { anforderung(prefix: Identitaet.prefix, team: Identitaet.eigenesTeam() ?? "") }
 
 /// XPC-Schnittstelle des Hilfsdienstes: genau zwei Aufrufe. Antwort nil = ok, sonst Fehlertext.
 @objc public protocol DroboHelferProtokoll {

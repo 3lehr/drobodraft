@@ -5,7 +5,7 @@ import os
 // Leerlauf-Ende: nach 30 s ohne Verbindung beendet sich der Dienst; launchd startet ihn beim naechsten Aufruf neu (so wirkt ein Update).
 var aktiv = 0
 var letzte = Date()
-let log = Logger(subsystem: "de.begod.drobohelper", category: "dienst")
+let log = Logger(subsystem: helferDienst, category: "dienst")
 
 final class Dienst: NSObject, NSXPCListenerDelegate, DroboHelferProtokoll {
     let logik = HelferLogik()

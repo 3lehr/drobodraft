@@ -3,7 +3,7 @@ import FSKit
 import Foundation
 import os
 
-private let log = Logger(subsystem: "de.begod.drobofsprobe", category: "dev")
+private let log = Logger(subsystem: modulLogSubsystem, category: "dev")
 
 /// Verbindet Apples I/O-Aufrufe (pread/pwrite/ioctl, umgeleitet auf lifs_devio.c) mit FSBlockDeviceResource.
 /// Alle Schreibzugriffe kommen ueber lifs_dev_pwrite und sind damit auf 524288 B gekappt; hier gilt zusaetzlich: nie unter Offset 1024

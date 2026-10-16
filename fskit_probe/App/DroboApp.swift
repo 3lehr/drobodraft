@@ -38,7 +38,7 @@ struct DroboApp: App {
     }
 }
 
-extension Notification.Name { static let schreibenFrage = Notification.Name("de.begod.drobo.schreibenFrage") }
+extension Notification.Name { static let schreibenFrage = Notification.Name("drobodraft.schreibenFrage") }
 
 /// Über-Fenster: Name, Version, Kennzeichnung als frühe Alpha.
 func ueberFenster() {

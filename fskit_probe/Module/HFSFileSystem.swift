@@ -2,7 +2,9 @@ import FSKit
 import Foundation
 import os
 
-let hfsLog = Logger(subsystem: "de.begod.drobofsprobe", category: "fs")
+/// Log-Subsystem = Kennung der App (Praefix wird beim Bauen gesetzt): Bundle-Kennung des Moduls ohne ".fsmodule".
+let modulLogSubsystem = (Bundle.main.bundleIdentifier ?? "drobodraft.fsmodule").replacingOccurrences(of: ".fsmodule", with: "")
+let hfsLog = Logger(subsystem: modulLogSubsystem, category: "fs")
 func posixError(_ e: Int32) -> Error { fs_errorForPOSIXError(e) }
 
 /// Eine globale Sperre um alle Aufrufe in Apples Bibliothek (sie ist fuer eine serielle Aufrufwelt gebaut; FSKit ruft parallel).

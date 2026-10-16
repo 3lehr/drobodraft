@@ -1,0 +1,8 @@
+// Bundle-Praefix und Team an EINER Stelle (App, Treibermodul, Hilfsdienst, CLI-Kennung, launchd-Name).
+// Eigene Werte NICHT hier eintragen, sondern in Identity.local.xcconfig (wird nicht eingecheckt), z. B.:
+//   DROBO_BUNDLE_PREFIX = com.example
+//   DROBO_TEAM = ABCDE12345
+// Die hier stehenden Werte gehoeren dem Autor und sind mit anderen Teams nicht signierbar.
+DROBO_BUNDLE_PREFIX = de.begod
+DROBO_TEAM = JR9H9Q532P
+#include? "Identity.local.xcconfig"

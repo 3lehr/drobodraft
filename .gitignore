@@ -6,3 +6,4 @@ __pycache__/
 fskit_probe/DroboFSProbe.xcodeproj/
 xcuserdata/
 .DS_Store
+fskit_probe/Identity.local.xcconfig

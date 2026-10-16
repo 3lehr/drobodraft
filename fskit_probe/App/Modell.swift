@@ -142,7 +142,7 @@ final class DroboModell: ObservableObject {
     }
 
     nonisolated static func dienstText() -> String {
-        switch SMAppService.daemon(plistName: "de.begod.drobohelper.plist").status {
+        switch SMAppService.daemon(plistName: helferPlistName).status {
         case .enabled: return String(localized: "bereit")
         case .requiresApproval: return String(localized: "wartet auf Freigabe")
         case .notRegistered: return String(localized: "nicht eingerichtet")
@@ -308,8 +308,8 @@ final class DroboModell: ObservableObject {
     func imFinderOeffnen() { if let a = aktuell, a.eingehaengt { NSWorkspace.shared.open(URL(fileURLWithPath: a.ort)) } }
 
     func dienstRegistrieren() {
-        do { try SMAppService.daemon(plistName: "de.begod.drobohelper.plist").register() } catch { meldung = Meldung(titel: "Hilfsdienst", text: "\(error)") }
-        if SMAppService.daemon(plistName: "de.begod.drobohelper.plist").status == .requiresApproval { SMAppService.openSystemSettingsLoginItems() }
+        do { try SMAppService.daemon(plistName: helferPlistName).register() } catch { meldung = Meldung(titel: "Hilfsdienst", text: "\(error)") }
+        if SMAppService.daemon(plistName: helferPlistName).status == .requiresApproval { SMAppService.openSystemSettingsLoginItems() }
         aktualisieren()
     }
 

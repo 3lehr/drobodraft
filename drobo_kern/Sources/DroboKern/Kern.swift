@@ -1,7 +1,6 @@
 import Foundation
 
 public let vorgabeUUID = "C2E343A1-0D4C-3B35-B5DC-0325C1E1E1B1"
-public let modulKennung = "de.begod.drobofsprobe.fsmodule"
 public let vorgabeOrt = "/private/tmp/drobo_mnt"
 /// Einhaengeort-Kennung: /Volumes/<Volumename> (der Hilfsdienst legt den Ordner an).
 public let vorgabeVolumes = "/Volumes"

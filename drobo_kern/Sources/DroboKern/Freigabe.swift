@@ -4,7 +4,7 @@ import Foundation
 public enum Freigabe {
     public static var standardPfad: String {
         ProcessInfo.processInfo.environment["DROBO_FREIGABE"].flatMap { $0.isEmpty ? nil : $0 }
-            ?? NSHomeDirectory() + "/Library/Containers/de.begod.drobofsprobe.fsmodule/Data/freigabe.json"
+            ?? NSHomeDirectory() + "/Library/Containers/\(modulKennung)/Data/freigabe.json"
     }
 
     private static func laden(_ pfad: String) throws -> (eintraege: [[String: Any]], alsDict: Bool) {

@@ -3,7 +3,7 @@ import Foundation
 import ServiceManagement
 
 // Kopfaufrufe ohne Fenster (Pruefbarkeit): --helfer-status | --helfer-registrieren | --helfer-neu | --zugriff-status | --zugriff-anfragen | --zustand | --ui-text
-let helferPlist = "de.begod.drobohelper.plist"
+var helferPlist: String { helferPlistName }
 
 func helferStatusText() -> String {
     switch SMAppService.daemon(plistName: helferPlist).status {
