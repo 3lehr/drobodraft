@@ -118,6 +118,9 @@ public final class ISCSISitzung {
     var tsih: [UInt8] = [0, 0]
     var zielSegment = 8192                            // MaxRecvDataSegmentLength des Ziels (Standardwert, bis das Login ihn nennt)
     var maxBurst = ISCSISitzung.maxDatenmenge
+    var firstBurst = ISCSISitzung.maxDatenmenge
+    /// Ziel hat ImmediateData=Yes ausgehandelt. Ohne das wird NIE geschrieben (siehe Messbefund bei `befehl`).
+    var immediateAusgehandelt = false
     public private(set) var login: [String: String] = [:]   // Schluessel der letzten Login-Antwort (Diagnose)
     var tot: ISCSIFehler?
     var blockgroessen: [Int: Int] = [:]
@@ -158,13 +161,18 @@ public final class ISCSISitzung {
             if transit && nsg == 3 {
                 if let s = login["MaxRecvDataSegmentLength"].flatMap(Int.init) { zielSegment = max(s, 512) }
                 if let b = login["MaxBurstLength"].flatMap(Int.init) { maxBurst = min(maxBurst, b) }
+                if let f = login["FirstBurstLength"].flatMap(Int.init) { firstBurst = min(firstBurst, f) }
+                immediateAusgehandelt = ziel != nil && login["ImmediateData"] == "Yes"
                 if login["InitialR2T"] == "No" { throw ISCSIFehler.login("target negotiated InitialR2T=No; this client only supports R2T") }
                 return
             }
             if transit && nsg == 1 {
                 flags = 0x87
+                // Messbefund DroboPro 2026-10-16: mit ImmediateData=No (FirstBurstLength=65536, MaxOutstandingR2T=1) sendet das Ziel auf einen WRITE KEIN R2T,
+                // trennt nach ~4 s und startet neu (3x reproduziert, 4 KiB WRITE(16) und WRITE(10)). Mit ImmediateData=Yes, FirstBurstLength=MaxBurstLength=524288,
+                // MaxOutstandingR2T=8 und dem ersten Datenteil im Command-PDU laufen 4 KiB...32 MiB ohne Neustart. Welche Einstellung entscheidet, ist ungetrennt.
                 keys = ["HeaderDigest=None", "DataDigest=None", "MaxRecvDataSegmentLength=262144"]
-                if ziel != nil { keys += ["InitialR2T=Yes", "ImmediateData=No", "MaxBurstLength=524288", "FirstBurstLength=65536", "ErrorRecoveryLevel=0"] }
+                if ziel != nil { keys += ["InitialR2T=Yes", "ImmediateData=Yes", "MaxBurstLength=524288", "FirstBurstLength=524288", "MaxOutstandingR2T=8", "ErrorRecoveryLevel=0"] }
             } else { keys = [] }
         }
         throw ISCSIFehler.login("no full-feature phase after 8 rounds")

@@ -42,6 +42,8 @@ extension ISCSISitzung {
     /// Einziger Sendeweg. `daten` nur bei WRITE(16); `lesen` = erwartete Datenmenge von Ziel zu Initiator.
     public func befehl(lun: Int, cdb: [UInt8], lesen: Int = 0, daten: [UInt8] = []) throws -> SCSIAntwort {
         if let grund = Self.verbot(cdb: cdb, schreiben: daten.count, lesen: lesen) { throw ISCSIFehler.verboten(grund) }
+        // DroboPro-Neustart durch WRITE ohne Immediate-Daten (Messbefund in ISCSI.swift): ohne ausgehandeltes ImmediateData=Yes wird nie ein WRITE gesendet.
+        if cdb.first == 0x8A && !immediateAusgehandelt { throw ISCSIFehler.verboten("WRITE refused: target did not negotiate ImmediateData=Yes") }
         if discovery { throw ISCSIFehler.verboten("discovery session cannot carry SCSI commands") }
         return try gesichert { try austausch(lun: lun, cdb: cdb, lesen: lesen, daten: daten) }
     }
@@ -52,7 +54,8 @@ extension ISCSISitzung {
         let flags: UInt8 = daten.isEmpty ? (lesen > 0 ? 0xC1 : 0x81) : 0xA1
         var cdb16 = cdb + [UInt8](repeating: 0, count: 16 - cdb.count)
         cdb16 = Array(cdb16.prefix(16))
-        try draht.senden(pdu(0x01, flags) { h in
+        let sofort = daten.isEmpty ? 0 : min(daten.count, firstBurst, zielSegment)      // erster Datenteil im Command-PDU, Rest per R2T
+        try draht.senden(pdu(0x01, flags, daten: Array(daten.prefix(sofort))) { h in
             h[9] = UInt8(lun & 0xff); h[8] = UInt8(lun >> 8 & 0x3f)
             put32(&h, 16, id); put32(&h, 20, UInt32(erwartet)); put32(&h, 24, c); put32(&h, 28, st); h[32..<48] = cdb16[...]
         })

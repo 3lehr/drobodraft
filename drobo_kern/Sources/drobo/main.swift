@@ -21,6 +21,7 @@ func hilfe() -> Never {
     drobo iscsi-probe [--write-test]           check a real iSCSI target (DroboPro): host from DROBO_ISCSI_HOST; reads only; --write-test writes one sector on LUN 1 only if LUN 1 is empty
     drobo iscsi-format --lun 1 --name NAME [--partition-gib N] [--target IQN] [--execute]
                                                set up LUN 1 of an iSCSI target (DroboPro test device) with GPT + one HFS+ partition (no journal); dry run without --execute
+    drobo iscsi-write-test [--lba N] [--sizes 4096,262144]   write, read back and compare on LUN 1 of a test target; stops at the first error
     drobo state | log | speed-history | drives
     drobo detect                               list connected Drobos (SCSI vendor "Drobo") that are not set up yet
     drobo add-drive UUID NAME [timemachine]
@@ -49,7 +50,7 @@ func meldung(_ s: String) { FileHandle.standardError.write(Data(s.utf8)) }
 do {
     var kern = Kern()
     if let u = opt("--uuid") { kern.uuid = u.uppercased() }
-    let ohneDrobo: Set<String> = ["detect", "add-drive", "drives", "uninstall", "backup-location", "log", "speed-history", "iscsi-probe", "iscsi-format"]
+    let ohneDrobo: Set<String> = ["detect", "add-drive", "drives", "uninstall", "backup-location", "log", "speed-history", "iscsi-probe", "iscsi-format", "iscsi-write-test"]
     if kern.uuid.isEmpty && !ohneDrobo.contains(cmd) { throw Fehler.eingabe("No Drobo set up. Run 'drobo detect', then 'drobo add-drive UUID NAME' (or pass --uuid / set DROBO_UUID).") }
     switch cmd {
     case "status":
@@ -137,6 +138,9 @@ do {
     case "iscsi-probe":
         guard let h = ProcessInfo.processInfo.environment["DROBO_ISCSI_HOST"], !h.isEmpty else { throw Fehler.eingabe("set DROBO_ISCSI_HOST to the target's address") }
         print(try iscsiSonde(host: h, schreibtest: flag("--write-test")))
+    case "iscsi-write-test":     // Testgeraet: schreibt auf LUN 1 ab --lba (Vorgabe 16 Mi), je Groesse (Byte, Vorgabe 4096,262144,524288), liest zurueck und vergleicht
+        guard let h = ProcessInfo.processInfo.environment["DROBO_ISCSI_HOST"], !h.isEmpty else { throw Fehler.eingabe("set DROBO_ISCSI_HOST to the target's address") }
+        try iscsiSchreibprobe(host: h, ablba: opt("--lba").flatMap { UInt64($0) } ?? 16 << 20, groessen: (opt("--sizes") ?? "4096,262144,524288").split(separator: ",").compactMap { Int($0) }, meldung: { print($0) })
     case "iscsi-format":
         let env = ProcessInfo.processInfo.environment
         guard let h = env["DROBO_ISCSI_HOST"], !h.isEmpty else { throw Fehler.eingabe("set DROBO_ISCSI_HOST to the target's address") }

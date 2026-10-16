@@ -5,7 +5,9 @@ beantwortet, Seiten 33/35 ebenfalls nicht, InitialR2T=Yes, ImmediateData=No, Max
 Aufruf: python3 -I iscsi_ziel.py --image LUN0.img [--image LUN1.img] --log LOG.jsonl [Fehlerinjektion]
 Gibt "PORT <n>" auf stdout aus, sobald es lauscht. Jeder Befehl landet als JSON-Zeile im Log (Pruefstand sieht, was das Ziel wirklich erreichte).
 Fehlerinjektion: --drop-after N (Verbindung beim (N+1). SCSI-Befehl ohne Antwort schliessen), --swallow K (Befehl Nr. K nicht beantworten),
---r2t-chunk N (R2T in Stuecken von N Byte), --max-seg N (eigene MaxRecvDataSegmentLength, Data-Out darueber -> Verbindung zu)."""
+--r2t-chunk N (R2T in Stuecken von N Byte), --max-seg N (eigene MaxRecvDataSegmentLength, Data-Out darueber -> Verbindung zu).
+DroboPro-Verhalten (gemessen 2026-10-16): ein WRITE ohne Daten im Command-PDU wird nicht beantwortet, kein R2T, Verbindung nach ~1 s zu (die echte DroboPro
+startet dabei neu); hier Log "ABSTURZ write-ohne-immediate". Abschaltbar mit --tolerate-no-immediate."""
 import argparse, json, os, socket, struct, sys, threading
 
 MODESENSE = {  # gemessen an einer DroboPro (Seite 08 ist synthetisch: das Original enthaelt Firmwaredaten)
@@ -24,6 +26,8 @@ a.add_argument("--drop-after", type=int)
 a.add_argument("--swallow", type=int)
 a.add_argument("--r2t-chunk", type=int)
 a.add_argument("--max-seg", type=int, default=65536)
+a.add_argument("--refuse-immediate", action="store_true", help="ImmediateData=No aushandeln (Test des Client-Schutzes)")
+a.add_argument("--tolerate-no-immediate", action="store_true", help="WRITE ohne Immediate-Daten bedienen (Vorgabe: DroboPro-Verhalten, siehe unten)")
 A = a.parse_args()
 loglock = threading.Lock()
 
@@ -50,7 +54,7 @@ def kv(d): return dict(x.decode().split("=", 1) for x in d.split(b"\0") if b"=" 
 
 class Verbindung:
     def __init__(s, sock):
-        s.sock = sock; s.statsn = 0; s.cmdsn = 1; s.mrdsl = 8192; s.nbefehle = 0; s.tsih = 1
+        s.sock = sock; s.statsn = 0; s.cmdsn = 1; s.mrdsl = 8192; s.nbefehle = 0; s.tsih = 1; s.immediate = False
 
     def senden(s, op, flags, data=b"", fields=None, itt=0, lun=bytes(8), statsn=True):
         h = bytearray(48); h[0] = op; h[1] = flags; h[5:8] = len(data).to_bytes(3, "big"); h[8:16] = lun
@@ -92,7 +96,7 @@ def serve(sock):
                 v.senden(0x24, 0x80, data=body, itt=struct.unpack(">I", h[16:20])[0], fields={20: b"\xff\xff\xff\xff"})
             elif op == 0x06:
                 v.senden(0x26, 0x80, itt=struct.unpack(">I", h[16:20])[0]); return
-            elif op == 0x01 and sess == "Normal": scsi(v, h)
+            elif op == 0x01 and sess == "Normal": scsi(v, h, d)
             elif op == 0x00: v.senden(0x20, 0x80, itt=struct.unpack(">I", h[16:20])[0], fields={20: b"\xff\xff\xff\xff"})
             else: log(ereignis="unerwartet", op=op); return
     except Zu: pass
@@ -111,14 +115,16 @@ def login(v):
             else: v.senden(0x23, 0x81, itt=itt, fields={8: h[8:14], 14: bytes([0, v.tsih])})
         else:
             if "MaxRecvDataSegmentLength" in k: v.mrdsl = int(k["MaxRecvDataSegmentLength"])
-            body = (f"HeaderDigest=None\0DataDigest=None\0MaxRecvDataSegmentLength={A.max_seg}\0InitialR2T=Yes\0ImmediateData=No\0"
-                    f"MaxBurstLength=524288\0FirstBurstLength=65536\0MaxOutstandingR2T=8\0ErrorRecoveryLevel=0\0TargetPortalGroupTag=1\0").encode()
+            v.immediate = k.get("ImmediateData") == "Yes" and not A.refuse_immediate
+            first = min(int(k.get("FirstBurstLength", 65536)), 524288)
+            body = (f"HeaderDigest=None\0DataDigest=None\0MaxRecvDataSegmentLength={A.max_seg}\0InitialR2T=Yes\0ImmediateData={'Yes' if v.immediate else 'No'}\0"
+                    f"MaxBurstLength=524288\0FirstBurstLength={first}\0MaxOutstandingR2T=8\0ErrorRecoveryLevel=0\0TargetPortalGroupTag=1\0").encode()
             v.senden(0x23, 0x87, data=body, itt=itt, fields={8: h[8:14], 14: bytes([0, v.tsih])})
             return
 
 def lun_nr(l): return ((l[0] & 0x3F) << 8) | l[1]
 
-def scsi(v, h):
+def scsi(v, h, imm):
     itt = struct.unpack(">I", h[16:20])[0]; exp = struct.unpack(">I", h[20:24])[0]; cdb = bytes(h[32:48]); lun = bytes(h[8:16]); n = lun_nr(lun)
     v.nbefehle += 1
     log(ereignis="befehl", nr=v.nbefehle, op=cdb[0], cdb=cdb.hex(), lun=n, erwartet=exp, flags=h[1])
@@ -146,16 +152,19 @@ def scsi(v, h):
         lba, cnt = struct.unpack(">QI", cdb[2:14])
         if lba + cnt > size: return v.check(itt, 5, 0x21, 0)
         with open(img, "rb") as f: f.seek(lba * 512); v.datain(itt, lun, f.read(cnt * 512), exp)
-    elif op == 0x8A: schreiben(v, h, cdb, itt, img, size, exp)
+    elif op == 0x8A: schreiben(v, h, cdb, itt, img, size, exp, imm)
     else:
         log(ereignis="unbekannt", op=op); v.check(itt, 5, 0x20, 0)
 
-def schreiben(v, h, cdb, itt, img, size, exp):
+def schreiben(v, h, cdb, itt, img, size, exp, imm):
     lba, cnt = struct.unpack(">QI", cdb[2:14]); total = cnt * 512
-    log(ereignis="write", lba=lba, bytes=total, erwartet=exp)
+    log(ereignis="write", lba=lba, bytes=total, erwartet=exp, sofort=len(imm))
+    if not imm and not A.tolerate_no_immediate:
+        import time; time.sleep(1); log(ereignis="ABSTURZ write-ohne-immediate"); raise Zu()
+    if len(imm) > A.max_seg or len(imm) > total: log(ereignis="verletzung", grund="immediate", laenge=len(imm)); raise Zu()
     if total != exp or total > 524288 or lba + cnt > size:
         return v.check(itt, 5, 0x24, 0)   # MaxBurstLength-Verletzung oder falsche Laenge: abgelehnt
-    buf = bytearray(total); gotten = 0; r2tsn = 0; ttt = 0x1000
+    buf = bytearray(total); buf[0:len(imm)] = imm; gotten = len(imm); r2tsn = 0; ttt = 0x1000
     while gotten < total:
         piece = min(A.r2t_chunk or total, total - gotten); ttt += 1
         v.senden(0x31, 0x80, itt=itt, lun=bytes(h[8:16]), statsn=False,

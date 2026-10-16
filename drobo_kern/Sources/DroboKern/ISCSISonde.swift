@@ -44,3 +44,22 @@ public func iscsiSonde(host: String, schreibtest: Bool, schreibtestLBA: UInt64 =
 private enum Digest {
     static func kurz(_ b: [UInt8]) -> String { String(b.reduce(UInt64(1469598103934665603)) { ($0 ^ UInt64($1)) &* 1099511628211 }, radix: 16) }   // FNV-1a, nur zum Vergleichen
 }
+
+/// Schreibprobe an LUN 1 (Testgeraet): je Groesse ein Bereich ab `ablba`, schreiben, zurueckliest, Bytes vergleichen. Beim ersten Fehler Abbruch, nie ein zweiter Versuch.
+public func iscsiSchreibprobe(host: String, port: UInt16 = 3260, ablba: UInt64, groessen: [Int], meldung: (String) -> Void) throws {
+    let d = try ISCSISitzung(host: host, port: port); let ziele = try d.ziele(); d.abmelden()
+    guard let z = ziele.first?.name else { throw ISCSIFehler.protokoll("no target") }
+    let s = try ISCSISitzung(host: host, port: port, ziel: z, zeitgrenze: 30)
+    defer { s.abmelden() }
+    meldung("negotiated: ImmediateData=\(s.login["ImmediateData"] ?? "-") FirstBurstLength=\(s.login["FirstBurstLength"] ?? "-") MaxBurstLength=\(s.login["MaxBurstLength"] ?? "-") MaxOutstandingR2T=\(s.login["MaxOutstandingR2T"] ?? "-") MaxRecvDataSegmentLength=\(s.login["MaxRecvDataSegmentLength"] ?? "-")")
+    var lba = ablba, zufall = SystemRandomNumberGenerator()
+    for n in groessen {
+        let muster = (0..<n).map { _ in UInt8.random(in: 0...255, using: &zufall) }
+        meldung("write LUN 1 lba \(lba) \(n) bytes ...")
+        try s.schreiben(lun: 1, lba: lba, daten: muster)
+        let zurueck = try s.lesen(lun: 1, lba: lba, bloecke: n / 512)
+        meldung("  readback equal=\(zurueck == muster) (\(zurueck.count) bytes)")
+        guard zurueck == muster else { throw ISCSIFehler.protokoll("readback differs at lba \(lba)") }
+        lba += UInt64(n / 512) + 1024
+    }
+}

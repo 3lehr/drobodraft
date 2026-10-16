@@ -105,9 +105,35 @@ final class ISCSITests: XCTestCase {
         try s.schreiben(lun: 1, lba: 0, daten: d)
         XCTAssertEqual(try s.lesen(lun: 1, lba: 0, bloecke: 1024), d)
         let aus = ereignisse("dataout")
-        XCTAssertEqual(aus.count, 524288 / 2048)
+        XCTAssertEqual(aus.count, (524288 - 2048) / 2048, "2048 B gehen sofort im Command-PDU, der Rest per R2T")
         XCTAssertLessThanOrEqual(aus.map { $0["laenge"] as! Int }.max()!, 2048)
         XCTAssertTrue(ereignisse("verletzung").isEmpty)
+    }
+
+    /// DroboPro: 256 KiB Immediate (MRDSL des Ziels) + R2T fuer den Rest; ohne Immediate-Daten stuerzt sie ab (Ziel bildet das nach).
+    func testImmediateTeilPlusR2TRest() throws {
+        let s = try sitzung(try ziel(["--max-seg", "262144"]))
+        XCTAssertEqual(s.login["ImmediateData"], "Yes")
+        let d = muster(524288, 5)
+        try s.schreiben(lun: 1, lba: 16, daten: d)
+        XCTAssertEqual(try s.lesen(lun: 1, lba: 16, bloecke: 1024), d)
+        let w = ereignisse("write").first!
+        XCTAssertEqual(w["sofort"] as? Int, 262144)
+        XCTAssertEqual(ereignisse("dataout").map { $0["laenge"] as! Int }.reduce(0, +), 262144, "Rest 262144 per R2T")
+        let klein = muster(4096, 1)
+        try s.schreiben(lun: 1, lba: 5000, daten: klein)
+        XCTAssertEqual(ereignisse("write").last?["sofort"] as? Int, 4096, "4 KiB komplett immediate")
+        XCTAssertTrue(ereignisse("ABSTURZ write-ohne-immediate").isEmpty)
+    }
+
+    func testWriteOhneImmediateWirdNieGesendet() throws {
+        let s = try sitzung(try ziel(["--refuse-immediate"]))
+        XCTAssertEqual(s.login["ImmediateData"], "No")
+        XCTAssertThrowsError(try s.schreiben(lun: 1, lba: 0, daten: muster(4096))) { guard case ISCSIFehler.verboten = $0 else { return XCTFail("\($0)") } }
+        Thread.sleep(forTimeInterval: 1.5)
+        XCTAssertTrue(ereignisse("write").isEmpty, "kein WRITE erreichte das Ziel")
+        XCTAssertTrue(ereignisse("ABSTURZ write-ohne-immediate").isEmpty)
+        XCTAssertEqual(try s.lesen(lun: 1, lba: 0, bloecke: 1).count, 512, "Lesen geht weiter")
     }
 
     // MARK: Allowlist
