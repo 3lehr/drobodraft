@@ -23,8 +23,8 @@ static void Hex(const uint8_t *p, uint64_t n, char *out, size_t cap)
 }
 
 kern_return_t Senden(IOUserSCSIPeripheralDeviceType00 *self, uint64_t cmd, char *line, size_t cap);
-static constexpr uint64_t kFirstNs = 25000000000ull, kPeriodNs = 4000000000ull;
-static constexpr int kShots = 20;
+static constexpr uint64_t kFirstNs = 60000000000ull, kPeriodNs = 12000000000ull;
+static constexpr int kShots = 6;
 struct MaxWriteProbe_IVars { IOTimerDispatchSource *t; OSAction *action; int shot; };
 
 bool MaxWriteProbe::init()
@@ -47,8 +47,13 @@ void IMPL(MaxWriteProbe, TimerFired)
 {
     int n = ivars->shot++;
     char line[320] = {};
+    // Variante B (Plan 3b): Suspend -> Send -> Resume. Volume muss vorher ausgehaengt sein (Header).
+    kern_return_t rs = UserSuspendServices();
+    os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b B shot=%d UserSuspendServices ret=0x%x", n, rs);
     kern_return_t r = Senden(this, (n % 2 == 0) ? 1 : 2, line, sizeof line);
-    os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b ERGEBNIS shot=%d %{public}s", n, line);
+    kern_return_t rr = UserResumeServices();
+    os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b B shot=%d UserResumeServices ret=0x%x", n, rr);
+    os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b ERGEBNIS shot=%d suspend=0x%x %{public}s", n, rs, line);
     (void)r;
     if (ivars->shot < kShots)
         ivars->t->WakeAtTime(kIOTimerClockMonotonicRaw, clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW) + kPeriodNs, 0);
@@ -66,7 +71,7 @@ kern_return_t IMPL(MaxWriteProbe, Start)
         ivars->t->SetHandler(ivars->action);
         ivars->t->SetEnable(true);
         ivars->t->WakeAtTime(kIOTimerClockMonotonicRaw, clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW) + kFirstNs, 0);
-        os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b Timer gesetzt, erster Schuss +25 s, dann alle 4 s, %d Schuesse", kShots);
+        os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b Timer gesetzt, erster Schuss +60 s, dann alle 12 s, %d Schuesse", kShots);
     } else os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b Timer-Aufbau fehlgeschlagen");
     OSSafeReleaseNULL(q);
     return kIOReturnSuccess;
