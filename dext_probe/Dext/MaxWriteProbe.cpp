@@ -38,7 +38,7 @@ kern_return_t IMPL(MaxWriteProbe, UserDetermineDeviceCharacteristics)
 }
 
 // cmd 1 = INQUIRY 36 B, cmd 2 = MODE SENSE(10) Seite 0x3F
-static kern_return_t Senden(MaxWriteProbe *self, uint64_t cmd, char *line, size_t cap)
+kern_return_t Senden(IOUserSCSIPeripheralDeviceType00 *self, uint64_t cmd, char *line, size_t cap)
 {
     IOBufferMemoryDescriptor *dbuf = nullptr, *sbuf = nullptr;
     kern_return_t r = IOBufferMemoryDescriptor::Create(kIOMemoryDirectionInOut, kDataLen, 0, &dbuf);
@@ -92,17 +92,13 @@ out:
     return r;
 }
 
-kern_return_t IMPL(MaxWriteProbe, SetProperties)
+kern_return_t IMPL(MaxWriteProbe, NewUserClient)
 {
-    OSNumber *c = properties ? OSDynamicCast(OSNumber, properties->getObject("ProbeCmd")) : nullptr;
-    if (!c) return SetProperties(properties, SUPERDISPATCH);
-    char line[320] = {};
-    kern_return_t r = Senden(this, c->unsigned64BitValue(), line, sizeof line);
-    os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b ERGEBNIS %{public}s", line);
-    OSDictionary *res = OSDictionary::withCapacity(1);
-    OSString *s = OSString::withCString(line);
-    if (res && s) { res->setObject("ProbeResult", s); SetProperties(res, SUPERDISPATCH); }
-    OSSafeReleaseNULL(s);
-    OSSafeReleaseNULL(res);
-    return r == kIOReturnSuccess ? kIOReturnSuccess : r;
+    IOService *client = nullptr;
+    kern_return_t r = Create(this, "UserClientProperties", &client);
+    if (r != kIOReturnSuccess) return r;
+    *userClient = OSDynamicCast(IOUserClient, client);
+    if (!*userClient) { OSSafeReleaseNULL(client); return kIOReturnError; }
+    return kIOReturnSuccess;
 }
+

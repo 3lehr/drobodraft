@@ -8,8 +8,8 @@
 	<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
 	<key>CFBundleName</key><string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key><string>DEXT</string>
-	<key>CFBundleShortVersionString</key><string>3.0</string>
-	<key>CFBundleVersion</key><string>6</string>
+	<key>CFBundleShortVersionString</key><string>3.1</string>
+	<key>CFBundleVersion</key><string>7</string>
 	<key>OSBundleUsageDescription</key><string>Test-Dext: sendet Lese-CDBs (INQUIRY, MODE SENSE).</string>
 	<key>IOKitPersonalities</key>
 	<dict>
@@ -23,6 +23,11 @@
 			<key>IOUserClass</key><string>MaxWriteProbe</string>
 			<key>IOUserServerName</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 			<key>Peripheral Device Type</key><integer>0</integer>
+			<key>UserClientProperties</key>
+			<dict>
+				<key>IOClass</key><string>IOUserUserClient</string>
+				<key>IOUserClass</key><string>ProbeUserClient</string>
+			</dict>
 			<key>Vendor Identification</key><string>ABT</string>
 			<key>Product Identification</key><string>CFX Card Reader</string>
 		</dict>
