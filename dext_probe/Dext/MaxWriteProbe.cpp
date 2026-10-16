@@ -1,8 +1,10 @@
 #include <DriverKit/DriverKit.h>
 #include <DriverKit/IOBufferMemoryDescriptor.h>
+#include <DriverKit/IOTimerDispatchSource.h>
 #include <os/log.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include "MaxWriteProbe.h"
 
 // Stufe 3b: nur Lese-CDBs, harte Allowlist. Kein UserSuspendServices, keine Schreibgroessen-Aenderung.
@@ -20,14 +22,54 @@ static void Hex(const uint8_t *p, uint64_t n, char *out, size_t cap)
     out[o] = 0;
 }
 
-bool MaxWriteProbe::init() { return super::init(); }
-void MaxWriteProbe::free() { super::free(); }
+kern_return_t Senden(IOUserSCSIPeripheralDeviceType00 *self, uint64_t cmd, char *line, size_t cap);
+static constexpr uint64_t kFirstNs = 25000000000ull, kPeriodNs = 4000000000ull;
+static constexpr int kShots = 20;
+struct MaxWriteProbe_IVars { IOTimerDispatchSource *t; OSAction *action; int shot; };
+
+bool MaxWriteProbe::init()
+{
+    if (!super::init()) return false;
+    ivars = IONewZero(MaxWriteProbe_IVars, 1);
+    return ivars != nullptr;
+}
+void MaxWriteProbe::free()
+{
+    if (ivars) {
+        OSSafeReleaseNULL(ivars->t);
+        OSSafeReleaseNULL(ivars->action);
+        IOSafeDeleteNULL(ivars, MaxWriteProbe_IVars, 1);
+    }
+    super::free();
+}
+
+void IMPL(MaxWriteProbe, TimerFired)
+{
+    int n = ivars->shot++;
+    char line[320] = {};
+    kern_return_t r = Senden(this, (n % 2 == 0) ? 1 : 2, line, sizeof line);
+    os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b ERGEBNIS shot=%d %{public}s", n, line);
+    (void)r;
+    if (ivars->shot < kShots)
+        ivars->t->WakeAtTime(kIOTimerClockMonotonicRaw, clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW) + kPeriodNs, 0);
+}
 
 kern_return_t IMPL(MaxWriteProbe, Start)
 {
     kern_return_t ret = Start(provider, SUPERDISPATCH);
     os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b Start ret=0x%x", ret);
-    return ret;
+    if (ret != kIOReturnSuccess) return ret;
+    IODispatchQueue *q = nullptr;
+    if (CopyDispatchQueue(kIOServiceDefaultQueueName, &q) == kIOReturnSuccess && q &&
+        CreateActionTimerFired(0, &ivars->action) == kIOReturnSuccess &&
+        IOTimerDispatchSource::Create(q, &ivars->t) == kIOReturnSuccess) {
+        ivars->t->SetHandler(ivars->action);
+        ivars->t->SetEnable(true);
+        ivars->t->WakeAtTime(kIOTimerClockMonotonicRaw, clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW) + kFirstNs, 0);
+        os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b Timer gesetzt, erster Schuss +25 s, dann alle 4 s, %d Schuesse", kShots);
+    } else os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b Timer-Aufbau fehlgeschlagen");
+    OSSafeReleaseNULL(q);
+    return kIOReturnSuccess;
 }
 
 kern_return_t IMPL(MaxWriteProbe, UserDetermineDeviceCharacteristics)
