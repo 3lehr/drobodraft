@@ -304,3 +304,18 @@ extension KernTests {
         XCTAssertEqual(a.tempoVerlauf().count, 2)
     }
 }
+
+extension KernTests {
+    /// /Volumes: Ordner kommt vom Dienst (hier Attrappe), Fehler beim Mount raeumt ihn wieder weg; Aushaengen entfernt ihn.
+    func testEinhaengenVolumesOrtUeberDienstUndAufraeumen() throws {
+        let dev = try anhaengen(try abbild("v", journal: false, marker: false)); let u = try uuid(dev)
+        var k = kern(u, try freigabe([eintrag(u, "nurlesen")]), modul: ModulStatus(installiert: true, freigeschaltet: true))
+        var angelegt: [String] = [], entfernt: [String] = []
+        k.ordnerAnlegen = { angelegt.append($0); return "\(self.dir)/vol" }
+        k.ordnerEntfernen = { entfernt.append($0); return nil }
+        // Mount scheitert (Abbild ohne Marker/Freigabe im Modul) -> Ordner wird wieder entfernt, auch ohne dass etwas eingehaengt ist
+        XCTAssertThrowsError(try k.einhaengen(ort: vorgabeVolumes))
+        XCTAssertEqual(angelegt, [u]); XCTAssertEqual(entfernt, [u])
+        XCTAssertNil(einhaengungen()["/dev/" + dev.dropFirst(5)])
+    }
+}

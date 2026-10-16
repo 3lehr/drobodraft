@@ -14,7 +14,8 @@ public let vorgabeSicherungOrt = "/Volumes/daten/DroboSicherungen"
 
 public struct Einstellungen: Codable, Equatable {
     public var drobos: [DroboEintrag] = [DroboEintrag(uuid: vorgabeUUID, name: "Drobo 5C")]
-    public var einhaengeort = vorgabeOrt
+    /// Vorgabe /Volumes (Ordner /Volumes/<Name> legt der Hilfsdienst an, Finder-Seitenleiste); Messung 2026-10-16: Spotlight laeuft dort nicht hinein.
+    public var einhaengeort = vorgabeVolumes
     public var vorgabeSchreiben = false
     public var sicherungOrt = vorgabeSicherungOrt
     public var sicherungAnzahl = 2

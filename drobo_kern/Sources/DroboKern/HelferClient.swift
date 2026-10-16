@@ -33,3 +33,17 @@ public func helferFreigabeSetzen(uuid: String, modus: String, maxBytes: UInt64) 
     let r = helferRPC { p, k in p.freigabeSetzen(uuid, modus: modus, maxBytes: maxBytes, reply: { k([$0]) }) }
     if let f = r.fehler ?? r.antwort.first ?? nil { throw Fehler.helfer(f) }
 }
+
+/// Legt den Einhaengeordner /Volumes/<Volumename> ueber den Hilfsdienst an; Rueckgabe Pfad.
+public func helferOrdnerAnlegen(uuid: String) throws -> String {
+    let r = helferRPC { p, k in p.ordnerAnlegen(uuid, reply: { k([$0, $1]) }) }
+    if let f = r.fehler ?? (r.antwort.count > 1 ? r.antwort[1] : nil) { throw Fehler.helfer(f) }
+    guard let p = r.antwort.first ?? nil else { throw Fehler.helfer("keine Antwort") }
+    return p
+}
+
+/// nil = ok, sonst Fehlertext.
+public func helferOrdnerEntfernen(uuid: String) -> String? {
+    let r = helferRPC { p, k in p.ordnerEntfernen(uuid, reply: { k([$0]) }) }
+    return r.fehler ?? r.antwort.first ?? nil
+}

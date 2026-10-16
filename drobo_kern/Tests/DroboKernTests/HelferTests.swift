@@ -142,3 +142,48 @@ final class HelferTests: XCTestCase {
         XCTAssertEqual(calls, [])
     }
 }
+
+/// Einhaengeordner /Volumes/<Name> ueber den Dienst: Attrappen fuer mkdir/rmdir/stat, Basis in einem Temp-Ordner.
+extension HelferTests {
+    func ordnerLogik(name: String = "Drobo", bsd: String? = "disk9s2") -> (HelferLogik, [String]) {
+        var l = logik(bsd: bsd)
+        l.finden = { u in bsd.map { Medium(bsd: $0, uuid: u.uppercased(), groesse: 1, name: name) } }
+        l.volumesBasis = home + "/Volumes"
+        l.chown = { p, u, g in self.calls.append("chown \(p) \(u):\(g)"); return 0 }
+        return (l, [])
+    }
+    func testOrdnerAnlegenNurVolumenameUndChownAnAufrufer() throws {
+        try liste(gut); try FileManager.default.createDirectory(atPath: home + "/Volumes", withIntermediateDirectories: true)
+        let (l, _) = ordnerLogik()
+        let me = getuid()
+        let p = try l.ordnerAnlegen(U, uid: me)
+        XCTAssertEqual(p, home + "/Volumes/Drobo"); XCTAssertTrue(FileManager.default.fileExists(atPath: p))
+        XCTAssertEqual(calls, ["chown \(p) \(me):20"])
+        // leerer eigener Ordner wird wiederverwendet; Ordner eines anderen Nutzers nie
+        XCTAssertEqual(try l.ordnerAnlegen(U, uid: me), p)
+        XCTAssertThrowsError(try l.ordnerAnlegen(U, uid: me + 1))
+        XCTAssertThrowsError(try l.ordnerEntfernen(U, uid: me + 1)); XCTAssertTrue(FileManager.default.fileExists(atPath: p))
+        XCTAssertNoThrow(try l.ordnerEntfernen(U, uid: me)); XCTAssertFalse(FileManager.default.fileExists(atPath: p))
+        XCTAssertNoThrow(try l.ordnerEntfernen(U, uid: me), "nicht vorhanden = ok")
+    }
+    func testOrdnerUngueltigeNamenUndFremdeUUIDAbgelehnt() throws {
+        try liste(gut); try FileManager.default.createDirectory(atPath: home + "/Volumes", withIntermediateDirectories: true)
+        for n in ["", ".versteckt", "a/b", "..", "x\u{01}y", String(repeating: "a", count: 256)] {
+            XCTAssertThrowsError(try ordnerLogik(name: n).0.ordnerAnlegen(U, uid: 501), n) { XCTAssertTrue("\($0)".contains("nicht verwendbar"), "\($0)") }
+        }
+        XCTAssertThrowsError(try ordnerLogik().0.ordnerAnlegen("22222222-2222-2222-2222-222222222222", uid: 501)) { XCTAssertTrue("\($0)".contains("nicht in der Freigabeliste")) }
+        XCTAssertThrowsError(try ordnerLogik(bsd: nil).0.ordnerAnlegen(U, uid: 501))
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: home + "/Volumes"), [])
+    }
+    func testOrdnerEntfernenNieNichtleerNieEinhaengepunkt() throws {
+        try liste(gut); try FileManager.default.createDirectory(atPath: home + "/Volumes/Drobo", withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: home + "/Volumes/Drobo/datei", contents: Data())
+        let (l, _) = ordnerLogik()
+        XCTAssertThrowsError(try l.ordnerEntfernen(U, uid: getuid())); XCTAssertTrue(FileManager.default.fileExists(atPath: home + "/Volumes/Drobo/datei"))
+        // Einhaengepunkt (st_dev weicht von /Volumes ab) wird nie entfernt
+        var m = l; try FileManager.default.removeItem(atPath: home + "/Volumes/Drobo/datei")
+        m.lstatDatei = { var s = stat(); guard lstat($0, &s) == 0 else { return nil }; if $0.hasSuffix("/Drobo") { s.st_dev += 1 }; return s }
+        XCTAssertThrowsError(try m.ordnerEntfernen(U, uid: getuid())) { XCTAssertTrue("\($0)".contains("Einhaengepunkt")) }
+        XCTAssertTrue(FileManager.default.fileExists(atPath: home + "/Volumes/Drobo"))
+    }
+}

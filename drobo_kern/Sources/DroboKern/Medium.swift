@@ -13,6 +13,7 @@ public struct Medium: Equatable {
     public var bsd: String          // z. B. disk9s1
     public var uuid: String
     public var groesse: UInt64
+    public var name: String = ""   // Volumename laut DiskArbitration
     public var geraet: String { "/dev/" + bsd }
     public var rohgeraet: String { "/dev/r" + bsd }
 }
@@ -47,7 +48,8 @@ public func finden(uuid: String) -> Medium? {
         let s = CFUUIDCreateString(kCFAllocatorDefault, (cu as! CFUUID)) as String
         if s.uppercased() == want {
             let size = (d[kDADiskDescriptionMediaSizeKey as String] as? NSNumber)?.uint64Value ?? 0
-            return Medium(bsd: name, uuid: want, groesse: size)
+            let vn = d[kDADiskDescriptionVolumeNameKey as String] as? String ?? ""
+            return Medium(bsd: name, uuid: want, groesse: size, name: vn)
         }
     }
     return nil

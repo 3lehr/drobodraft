@@ -3,6 +3,8 @@ import Foundation
 public let vorgabeUUID = "C2E343A1-0D4C-3B35-B5DC-0325C1E1E1B1"
 public let modulKennung = "de.begod.drobofsprobe.fsmodule"
 public let vorgabeOrt = "/private/tmp/drobo_mnt"
+/// Einhaengeort-Kennung: /Volumes/<Volumename> (der Hilfsdienst legt den Ordner an).
+public let vorgabeVolumes = "/Volumes"
 
 public struct ModulStatus: Equatable { public var installiert: Bool; public var freigeschaltet: Bool; public init(installiert: Bool, freigeschaltet: Bool) { self.installiert = installiert; self.freigeschaltet = freigeschaltet } }
 
@@ -77,6 +79,9 @@ public struct Kern {
     public var modul: () -> ModulStatus
     public var home: [String]
     public var ablage: Datenablage = Datenablage()
+    /// Einhaengeort "/Volumes" = Ordner /Volumes/<Volumename> legt der Hilfsdienst an (Finder-Seitenleiste) und entfernt ihn beim Aushaengen.
+    public var ordnerAnlegen: (String) throws -> String = { try helferOrdnerAnlegen(uuid: $0) }
+    public var ordnerEntfernen: (String) -> String? = { helferOrdnerEntfernen(uuid: $0) }
     /// Messung/Test: Partitionsgroesse fuer die Volumeende-Bestimmung bei Geraeten kommt aus DiskArbitration.
     /// Hilfsdienst (freigeben|zurueckgeben): nil = ok, sonst Fehlertext. Nie fatal: reicht der Zugriff trotzdem, geht es weiter.
     public var helfer: (String, String) -> String? = { helferAufruf($0, uuid: $1) }
@@ -170,9 +175,10 @@ public struct Kern {
             sicherungsOrdner = s.ordner
             ablage.protokoll("Metadaten gesichert: \(s.ordner)")
         }
-        try FileManager.default.createDirectory(atPath: ort, withIntermediateDirectories: true)
+        var ort = ort; let ueberDienst = ort == vorgabeVolumes
+        if ueberDienst { ort = try ordnerAnlegen(uuid) } else { try FileManager.default.createDirectory(atPath: ort, withIntermediateDirectories: true) }
         let (rc, out) = ausfuehren("/sbin/mount", ["-F", "-t", "hfsdrobo", "-o", modus == .nurlesen ? "rdonly" : "rw", m.geraet, ort])
-        guard rc == 0 else { throw Fehler.mountFehlgeschlagen(out.isEmpty ? "Exit \(rc)" : out) }
+        guard rc == 0 else { if ueberDienst { _ = ordnerEntfernen(uuid) }; throw Fehler.mountFehlgeschlagen(out.isEmpty ? "Exit \(rc)" : out) }
         guard let e = einhaengungen()[m.geraet] else { throw Fehler.mountFehlgeschlagen("mount meldete Erfolg, Mount-Tabelle zeigt \(m.geraet) nicht") }
         if modus == .nurlesen && !e.nurlesen {
             _ = ausfuehren("/sbin/umount", [ort])
@@ -193,6 +199,7 @@ public struct Kern {
         var (rc, out) = ausfuehren("/sbin/umount", [e.ort])
         if rc != 0 { (rc, out) = ausfuehren("/usr/sbin/diskutil", ["unmount", e.ort]) }
         if rc != 0 || einhaengungen()[m.geraet] != nil { throw Fehler.aushaengenFehlgeschlagen(out) }
+        if e.ort.hasPrefix(vorgabeVolumes + "/"), let f = ordnerEntfernen(uuid) { meldung("Ordner \(e.ort) bleibt stehen: \(f)") }
         var pruef: PruefErgebnis? = nil
         if ablage.merker(uuid).rwAktiv {
             ablage.merkerAendern(uuid) { $0.rwAktiv = false }

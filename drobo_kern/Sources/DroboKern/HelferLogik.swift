@@ -15,6 +15,10 @@ public let helferAnforderung = "anchor apple generic and certificate leaf[subjec
     func freigabeLesen(_ volumeUUID: String, reply: @escaping (String?, String?) -> Void)
     /// modus: nurlesen | schreiben | entfernen. maxBytes nur fuer neue Eintraege.
     func freigabeSetzen(_ volumeUUID: String, modus: String, maxBytes: UInt64, reply: @escaping (String?) -> Void)
+    /// Legt /Volumes/<Volumename> an (Eigentuemer = Aufrufer) und liefert den Pfad. Nur dieser eine Ordnername unter /Volumes, abgeleitet vom Volumenamen der freigegebenen UUID.
+    func ordnerAnlegen(_ volumeUUID: String, reply: @escaping (String?, String?) -> Void)
+    /// Entfernt genau diesen Ordner wieder (nur leer, nur Ordner des Aufrufers, nie ein Einhaengepunkt).
+    func ordnerEntfernen(_ volumeUUID: String, reply: @escaping (String?) -> Void)
 }
 
 public struct HelferFehler: Error, CustomStringConvertible, Equatable {
@@ -31,6 +35,11 @@ public struct HelferLogik {
     public var chmod: (String, mode_t) -> Int32 = { Darwin.chmod($0, $1) }
     public var operatorGID: () -> gid_t? = { getgrnam("operator").map { $0.pointee.gr_gid } }
     public init() {}
+    public var mkdir: (String, mode_t) -> Int32 = { Darwin.mkdir($0, $1) }
+    public var rmdir: (String) -> Int32 = { Darwin.rmdir($0) }
+    public var lstatDatei: (String) -> stat? = { var s = stat(); return lstat($0, &s) == 0 ? s : nil }
+    public var inhalt: (String) -> [String]? = { try? FileManager.default.contentsOfDirectory(atPath: $0) }
+    public var volumesBasis = "/Volumes"
 
     public var datei: (String) -> (uid_t, gid_t)? = { var s = stat(); return stat($0, &s) == 0 ? (s.st_uid, s.st_gid) : nil }
     public var eigner: (String, uid_t, gid_t) -> Int32 = { Darwin.chown($0, $1, $2) }
@@ -82,6 +91,35 @@ public struct HelferLogik {
         let m = try pruefen(uuid, uid: uid)
         guard let g = operatorGID() else { throw HelferFehler("Gruppe operator fehlt") }
         for k in [m.geraet, m.rohgeraet] where chown(k, uid, g) != 0 { throw HelferFehler("chown \(k): \(String(cString: strerror(errno)))") }
+    }
+
+    /// Gueltiger Ordnername: ein Pfadbestandteil, nicht versteckt, keine Steuerzeichen.
+    static func ordnerNameGueltig(_ n: String) -> Bool {
+        !n.isEmpty && n.utf8.count <= 255 && !n.hasPrefix(".") && !n.contains("/") && !n.unicodeScalars.contains { $0.value < 32 || $0.value == 127 }
+    }
+
+    func volumenPfad(_ uuid: String, uid: uid_t) throws -> String {
+        let m = try pruefen(uuid, uid: uid)
+        guard Self.ordnerNameGueltig(m.name) else { throw HelferFehler("Volumename \(m.name.debugDescription) ist als Ordnername unter /Volumes nicht verwendbar") }
+        return volumesBasis + "/" + m.name
+    }
+
+    public func ordnerAnlegen(_ uuid: String, uid: uid_t) throws -> String {
+        let p = try volumenPfad(uuid, uid: uid)
+        if mkdir(p, 0o755) != 0 {
+            guard errno == EEXIST, let s = lstatDatei(p), s.st_mode & S_IFMT == S_IFDIR, s.st_uid == uid, let b = lstatDatei(volumesBasis), s.st_dev == b.st_dev, inhalt(p)?.isEmpty == true
+            else { throw HelferFehler("\(p) nicht anlegbar oder bereits belegt: \(String(cString: strerror(errno)))") }
+            return p
+        }
+        if chown(p, uid, 20) != 0 { let e = String(cString: strerror(errno)); _ = rmdir(p); throw HelferFehler("chown \(p): \(e)") }
+        return p
+    }
+
+    public func ordnerEntfernen(_ uuid: String, uid: uid_t) throws {
+        let p = try volumenPfad(uuid, uid: uid)
+        guard let s = lstatDatei(p) else { return }
+        guard s.st_mode & S_IFMT == S_IFDIR, s.st_uid == uid, let b = lstatDatei(volumesBasis), s.st_dev == b.st_dev else { throw HelferFehler("\(p) ist kein eigener Ordner oder ein Einhaengepunkt -- nicht entfernt") }
+        if rmdir(p) != 0 { throw HelferFehler("rmdir \(p): \(String(cString: strerror(errno)))") }
     }
 
     public func zurueckgeben(_ uuid: String, uid: uid_t) throws {

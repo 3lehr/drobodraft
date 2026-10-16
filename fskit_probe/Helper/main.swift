@@ -35,6 +35,14 @@ final class Dienst: NSObject, NSXPCListenerDelegate, DroboHelferProtokoll {
         lauf("freigabeSetzen(\(modus))", u, reply) { try self.logik.freigabeSetzen(u, modus: modus, maxBytes: maxBytes, uid: self.uid) }
     }
 
+    func ordnerAnlegen(_ u: String, reply: @escaping (String?, String?) -> Void) {
+        do { let p = try logik.ordnerAnlegen(u, uid: uid); log.notice("ordnerAnlegen uid=\(self.uid, privacy: .public) uuid=\(u, privacy: .public): \(p, privacy: .public)"); reply(p, nil) }
+        catch { log.error("ordnerAnlegen uid=\(self.uid, privacy: .public) uuid=\(u, privacy: .public): ABGELEHNT \("\(error)", privacy: .public)"); reply(nil, "\(error)") }
+    }
+    func ordnerEntfernen(_ u: String, reply: @escaping (String?) -> Void) {
+        lauf("ordnerEntfernen", u, reply) { try self.logik.ordnerEntfernen(u, uid: self.uid) }
+    }
+
     func lauf(_ name: String, _ u: String, _ reply: (String?) -> Void, _ f: () throws -> Void) {
         do { try f(); log.notice("\(name, privacy: .public) uid=\(self.uid, privacy: .public) uuid=\(u, privacy: .public): ok"); reply(nil) }
         catch { log.error("\(name, privacy: .public) uid=\(self.uid, privacy: .public) uuid=\(u, privacy: .public): ABGELEHNT \("\(error)", privacy: .public)"); reply("\(error)") }
