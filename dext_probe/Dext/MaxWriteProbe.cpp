@@ -7,25 +7,43 @@
 #include <time.h>
 #include "MaxWriteProbe.h"
 
-// Stufe 3b: nur Lese-CDBs, harte Allowlist. Kein UserSuspendServices, keine Schreibgroessen-Aenderung.
-static constexpr uint32_t kTimeoutMs = 5000;   // begrenzt Hangen (Plan: Timeout 30 s x Retry 20 am Treiber)
-static constexpr uint64_t kDataLen   = 255;    // INQUIRY 36, MODE SENSE(10) Alloc-Laenge 255
-// Apple DTS (Forum 800955): UserSendCDB prueft frueh fSenseLengthRequested gegen die Kernel-Sense-Struktur (20 B); > 20 -> kIOReturnError.
-static constexpr uint8_t  kSenseLen  = 20;
+// Stufe 3b. Nur Lese-CDBs, byte-genaue Allowlist (Recon DROBO_PROTOKOLL_RECON_2026-10-14.md Abschnitt 5).
+static constexpr uint32_t kTimeoutMs = 5000;
+static constexpr uint64_t kDataLen   = 1308;  // groesster erlaubter Alloc (Seite 0x35)
+static constexpr uint8_t  kSenseLen  = 20;    // Apple DTS: > 20 -> kIOReturnError (Forum 800955)
+static constexpr uint64_t kFirstNs = 25000000000ull, kPeriodNs = 4000000000ull;
 
-// Allowlist: ausschliesslich INQUIRY (0x12) und MODE SENSE(10) (0x5A).
-static bool OpcodeErlaubt(uint8_t op) { return op == 0x12 || op == 0x5A; }
+struct Schuss { const char *name; uint8_t len; uint8_t cdb[10]; };
+static const Schuss kSchuesse[] = {
+    {"ROTPROBE verboten 5A/3A/E1",  10, {0x5A,0x08,0x3A,0xE1,0,0,0,0x00,0x08,0}},   // MUSS abgelehnt werden
+    {"INQUIRY std",                  6, {0x12,0x00,0x00,0x00,0x24,0}},
+    {"VPD 0x80 Seriennummer",        6, {0x12,0x01,0x80,0x00,0x1C,0}},
+    {"3A/06 ProtocolVersion",       10, {0x5A,0x08,0x3A,0x06,0,0,0,0x00,0x06,0}},
+    {"3A/01 Configuration",         10, {0x5A,0x08,0x3A,0x01,0,0,0,0x00,0x1C,0}},
+    {"3A/02 Capacity",              10, {0x5A,0x08,0x3A,0x02,0,0,0,0x00,0x24,0}},
+    {"3A/09 Status",                10, {0x5A,0x08,0x3A,0x09,0,0,0,0x00,0x18,0}},
+    {"3A/08 Firmware",              10, {0x5A,0x08,0x3A,0x08,0,0,0,0x01,0x3A,0}},
+    {"3A/33 SysInfo",               10, {0x5A,0x08,0x3A,0x33,0,0,0,0x00,0x18,0}},
+    {"3A/35 SlotInfo2",             10, {0x5A,0x08,0x3A,0x35,0,0,0,0x05,0x1C,0}},
+};
+static constexpr int kShots = sizeof kSchuesse / sizeof kSchuesse[0];
 
-static void Hex(const uint8_t *p, uint64_t n, char *out, size_t cap)
+// Byte-genau: INQUIRY 12 00 00 00 LL 00 | VPD 12 01 {00|80} 00 LL 00 | MODE SENSE(10) 5A 08 3A SS 00 00 00 LH LL 00
+static bool CdbErlaubt(const uint8_t *c, uint8_t len)
 {
-    size_t o = 0;
-    for (uint64_t i = 0; i < n && o + 3 < cap; i++) o += snprintf(out + o, cap - o, "%02x", p[i]);
-    out[o] = 0;
+    if (len == 6 && c[0] == 0x12 && c[3] == 0 && c[5] == 0 && c[4] != 0) {
+        if (c[1] == 0x00 && c[2] == 0x00) return true;
+        if (c[1] == 0x01 && (c[2] == 0x00 || c[2] == 0x80)) return true;
+        return false;
+    }
+    if (len == 10 && c[0] == 0x5A && c[1] == 0x08 && c[2] == 0x3A && c[4] == 0 && c[5] == 0 && c[6] == 0 && c[9] == 0) {
+        uint16_t alloc = (c[7] << 8) | c[8];
+        if (alloc == 0 || alloc > kDataLen) return false;
+        switch (c[3]) { case 0x01: case 0x02: case 0x06: case 0x08: case 0x09: case 0x33: case 0x35: return true; }
+    }
+    return false;
 }
 
-kern_return_t Senden(IOUserSCSIPeripheralDeviceType00 *self, uint64_t cmd, char *line, size_t cap);
-static constexpr uint64_t kFirstNs = 25000000000ull, kPeriodNs = 4000000000ull;
-static constexpr int kShots = 6;
 struct MaxWriteProbe_IVars { IOTimerDispatchSource *t; OSAction *action; int shot; };
 
 bool MaxWriteProbe::init()
@@ -42,19 +60,6 @@ void MaxWriteProbe::free()
         IOSafeDeleteNULL(ivars, MaxWriteProbe_IVars, 1);
     }
     super::free();
-}
-
-void IMPL(MaxWriteProbe, TimerFired)
-{
-    int n = ivars->shot++;
-    char line[320] = {};
-    // Variante A (ohne Suspend, Volume eingehaengt). Reihenfolge: 3 = Apples INQUIRY()-Helfer unveraendert (Kontrolle), 1 = INQUIRY, 2 = MODE SENSE
-    static const uint64_t reihe[kShots] = {3, 1, 2, 3, 1, 2};
-    kern_return_t r = Senden(this, reihe[n], line, sizeof line);
-    os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b ERGEBNIS shot=%d cmd=%llu %{public}s", n, reihe[n], line);
-    (void)r;
-    if (ivars->shot < kShots)
-        ivars->t->WakeAtTime(kIOTimerClockMonotonicRaw, clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW) + kPeriodNs, 0);
 }
 
 kern_return_t IMPL(MaxWriteProbe, Start)
@@ -78,75 +83,60 @@ kern_return_t IMPL(MaxWriteProbe, Start)
 kern_return_t IMPL(MaxWriteProbe, UserDetermineDeviceCharacteristics)
 {
     *result = true;   // Standardverhalten, keine Grenzen gesetzt
-    os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b UserDetermineDeviceCharacteristics (keine Aenderung)");
     return kIOReturnSuccess;
 }
 
-// cmd 1 = INQUIRY 36 B, cmd 2 = MODE SENSE(10) Seite 0x3F
-kern_return_t Senden(IOUserSCSIPeripheralDeviceType00 *self, uint64_t cmd, char *line, size_t cap)
+static void HexZeilen(int shot, const uint8_t *p, uint64_t n)
 {
+    char h[160];
+    for (uint64_t off = 0; off < n; off += 64) {
+        uint64_t m = n - off < 64 ? n - off : 64;
+        size_t o = 0;
+        for (uint64_t i = 0; i < m; i++) o += snprintf(h + o, sizeof h - o, "%02x", p[off + i]);
+        os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b HEX shot=%d off=%llu %{public}s", shot, off, h);
+    }
+}
+
+void IMPL(MaxWriteProbe, TimerFired)
+{
+    int n = ivars->shot++;
+    const Schuss &s = kSchuesse[n];
+    kern_return_t r = kIOReturnNoMemory;
     IOBufferMemoryDescriptor *dbuf = nullptr, *sbuf = nullptr;
-    kern_return_t r = IOBufferMemoryDescriptor::Create(kIOMemoryDirectionInOut, kDataLen, 0, &dbuf);
-    if (r == kIOReturnSuccess) r = IOBufferMemoryDescriptor::Create(kIOMemoryDirectionInOut, kSenseLen, 0, &sbuf);
-    if (r != kIOReturnSuccess) { snprintf(line, cap, "cmd=%llu alloc ret=0x%x", cmd, r); goto out; }
-    {
+    if (!CdbErlaubt(s.cdb, s.len)) {   // Allowlist VOR dem Senden
+        r = kIOReturnNotPermitted;
+        os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b ERGEBNIS shot=%d %{public}s REJECT allowlist ret=0x%x%{public}s", n, s.name, r,
+               n == 0 ? (r == kIOReturnNotPermitted ? " ROTPROBE=PASS" : " ROTPROBE=FAIL") : "");
+    } else if (IOBufferMemoryDescriptor::Create(kIOMemoryDirectionInOut, kDataLen, 0, &dbuf) == kIOReturnSuccess &&
+               IOBufferMemoryDescriptor::Create(kIOMemoryDirectionInOut, kSenseLen, 0, &sbuf) == kIOReturnSuccess) {
         dbuf->SetLength(kDataLen); sbuf->SetLength(kSenseLen);
-        IOAddressSegment d = {}, s = {};
-        dbuf->GetAddressRange(&d); sbuf->GetAddressRange(&s);
-        memset((void *)d.address, 0, kDataLen); memset((void *)s.address, 0, kSenseLen);
+        IOAddressSegment d = {}, se = {};
+        dbuf->GetAddressRange(&d); sbuf->GetAddressRange(&se);
+        memset((void *)d.address, 0, kDataLen); memset((void *)se.address, 0, kSenseLen);
+        uint64_t alloc = (s.len == 6) ? s.cdb[4] : (uint64_t)((s.cdb[7] << 8) | s.cdb[8]);
 
         SCSIType00OutParameters out = {};
         SCSIType00InParameters in = {};
-        uint64_t len = 0;
-        if (cmd == 1 || cmd == 3) {
-            INQUIRY(&out, d.address, &in, s.address);   // Helper fuellt CDB + Richtungen
-            len = out.fRequestedByteCountOfTransfer;
-        } else if (cmd == 2) {
-            INQUIRY(&out, d.address, &in, s.address);   // Richtungen/Felder uebernehmen, CDB danach ersetzen
-            memset(out.fCommandDescriptorBlock, 0, sizeof out.fCommandDescriptorBlock);
-            out.fCommandDescriptorBlock[0] = 0x5A;
-            out.fCommandDescriptorBlock[1] = 0x08;               // DBD
-            out.fCommandDescriptorBlock[2] = 0x3F;               // alle Seiten
-            out.fCommandDescriptorBlock[7] = (kDataLen >> 8) & 0xFF;
-            out.fCommandDescriptorBlock[8] = kDataLen & 0xFF;
-            out.fRequestedByteCountOfTransfer = kDataLen;
-            len = kDataLen;
-        } else { snprintf(line, cap, "cmd=%llu unbekannt", cmd); r = kIOReturnBadArgument; goto out; }
-        if (cmd != 3) {   // 3 = Helfer-Felder unveraendert (nur Puffer-Adressen kamen aus dem Helfer-Aufruf)
-            out.fLogicalUnitNumber = 0;
-            out.fTimeoutDuration = kTimeoutMs;
-            out.fSenseLengthRequested = kSenseLen;
-            out.fSenseBufferAddr = s.address;
-            out.fDataBufferAddr = d.address;
-        }
-        os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b felder cmd=%llu lun=%llu timeout=%u sensereq=%u req=%llu", cmd, out.fLogicalUnitNumber, out.fTimeoutDuration, out.fSenseLengthRequested, out.fRequestedByteCountOfTransfer);
-
-        uint8_t op = out.fCommandDescriptorBlock[0];
-        if (!OpcodeErlaubt(op)) { snprintf(line, cap, "cmd=%llu opcode=0x%02x ABGELEHNT (Allowlist)", cmd, op); r = kIOReturnNotPermitted; goto out; }
-
-        os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b sende opcode=0x%02x len=%llu bufdir=%u xferdir=%u timeout=%u", op, len, out.fBufferDirection, out.fDataTransferDirection, out.fTimeoutDuration);
-        r = self->UserSendCDB(out, &in);
-        char dh[96], sh[48];
-        uint64_t n = in.fRealizedByteCountOfTransfer < 32 ? in.fRealizedByteCountOfTransfer : 32;
-        Hex((const uint8_t *)d.address, n, dh, sizeof dh);
-        Hex((const uint8_t *)s.address, 18, sh, sizeof sh);
-        snprintf(line, cap, "opcode=0x%02x ret=0x%x taskstatus=%u svc=%u bytes=%llu sensevalid=%d sense=%s data32=%s",
-                 op, r, (unsigned)in.fCompletionStatus, (unsigned)in.fServiceResponse,
-                 in.fRealizedByteCountOfTransfer, (int)in.fSenseDataValid, sh, dh);
+        memcpy(out.fCommandDescriptorBlock, s.cdb, s.len);
+        out.fLogicalUnitNumber = 0;
+        out.fTimeoutDuration = kTimeoutMs;
+        out.fRequestedByteCountOfTransfer = alloc;
+        out.fBufferDirection = kIOMemoryDirectionIn;
+        out.fDataTransferDirection = kSCSIDataTransfer_FromTargetToInitiator;
+        out.fSenseLengthRequested = kSenseLen;
+        out.fDataBufferAddr = d.address;
+        out.fSenseBufferAddr = se.address;
+        r = UserSendCDB(out, &in);
+        uint64_t got = in.fRealizedByteCountOfTransfer < kDataLen ? in.fRealizedByteCountOfTransfer : kDataLen;
+        char sh[48]; size_t o = 0;
+        for (int i = 0; i < kSenseLen && o + 3 < sizeof sh; i++) o += snprintf(sh + o, sizeof sh - o, "%02x", ((uint8_t *)se.address)[i]);
+        os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b ERGEBNIS shot=%d %{public}s alloc=%llu ret=0x%x taskstatus=%u svc=%u bytes=%llu sensevalid=%d sense=%{public}s",
+               n, s.name, alloc, r, (unsigned)in.fCompletionStatus, (unsigned)in.fServiceResponse,
+               in.fRealizedByteCountOfTransfer, (int)in.fSenseDataValid, sh);
+        HexZeilen(n, (const uint8_t *)d.address, got);
     }
-out:
     OSSafeReleaseNULL(dbuf);
     OSSafeReleaseNULL(sbuf);
-    return r;
+    if (ivars->shot < kShots)
+        ivars->t->WakeAtTime(kIOTimerClockMonotonicRaw, clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW) + kPeriodNs, 0);
 }
-
-kern_return_t IMPL(MaxWriteProbe, NewUserClient)
-{
-    IOService *client = nullptr;
-    kern_return_t r = Create(this, "UserClientProperties", &client);
-    if (r != kIOReturnSuccess) return r;
-    *userClient = OSDynamicCast(IOUserClient, client);
-    if (!*userClient) { OSSafeReleaseNULL(client); return kIOReturnError; }
-    return kIOReturnSuccess;
-}
-

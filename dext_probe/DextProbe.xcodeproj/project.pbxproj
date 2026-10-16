@@ -11,8 +11,6 @@
 		7E74941246F41A7CD3DDA71B /* MaxWriteProbe.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED5C3241B4C1F4099DF8A507 /* MaxWriteProbe.cpp */; };
 		B2DE1862C2BE35F2BB3A6CBA /* MaxWriteProbe.iig in Sources */ = {isa = PBXBuildFile; fileRef = F1DFE8324BA4ADD93E33F8EC /* MaxWriteProbe.iig */; };
 		C5A8F8FB75797DD010B05B06 /* DextProbeDext.dext in Embed System Extensions */ = {isa = PBXBuildFile; fileRef = 997C6FFFD884E8B73BCB1963 /* DextProbeDext.dext */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		F97A2F5B27F1425C442DB784 /* ProbeUserClient.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 34E443F48B29A64DEEB54193 /* ProbeUserClient.cpp */; };
-		FBD811CB7CD2CFFA7EF9F3F6 /* ProbeUserClient.iig in Sources */ = {isa = PBXBuildFile; fileRef = 9B96D21D43F86C29B70737EB /* ProbeUserClient.iig */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -41,10 +39,8 @@
 
 /* Begin PBXFileReference section */
 		25C4A4B96E5A31E53E96284F /* DextProbeHost.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DextProbeHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		34E443F48B29A64DEEB54193 /* ProbeUserClient.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ProbeUserClient.cpp; sourceTree = "<group>"; };
 		4408D9CA0FEF5AFD51AEA352 /* Dext.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Dext.entitlements; sourceTree = "<group>"; };
 		997C6FFFD884E8B73BCB1963 /* DextProbeDext.dext */ = {isa = PBXFileReference; explicitFileType = "wrapper.driver-extension"; includeInIndex = 0; path = DextProbeDext.dext; sourceTree = BUILT_PRODUCTS_DIR; };
-		9B96D21D43F86C29B70737EB /* ProbeUserClient.iig */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.iig; path = ProbeUserClient.iig; sourceTree = "<group>"; };
 		BB7FCB2A6FF099691E0B6AAC /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
 		C4D0CC1046F2455C80910122 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		ED5C3241B4C1F4099DF8A507 /* MaxWriteProbe.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = MaxWriteProbe.cpp; sourceTree = "<group>"; };
@@ -69,8 +65,6 @@
 				C4D0CC1046F2455C80910122 /* Info.plist */,
 				ED5C3241B4C1F4099DF8A507 /* MaxWriteProbe.cpp */,
 				F1DFE8324BA4ADD93E33F8EC /* MaxWriteProbe.iig */,
-				34E443F48B29A64DEEB54193 /* ProbeUserClient.cpp */,
-				9B96D21D43F86C29B70737EB /* ProbeUserClient.iig */,
 			);
 			path = Dext;
 			sourceTree = "<group>";
@@ -178,8 +172,6 @@
 			files = (
 				7E74941246F41A7CD3DDA71B /* MaxWriteProbe.cpp in Sources */,
 				B2DE1862C2BE35F2BB3A6CBA /* MaxWriteProbe.iig in Sources */,
-				F97A2F5B27F1425C442DB784 /* ProbeUserClient.cpp in Sources */,
-				FBD811CB7CD2CFFA7EF9F3F6 /* ProbeUserClient.iig in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

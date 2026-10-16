@@ -8,8 +8,8 @@
 	<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
 	<key>CFBundleName</key><string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key><string>DEXT</string>
-	<key>CFBundleShortVersionString</key><string>3.4</string>
-	<key>CFBundleVersion</key><string>10</string>
+	<key>CFBundleShortVersionString</key><string>3.5</string>
+	<key>CFBundleVersion</key><string>11</string>
 	<key>OSBundleUsageDescription</key><string>Test-Dext: sendet Lese-CDBs (INQUIRY, MODE SENSE).</string>
 	<key>IOKitPersonalities</key>
 	<dict>
@@ -23,13 +23,21 @@
 			<key>IOUserClass</key><string>MaxWriteProbe</string>
 			<key>IOUserServerName</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 			<key>Peripheral Device Type</key><integer>0</integer>
-			<key>UserClientProperties</key>
-			<dict>
-				<key>IOClass</key><string>IOUserUserClient</string>
-				<key>IOUserClass</key><string>ProbeUserClient</string>
-			</dict>
 			<key>Vendor Identification</key><string>ABT</string>
 			<key>Product Identification</key><string>CFX Card Reader</string>
+		</dict>
+		<key>MaxWriteProbeDrobo</key>
+		<dict>
+			<key>CFBundleIdentifier</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+			<key>CFBundleIdentifierKernel</key><string>com.apple.kpi.iokit</string>
+			<key>IOClass</key><string>IOUserSCSIPeripheralDeviceType00</string>
+			<key>IOProbeScore</key><integer>10000</integer>
+			<key>IOProviderClass</key><string>IOSCSIPeripheralDeviceNub</string>
+			<key>IOUserClass</key><string>MaxWriteProbe</string>
+			<key>IOUserServerName</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+			<key>Peripheral Device Type</key><integer>0</integer>
+			<key>Vendor Identification</key><string>Drobo</string>
+			<key>Product Identification</key><string>5C</string>
 		</dict>
 	</dict>
 </dict>
