@@ -126,3 +126,8 @@ Betreiber: "Time Machine schreibt über den Mac-Kernel, ist das nicht umleitbar?
 - Time Machine über SMB-Netzfreigabe: Schreiben übernimmt das Gerät/den Server, kein Kernel-Blockschreiben des Macs auf die Drobo → Schreibgrenze irrelevant. NAS-Modell: eigene TM-Freigabe (Herstellerfunktion, ungeprüft am Gerät). DAS-Modell (8D) braucht Vermittler (Linux-VM/Server).
 - Aufteilen: Freigaben mit Quote (NAS) bzw. mehrere Volumes (DAS) sind Dashboard-Schreibbefehle → nur nach Protokoll-Recon (Netzverkehr des alten Dashboards, nur lesend) und Einzelfreigabe je Befehl.
 - Reihenfolge: anschließen (Betreiber) → nur lesend erkennen (Modell, Firmware, Freigaben, Protokoll) → App: Status + Freigaben anzeigen → TM-Freigabe mit Quote anlegen (eigenes Wort).
+
+### Messung 3b Hauptweg (2026-10-16T10:00:41+0200)
+- UserClient vom Host: verweigert (IOServiceOpen 0xe00002e2); Entitlement com.apple.developer.driverkit.userclient-access braucht Apple-Freigabe (xcodebuild: "requires approval from Apple").
+- Dext 3.2/8 schickt selbst per Timer 20× INQUIRY/MODE SENSE(10) ohne UserSuspendServices am eingehängten CF-Leser: alle 20 ret=0xe00002bc (kIOReturnError), taskstatus=255, 0 Bytes. Volume blieb eingehängt, parallele Leseschleife 44/44 ohne Fehler.
+- Weiter: Ursache 0xe00002bc (Aufrufparameter) und Variante mit Suspend/Resume bei ausgehängtem Volume.
