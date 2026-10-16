@@ -10,7 +10,8 @@
 // Stufe 3b: nur Lese-CDBs, harte Allowlist. Kein UserSuspendServices, keine Schreibgroessen-Aenderung.
 static constexpr uint32_t kTimeoutMs = 5000;   // begrenzt Hangen (Plan: Timeout 30 s x Retry 20 am Treiber)
 static constexpr uint64_t kDataLen   = 255;    // INQUIRY 36, MODE SENSE(10) Alloc-Laenge 255
-static constexpr uint8_t  kSenseLen  = 32;
+// Apple DTS (Forum 800955): UserSendCDB prueft frueh fSenseLengthRequested gegen die Kernel-Sense-Struktur (20 B); > 20 -> kIOReturnError.
+static constexpr uint8_t  kSenseLen  = 20;
 
 // Allowlist: ausschliesslich INQUIRY (0x12) und MODE SENSE(10) (0x5A).
 static bool OpcodeErlaubt(uint8_t op) { return op == 0x12 || op == 0x5A; }
@@ -23,7 +24,7 @@ static void Hex(const uint8_t *p, uint64_t n, char *out, size_t cap)
 }
 
 kern_return_t Senden(IOUserSCSIPeripheralDeviceType00 *self, uint64_t cmd, char *line, size_t cap);
-static constexpr uint64_t kFirstNs = 60000000000ull, kPeriodNs = 12000000000ull;
+static constexpr uint64_t kFirstNs = 25000000000ull, kPeriodNs = 4000000000ull;
 static constexpr int kShots = 6;
 struct MaxWriteProbe_IVars { IOTimerDispatchSource *t; OSAction *action; int shot; };
 
@@ -47,13 +48,10 @@ void IMPL(MaxWriteProbe, TimerFired)
 {
     int n = ivars->shot++;
     char line[320] = {};
-    // Variante B (Plan 3b): Suspend -> Send -> Resume. Volume muss vorher ausgehaengt sein (Header).
-    kern_return_t rs = UserSuspendServices();
-    os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b B shot=%d UserSuspendServices ret=0x%x", n, rs);
-    kern_return_t r = Senden(this, (n % 2 == 0) ? 1 : 2, line, sizeof line);
-    kern_return_t rr = UserResumeServices();
-    os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b B shot=%d UserResumeServices ret=0x%x", n, rr);
-    os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b ERGEBNIS shot=%d suspend=0x%x %{public}s", n, rs, line);
+    // Variante A (ohne Suspend, Volume eingehaengt). Reihenfolge: 3 = Apples INQUIRY()-Helfer unveraendert (Kontrolle), 1 = INQUIRY, 2 = MODE SENSE
+    static const uint64_t reihe[kShots] = {3, 1, 2, 3, 1, 2};
+    kern_return_t r = Senden(this, reihe[n], line, sizeof line);
+    os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b ERGEBNIS shot=%d cmd=%llu %{public}s", n, reihe[n], line);
     (void)r;
     if (ivars->shot < kShots)
         ivars->t->WakeAtTime(kIOTimerClockMonotonicRaw, clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW) + kPeriodNs, 0);
@@ -71,7 +69,7 @@ kern_return_t IMPL(MaxWriteProbe, Start)
         ivars->t->SetHandler(ivars->action);
         ivars->t->SetEnable(true);
         ivars->t->WakeAtTime(kIOTimerClockMonotonicRaw, clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW) + kFirstNs, 0);
-        os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b Timer gesetzt, erster Schuss +60 s, dann alle 12 s, %d Schuesse", kShots);
+        os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b Timer gesetzt, erster Schuss +25 s, dann alle 4 s, %d Schuesse", kShots);
     } else os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b Timer-Aufbau fehlgeschlagen");
     OSSafeReleaseNULL(q);
     return kIOReturnSuccess;
@@ -100,7 +98,7 @@ kern_return_t Senden(IOUserSCSIPeripheralDeviceType00 *self, uint64_t cmd, char 
         SCSIType00OutParameters out = {};
         SCSIType00InParameters in = {};
         uint64_t len = 0;
-        if (cmd == 1) {
+        if (cmd == 1 || cmd == 3) {
             INQUIRY(&out, d.address, &in, s.address);   // Helper fuellt CDB + Richtungen
             len = out.fRequestedByteCountOfTransfer;
         } else if (cmd == 2) {
@@ -114,11 +112,14 @@ kern_return_t Senden(IOUserSCSIPeripheralDeviceType00 *self, uint64_t cmd, char 
             out.fRequestedByteCountOfTransfer = kDataLen;
             len = kDataLen;
         } else { snprintf(line, cap, "cmd=%llu unbekannt", cmd); r = kIOReturnBadArgument; goto out; }
-        out.fLogicalUnitNumber = 0;
-        out.fTimeoutDuration = kTimeoutMs;
-        out.fSenseLengthRequested = kSenseLen;
-        out.fSenseBufferAddr = s.address;
-        out.fDataBufferAddr = d.address;
+        if (cmd != 3) {   // 3 = Helfer-Felder unveraendert (nur Puffer-Adressen kamen aus dem Helfer-Aufruf)
+            out.fLogicalUnitNumber = 0;
+            out.fTimeoutDuration = kTimeoutMs;
+            out.fSenseLengthRequested = kSenseLen;
+            out.fSenseBufferAddr = s.address;
+            out.fDataBufferAddr = d.address;
+        }
+        os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b felder cmd=%llu lun=%llu timeout=%u sensereq=%u req=%llu", cmd, out.fLogicalUnitNumber, out.fTimeoutDuration, out.fSenseLengthRequested, out.fRequestedByteCountOfTransfer);
 
         uint8_t op = out.fCommandDescriptorBlock[0];
         if (!OpcodeErlaubt(op)) { snprintf(line, cap, "cmd=%llu opcode=0x%02x ABGELEHNT (Allowlist)", cmd, op); r = kIOReturnNotPermitted; goto out; }

@@ -8,8 +8,8 @@
 	<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
 	<key>CFBundleName</key><string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key><string>DEXT</string>
-	<key>CFBundleShortVersionString</key><string>3.3</string>
-	<key>CFBundleVersion</key><string>9</string>
+	<key>CFBundleShortVersionString</key><string>3.4</string>
+	<key>CFBundleVersion</key><string>10</string>
 	<key>OSBundleUsageDescription</key><string>Test-Dext: sendet Lese-CDBs (INQUIRY, MODE SENSE).</string>
 	<key>IOKitPersonalities</key>
 	<dict>
