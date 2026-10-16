@@ -1,4 +1,5 @@
 #!/bin/bash
+. "$(dirname "${BASH_SOURCE[0]:-$0}")/identity.sh"; mkdir -p "$DROBO_BUILD/work"
 # Phase 5 Schritt 1: Lesedurchsatz MESSEN (kein Umbau). Kernel-ro-Mount vs. Modul (mount -F -t hfsdrobo -o rdonly) vs. roh (dd rdisk), 3 Laeufe je Zelle.
 # Ziele: CF-Karte "old" (disk6: Partition CFNJ = HFS+ ohne Journal, CFJ = HFS+ mit Journal) und lokales Abbild (Gegenprobe). Drobo (disk7) wird nie angefasst.
 # Aufruf:  bash messen_lesen.sh prep      Abbild bauen, Freigabeliste ergaenzen (Sicherung), Testdateien pruefen
@@ -6,9 +7,9 @@
 #          bash messen_lesen.sh abbau     Freigabeeintraege der Messung entfernen (Original wiederherstellen), Abbild abhaengen
 # Erwartet: Testdateien $W/src/f1..f4.bin (je 1 GiB Zufall), beide CF-Partitionen tragen sie bereits.
 set -u
-W=${W:-/Volumes/daten/xcode/drobo/p5messung}; SRC=$W/src; IMG=$W/p5.img
+W=${W:-$DROBO_BUILD/work/p5messung}; SRC=$W/src; IMG=$W/p5.img
 LOG=$W/messen.log; RES=$W/ergebnis.txt
-FREIGABE="$HOME/Library/Containers/de.begod.drobofsprobe.fsmodule/Data/freigabe.json"
+FREIGABE="$HOME/Library/Containers/$DROBO_MODULE_ID/Data/freigabe.json"
 RUNS=${RUNS:-3}
 stop() { echo "STOP: $*" | tee -a "$LOG"; exit 1; }
 say() { echo "$*" | tee -a "$RES"; }
@@ -45,7 +46,7 @@ abbau() { cp "$W/freigabe.orig.json" "$FREIGABE" && echo "Freigabe wiederhergest
 # Ein Messlauf: dd bs=1m ueber f1 -> "bytes/sec"
 ddrate() { dd if="$1" of=/dev/null bs=1m 2>&1 | tail -1 | sed -n 's/.*(\([0-9]*\) bytes\/sec).*/\1/p'; }
 mbs() { python3 -c "print('%.1f' % ($1/1e6))"; }
-stats() { sleep 2; /usr/bin/log show --last 2m --info --style compact --predicate 'subsystem == "de.begod.drobofsprobe"' 2>/dev/null | grep "STATS" | tail -2 | sed 's/.*STATS/STATS/'; }
+stats() { sleep 2; /usr/bin/log show --last 2m --info --style compact --predicate 'subsystem == "'$DROBO_APP_ID'"' 2>/dev/null | grep "STATS" | tail -2 | sed 's/.*STATS/STATS/'; }
 
 kmount() { # dev -> mountpoint (frisch, read-only, Kernel)
   diskutil mount readOnly "$1" >>"$LOG" 2>&1 || return 1

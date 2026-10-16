@@ -9,10 +9,15 @@ private let vhFelder: [(String, Int, Int)] = [("signature", 0, 2), ("version", 2
 private let erlaubt: Set<String> = ["attributes", "lastMountedVersion", "modifyDate", "freeBlocks", "nextAllocation", "writeCount"]
 private let zaehler: Set<String> = erlaubt.subtracting(["attributes"]).union(["fileCount", "folderCount", "nextCatalogID", "checkedDate"])
 
-/// Werkzeugordner mit hfs_mark_clean.py fuer die optionale Katalog-Tiefenpruefung (Umgebung DROBO_WERKZEUGE, sonst bekannter Ort); nil = nicht verfuegbar.
+/// Werkzeugordner mit hfs_mark_clean.py fuer die optionale Katalog-Tiefenpruefung: nur ueber die Umgebung DROBO_WERKZEUGE (kein fester Pfad); nil = uebersprungen.
 public func werkzeugOrdner() -> String? {
-    let kand = [Kern.umgebung("DROBO_WERKZEUGE"), "/Volumes/daten/Begod2026/drobo-nas/apps/drobo-nas/tools"].compactMap { $0 }
-    return kand.first { FileManager.default.fileExists(atPath: $0 + "/hfs_mark_clean.py") }
+    guard let d = Kern.umgebung("DROBO_WERKZEUGE"), FileManager.default.fileExists(atPath: d + "/hfs_mark_clean.py") else { return nil }
+    return d
+}
+
+/// Erstes vorhandenes python3 (Homebrew, /usr/local, System); nil = keins.
+public func python3Pfad() -> String? {
+    ["/opt/homebrew/bin/python3", "/usr/local/bin/python3", "/usr/bin/python3"].first { FileManager.default.isExecutableFile(atPath: $0) }
 }
 
 /// Nachpruefung eines AUSGEHAENGTEN Volumes (nur lesend): Header-Bits beider VH, Journal leer, Ersatz-VH, freeBlocks == Bitmap; optional Katalog-Tiefenpruefung.
@@ -54,12 +59,11 @@ public func nachpruefung(pfad: String, partitionsgroesse: UInt64? = nil, tief: B
     } catch { r.probleme.append("Bitmap nicht auswertbar: \(error)") }
     // Katalog-Tiefenpruefung (optional)
     if tief, r.probleme.isEmpty {
-        if let w = werkzeugOrdner(), FileManager.default.isExecutableFile(atPath: "/usr/bin/python3") || FileManager.default.isExecutableFile(atPath: "/opt/homebrew/bin/python3") {
-            let py = FileManager.default.isExecutableFile(atPath: "/opt/homebrew/bin/python3") ? "/opt/homebrew/bin/python3" : "/usr/bin/python3"
+        if let w = werkzeugOrdner(), let py = python3Pfad() {
             let (rc, out) = ausfuehren(py, ["-I", w + "/hfs_mark_clean.py", pfad, "--ende", String(ende), "--nur-pruefen"])
             if rc == 0 && out.contains("PRUEFUNG OK") { r.tiefe = .ok }
             else { r.tiefe = .fehler; r.probleme.append("Katalogpruefung: " + (out.components(separatedBy: "PRUEFUNG FEHLER:").last?.trimmingCharacters(in: .whitespacesAndNewlines) ?? out.suffix(300).description)) }
-        } else { r.hinweise.append("Katalogpruefung nicht verfuegbar (nur Header, Journal und Bitmap geprueft)") }
+        } else { r.hinweise.append("Katalogpruefung uebersprungen (kein Werkzeug: DROBO_WERKZEUGE nicht gesetzt oder kein python3); nur Header, Journal und Bitmap geprueft") }
     }
     r.ok = r.probleme.isEmpty
     return r

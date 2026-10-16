@@ -10,14 +10,14 @@ public struct DroboEintrag: Codable, Equatable {
     public init(uuid: String, name: String, rolle: Rolle = .arbeitsvolume) { self.uuid = uuid.uppercased(); self.name = name; self.rolle = rolle }
 }
 
-public let vorgabeSicherungOrt = "/Volumes/daten/DroboSicherungen"
 
 public struct Einstellungen: Codable, Equatable {
     public var drobos: [DroboEintrag] = [DroboEintrag(uuid: vorgabeUUID, name: "Drobo 5C")]
     /// Vorgabe /Volumes (Ordner /Volumes/<Name> legt der Hilfsdienst an, Finder-Seitenleiste); Messung 2026-10-16: Spotlight laeuft dort nicht hinein.
     public var einhaengeort = vorgabeVolumes
     public var vorgabeSchreiben = false
-    public var sicherungOrt = vorgabeSicherungOrt
+    /// Kein fester Pfad vorgegeben: leer = Schreiben gesperrt, bis der Betreiber einen Ort gewaehlt hat.
+    public var sicherungOrt = ""
     public var sicherungAnzahl = 2
     public var mitteilungen = true
     /// Spotlight/Time-Machine-Ausschluss: nur Einstellung des Betreibers, Vorgabe aus (Hinweis statt Zwang).

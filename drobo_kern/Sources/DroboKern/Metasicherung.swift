@@ -32,6 +32,7 @@ func dateisystemInfo(_ pfad: String) -> (von: String, auf: String, frei: UInt64)
 
 /// Systemplatte (Start-/Datenvolume) oder die Drobo selbst sind als Sicherungsort verboten.
 func sicherungsOrtPruefen(_ ort: String, quelle: String?) throws {
+    guard !ort.isEmpty else { throw AppFehler.sicherungOrt("Kein Sicherungsort gewaehlt. Zum Schreiben zuerst einen Ordner auf einem anderen Laufwerk waehlen (App: Einstellungen oder Bestaetigungsfenster; CLI: drobo backup-location PFAD).") }
     guard ort.hasPrefix("/") else { throw AppFehler.sicherungOrt("Sicherungsort \(ort) ist kein absoluter Pfad") }
     guard let i = dateisystemInfo(Kern.aufgeloest(ort)) else { throw AppFehler.sicherungOrt("Sicherungsort \(ort) nicht pruefbar") }
     if i.auf == "/" || i.auf == "/System/Volumes/Data" {

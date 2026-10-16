@@ -1,4 +1,5 @@
 #!/bin/bash
+. "$(dirname "${BASH_SOURCE[0]:-$0}")/identity.sh"; mkdir -p "$DROBO_BUILD/work"
 # Phase 6: erster Schreibtest auf der Drobo ueber das FSKit-Modul hfsdrobo (Betreiber-Freigabe 2026-10-15: "schreiben ist erlaubt,
 # aber bitte ohne unnoetiges risiko!"). Schreibt NUR in einen eigenen Testordner und loescht ihn wieder. Kein Journal-Eingriff.
 # Ablauf (jeder Schritt mit STOP bei Abweichung):
@@ -10,11 +11,11 @@
 set -u
 cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
 TOOLS=$(cd ../../../tools && pwd); UUID=${DROBO_UUID:-C2E343A1-0D4C-3B35-B5DC-0325C1E1E1B1}
-MNT=/private/tmp/drobo_schreib_mnt; SICH=${SICH:-/Volumes/daten/drobo_sicherung_nutzer/vor_fskit_schreibtest_$(date +%Y%m%d_%H%M%S)}
-SRC=${SRC:-/Volumes/daten/xcode/drobo/schreibtest_quelle}; TEST=_fskit_schreibtest
-FG="$HOME/Library/Containers/de.begod.drobofsprobe.fsmodule/Data/freigabe.json"; FGORIG="$FG.vor_schreibtest"
+MNT=/private/tmp/drobo_schreib_mnt; SICH=${SICH:?SICH: Ordner fuer die Sicherung auf einem anderen Laufwerk setzen}
+SRC=${SRC:-$DROBO_BUILD/work/schreibtest_quelle}; TEST=_fskit_schreibtest
+FG="$HOME/Library/Containers/$DROBO_MODULE_ID/Data/freigabe.json"; FGORIG="$FG.vor_schreibtest"
 stop() { echo "STOP: $*"; exit 2; }
-log_stats() { /usr/bin/log show --last 5m --info --style compact --predicate 'subsystem == "de.begod.drobofsprobe"' 2>/dev/null | grep "STATS unmount" | tail -1 | sed 's/.*STATS/STATS/'; }
+log_stats() { /usr/bin/log show --last 5m --info --style compact --predicate 'subsystem == "'$DROBO_APP_ID'"' 2>/dev/null | grep "STATS unmount" | tail -1 | sed 's/.*STATS/STATS/'; }
 aushaengen() { mount | grep -q " $MNT " || return 0; umount "$MNT" 2>/dev/null || diskutil unmount "$MNT" >/dev/null || { sleep 5; diskutil unmount "$MNT" >/dev/null; }; sleep 2; ! mount | grep -q " $MNT "; }
 fg_zurueck() { [ -f "$FGORIG" ] && mv -f "$FGORIG" "$FG" && echo "Freigabe zurueckgestellt (nurlesen)"; }
 aufraeumen() { aushaengen || echo "WARNUNG: $MNT noch eingehaengt"; fg_zurueck; }

@@ -28,7 +28,7 @@ struct EinstellungenAnsicht: View {
             }
             Section("Sicherung der Verwaltungsdaten") {
                 HStack {
-                    TextField("Sicherungsort", text: $m.einstellungen.sicherungOrt).onSubmit { m.einstellungenSpeichern() }
+                    TextField("Sicherungsort", text: $m.einstellungen.sicherungOrt, prompt: Text("noch nicht gewählt")).onSubmit { m.einstellungenSpeichern() }
                     Button("Wählen …") { if let p = ordnerWaehlen(m.einstellungen.sicherungOrt) { m.einstellungen.sicherungOrt = p; m.einstellungenSpeichern() } }
                 }
                 Stepper("Aufbewahrte Sicherungen: \(m.einstellungen.sicherungAnzahl)", value: $m.einstellungen.sicherungAnzahl, in: 1...20).onChange(of: m.einstellungen.sicherungAnzahl) { _, _ in m.einstellungenSpeichern() }

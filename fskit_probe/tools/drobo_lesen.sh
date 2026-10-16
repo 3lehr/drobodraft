@@ -1,4 +1,5 @@
 #!/bin/bash
+. "$(dirname "${BASH_SOURCE[0]:-$0}")/identity.sh"; mkdir -p "$DROBO_BUILD/work"
 # Betreiberwerkzeug Phase 4: Drobo-Volume NUR LESEND ueber das FSKit-Modul hfsdrobo einhaengen, Leseliste pruefen, aushaengen, Wirt-Pruefsummen vergleichen.
 # Schreibt nie auf die Drobo: Modul-Modus "nurlesen" (Freigabeliste), mount -o rdonly, Schreibzaehler muss 0 bleiben.
 # Aufruf:  bash drobo_lesen.sh --trocken            nur finden und pruefen (kein Mount)
@@ -12,7 +13,7 @@ set -u
 UUID=${DROBO_UUID:-C2E343A1-0D4C-3B35-B5DC-0325C1E1E1B1}
 LISTE=${LISTE:-$HOME/Desktop/drobo_leseliste.json}
 MNT=${MNT:-/private/tmp/drobo_lesen_mnt}  # NICHT unter $HOME: Spotlight indexiert den Benutzerordner und laeuft in den Mount (766k Eintraege/90 s, 2026-10-15)
-FREIGABE="$HOME/Library/Containers/de.begod.drobofsprobe.fsmodule/Data/freigabe.json"
+FREIGABE="$HOME/Library/Containers/$DROBO_MODULE_ID/Data/freigabe.json"
 DCL=${DECMPFS_LISTE:-$(cd "$(dirname "$0")" && pwd)/drobo_decmpfs_auswahl.json}; DCSCRATCH=${DECMPFS_SCRATCH:-${TMPDIR:-/tmp}}
 MODE=lesen; case "${1:-}" in --trocken) MODE=trocken;; --freigabe-anlegen) MODE=anlegen;; "") ;; *) sed -n 2,9p "$0"; exit 2;; esac
 stop() { echo "STOP: $*"; exit "${CODE:-1}"; }
@@ -144,7 +145,7 @@ MOUT=$(mount -F -t hfsdrobo -o rdonly${MOUNT_OPTS:+,$MOUNT_OPTS} "$DEV" "$MNT" 2
 if [ $RC != 0 ]; then
   echo "mount: $MOUT"
   case "$MOUT" in *"ermission"*|*EACCES*|*"Operation not permitted"*) echo "Zugriffsrecht fehlt. Betreiber fuehrt aus:   sudo chown \$USER $DEV $RDEV   (dann Skript erneut)";; esac
-  echo "Modul-Log:"; /usr/bin/log show --last 2m --info --style compact --predicate 'subsystem == "de.begod.drobofsprobe"' 2>/dev/null | sed 's/.*\] /  /' | tail -8
+  echo "Modul-Log:"; /usr/bin/log show --last 2m --info --style compact --predicate 'subsystem == "'$DROBO_APP_ID'"' 2>/dev/null | sed 's/.*\] /  /' | tail -8
   stop "Mount fehlgeschlagen (nichts geschrieben; Wirt-Vergleich unten)"
 fi
 mount | grep -iF " $MNT " | grep -q read-only || { umount "$MNT"; stop "Mount ist NICHT read-only gemeldet -> ausgehaengt"; }
@@ -206,9 +207,9 @@ fi
 umount "$MNT" 2>/dev/null || diskutil unmount "$MNT" || { sleep 5; diskutil unmount "$MNT"; }; sleep 2
 POST=$(HOSTSUM); echo "Wirt nachher: $POST"
 [ "$PRE" = "$POST" ] && echo "Wirt-Pruefsummen vorher == nachher: OK" || { echo "WARNUNG: Wirt-Pruefsummen ABWEICHEND"; RES=9; }
-ST=$(/usr/bin/log show --last 15m --info --style compact --predicate 'subsystem == "de.begod.drobofsprobe"' 2>/dev/null | grep "STATS unmount" | tail -1 | sed 's/.*STATS/STATS/')
+ST=$(/usr/bin/log show --last 15m --info --style compact --predicate 'subsystem == "'$DROBO_APP_ID'"' 2>/dev/null | grep "STATS unmount" | tail -1 | sed 's/.*STATS/STATS/')
 echo "$ST"
-/usr/bin/log show --last 15m --info --style compact --predicate 'subsystem == "de.begod.drobofsprobe"' 2>/dev/null | grep -E "GEOM|STATS-LESEN|STATS-KLEIN" | tail -3 | sed -E 's/.*(GEOM|STATS-)/\1/'
+/usr/bin/log show --last 15m --info --style compact --predicate 'subsystem == "'$DROBO_APP_ID'"' 2>/dev/null | grep -E "GEOM|STATS-LESEN|STATS-KLEIN" | tail -3 | sed -E 's/.*(GEOM|STATS-)/\1/'
 echo "$ST" | grep -q " dev_writes=0 " && echo "$ST" | grep -q "dev_schreibversuche=0" && echo "Schreibzaehler 0: OK" || { echo "WARNUNG: Schreibzaehler nicht 0 oder nicht auffindbar"; RES=10; }
 [ $RES = 0 ] && echo "ERGEBNIS: OK" || echo "ERGEBNIS: FEHLER (Code $RES)"
 exit $RES

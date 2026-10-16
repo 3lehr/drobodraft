@@ -303,6 +303,13 @@ final class DroboModell: ObservableObject {
         }
     }
 
+    /// Ordnerwahl für die Metadaten-Sicherung (kein fester Pfad vorgegeben).
+    func sicherungsOrtWaehlen() {
+        let p = NSOpenPanel(); p.canChooseDirectories = true; p.canChooseFiles = false; p.canCreateDirectories = true
+        p.prompt = String(localized: "Wählen"); p.message = String(localized: "Sicherungsort: nicht das Startvolume und nicht die Drobo")
+        if p.runModal() == .OK, let u = p.url { einstellungen.sicherungOrt = u.path; einstellungenSpeichern() }
+    }
+
     func einstellungenSpeichern() { ablage.einstellungenSetzen(einstellungen); waechterNeu(); aktualisieren() }
 
     func imFinderOeffnen() { if let a = aktuell, a.eingehaengt { NSWorkspace.shared.open(URL(fileURLWithPath: a.ort)) } }

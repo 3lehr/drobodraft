@@ -171,6 +171,7 @@ public struct Kern {
         var sicherungsOrdner: String? = nil
         if modus == .schreiben {
             let e = ablage.einstellungen()
+            try sicherungsOrtPruefen(e.sicherungOrt, quelle: m.rohgeraet)   // vor allem anderen: ohne gueltigen Ort nie schreiben
             let s = try metadatenSichern(quelle: m.rohgeraet, ort: e.sicherungOrt, uuid: uuid, anzahl: e.sicherungAnzahl, partitionsgroesse: m.groesse)
             sicherungsOrdner = s.ordner
             ablage.protokoll("Metadaten gesichert: \(s.ordner)")

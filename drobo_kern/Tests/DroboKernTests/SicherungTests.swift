@@ -1,8 +1,14 @@
 import XCTest
 @testable import DroboKern
 
-/// Metadaten-Sicherung, Nachpruefung, Merker/Abziehen, Wegsichern, Tempo. Alles an Abbildern oder Testordnern unter /Volumes/daten/xcode/drobo/kerntest.
+/// Metadaten-Sicherung, Nachpruefung, Merker/Abziehen, Wegsichern, Tempo. Alles an Abbildern oder Testordnern unter $DROBO_TESTDIR.
 extension KernTests {
+    /// Python-Orakel hfs_attr_diagnose.py (Ordner in DROBO_WERKZEUGE); ohne Werkzeug wird der Test uebersprungen.
+    func pythonOrakel(_ abbild: String, _ ziel: String) throws -> (Int32, String) {
+        guard let w = Kern.umgebung("DROBO_WERKZEUGE"), FileManager.default.fileExists(atPath: w + "/hfs_attr_diagnose.py") else { throw XCTSkip("DROBO_WERKZEUGE (Ordner mit hfs_attr_diagnose.py) nicht gesetzt") }
+        guard let py = python3Pfad() else { throw XCTSkip("kein python3") }
+        return ausfuehren(py, ["-I", w + "/hfs_attr_diagnose.py", abbild, "--sichern", ziel])
+    }
     var sicherOrt: String { "\(dir)/sicherungen" }
     func lies(_ p: String) -> Data { FileManager.default.contents(atPath: p) ?? Data() }
     func patch(_ f: String, _ off: UInt64, _ bytes: [UInt8]) throws {
@@ -27,7 +33,7 @@ extension KernTests {
         XCTAssertEqual(lies(r.ordner + "/ende_1MiB.bin"), abb.suffix(1 << 20))
         // Orakel: das Python-Werkzeug erzeugt dieselben Fork-Dateien
         let py = "\(dir)/py"
-        let (rc, out) = ausfuehren("/opt/homebrew/bin/python3", ["-I", "/Volumes/daten/Begod2026/drobo-nas/apps/drobo-nas/tools/hfs_attr_diagnose.py", f, "--sichern", py])
+        let (rc, out) = try pythonOrakel(f, py)
         try XCTSkipIf(rc != 0 && !FileManager.default.fileExists(atPath: py + "/SHA256SUMS"), "Python-Orakel nicht lauffaehig: \(out.suffix(200))")
         var a = summen(r.ordner), b = summen(py); a["extents.json"] = nil; b["extents.json"] = nil
         XCTAssertEqual(a, b)
@@ -56,7 +62,7 @@ extension KernTests {
         XCTAssertEqual(((meta["ende"] as! [String: Any])["volumeOffset"] as! NSNumber).uint64Value, size - (1 << 20))
         XCTAssertTrue(sicherungPruefen(ordner: r.ordner).isEmpty)
         let py = "\(dir)/py"
-        let (rc, out) = ausfuehren("/opt/homebrew/bin/python3", ["-I", "/Volumes/daten/Begod2026/drobo-nas/apps/drobo-nas/tools/hfs_attr_diagnose.py", f, "--sichern", py])
+        let (rc, out) = try pythonOrakel(f, py)
         try XCTSkipIf(rc != 0 && !FileManager.default.fileExists(atPath: py + "/SHA256SUMS"), "Python-Orakel nicht lauffaehig: \(out.suffix(200))")
         var a = summen(r.ordner), b = summen(py); a["extents.json"] = nil; b["extents.json"] = nil
         XCTAssertEqual(a, b)
@@ -332,5 +338,22 @@ extension KernTests {
         XCTAssertEqual(b.gesamt - b.belegt, UInt64(st.f_bfree) * UInt64(st.f_bsize), "frei")
         XCTAssertGreaterThan(b.belegt, 0); XCTAssertLessThan(b.belegt, b.gesamt)
         XCTAssertThrowsError(try belegungAusHeader(pfad: "\(dir)/leer-nicht-da"))
+    }
+}
+
+extension KernTests {
+    /// Kein fester Sicherungsort: leere Einstellung sperrt das Schreiben mit klarer Meldung; gespeicherter Ort hat Vorrang.
+    func testKeinFesterSicherungsortSchreibenGesperrt() throws {
+        XCTAssertEqual(Einstellungen().sicherungOrt, "")
+        let dev = try anhaengen(try abbild("o")); let u = try uuid(dev)
+        let k = kern(u, try freigabe([eintrag(u, "schreiben")]))
+        var e = k.ablage.einstellungen(); e.sicherungOrt = ""; k.ablage.einstellungenSetzen(e)
+        try XCTSkipUnless(modulStatus().freigeschaltet, "Modul nicht freigeschaltet")
+        XCTAssertThrowsError(try k.einhaengen(modus: .schreiben, ort: ort())) { XCTAssertTrue("\($0)".contains("Kein Sicherungsort"), "\($0)"); XCTAssertEqual(($0 as? AppFehler)?.code, 30) }
+        XCTAssertNil(einhaengungen()["/dev/" + String(dev.dropFirst(5))])
+        // gespeicherte Einstellung wird gelesen, nicht durch eine Vorgabe ersetzt
+        e.sicherungOrt = "/gespeichert/irgendwo"; k.ablage.einstellungenSetzen(e)
+        XCTAssertEqual(Datenablage(ordner: k.ablage.ordner).einstellungen().sicherungOrt, "/gespeichert/irgendwo")
+        XCTAssertThrowsError(try metadatenSichern(quelle: "/dev/null", ort: "", uuid: u, anzahl: 1)) { XCTAssertTrue("\($0)".contains("Kein Sicherungsort")) }
     }
 }

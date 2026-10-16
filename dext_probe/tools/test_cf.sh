@@ -9,7 +9,7 @@ set -euo pipefail
 
 WANT_MEDIA="CFX Card Reader"
 WANT_VENDOR="ABT"
-TESTDIR="${TESTDIR:-/Volumes/daten/xcode/drobo/cf_test}"
+TESTDIR="${TESTDIR:-${TMPDIR:-/tmp}/drobodraft_cf_test}"
 OFFSET_MIB=1024   # Rohtest ab 1 GiB Offset
 SIZE_MIB=2048
 

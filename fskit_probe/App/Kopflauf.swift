@@ -41,6 +41,7 @@ func kopflauf() -> Bool {
         if a.contains("--zugriff-anfragen") { print("macOS fragt jetzt ggf. nach Zugriff auf Wechseldatentraeger -> Erlauben") }
         print(zugriffOeffnen(u)); return true
     }
+    if a.contains("--helfer-abmelden") { try? SMAppService.daemon(plistName: helferPlist).unregister(); print("status=\(helferStatusText())"); return true }
     if a.contains("--helfer-neu") { try? SMAppService.daemon(plistName: helferPlist).unregister(); print("unregister status=\(helferStatusText())") }
     if a.contains("--helfer-registrieren") || a.contains("--helfer-neu") { print(helferRegistrieren()) }
     if a.contains("--helfer-status") || a.contains("--helfer-registrieren") || a.contains("--helfer-neu") { print("status=\(helferStatusText())"); return true }

@@ -1,10 +1,10 @@
 import XCTest
 @testable import DroboKern
 
-/// Alle Tests am Abbild (<= 64 MiB, unter /Volumes/daten/xcode/drobo/kerntest). Nie ein Drobo-Geraet: gesucht wird nur nach der UUID des frischen Abbilds.
+/// Alle Tests am Abbild (<= 64 MiB, unter $DROBO_TESTDIR). Nie ein Drobo-Geraet: gesucht wird nur nach der UUID des frischen Abbilds.
 /// Die Freigabeliste des Betreibers wird nicht benutzt (Tests haben eine eigene Datei); tearDown belegt, dass sie byteweise unveraendert ist.
 final class KernTests: XCTestCase {
-    static let betreiberListe = NSHomeDirectory() + "/Library/Containers/de.begod.drobofsprobe.fsmodule/Data/freigabe.json"
+    static let betreiberListe = NSHomeDirectory() + "/Library/Containers/\(modulKennung)/Data/freigabe.json"
     var vorher: Data?
     var dir = ""
     var geraete: [String] = []      // von uns angehaengte Abbild-Geraete
@@ -13,7 +13,9 @@ final class KernTests: XCTestCase {
 
     override func setUpWithError() throws {
         vorher = FileManager.default.contents(atPath: Self.betreiberListe)
-        dir = "/Volumes/daten/xcode/drobo/kerntest/\(UUID().uuidString)"
+        // Abbilder und Sicherungsorte brauchen ein Laufwerk, das nicht das Startvolume ist (sonst lehnt die Sicherung den Ort ab).
+        guard let base = Kern.umgebung("DROBO_TESTDIR") else { throw XCTSkip("DROBO_TESTDIR nicht gesetzt: Ordner auf einem Nicht-Startvolume fuer Test-Abbilder") }
+        dir = "\(base)/\(UUID().uuidString)"
         try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
     }
 
@@ -67,7 +69,7 @@ final class KernTests: XCTestCase {
         var k = Kern(uuid: u, freigabePfad: f, modul: { modul }); k.ablage = testAblage(); return k
     }
 
-    /// Eigene Datenablage je Test (nie die des Betreibers); Sicherungsort im Testordner auf /Volumes/daten.
+    /// Eigene Datenablage je Test (nie die des Betreibers); Sicherungsort im Testordner.
     func testAblage(anzahl: Int = 2) -> Datenablage {
         let a = Datenablage(ordner: "\(dir)/daten")
         var e = a.einstellungen(); e.sicherungOrt = "\(dir)/sicherungen"; e.sicherungAnzahl = anzahl

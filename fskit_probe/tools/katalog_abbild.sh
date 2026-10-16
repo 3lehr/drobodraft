@@ -1,9 +1,10 @@
 #!/bin/bash
+. "$(dirname "${BASH_SOURCE[0]:-$0}")/identity.sh"; mkdir -p "$DROBO_BUILD/work"
 # Phase 5e: Testabbild mit GROSSEM Katalog (Drobo: 2,6 Mio Dateien, 2,7 GB Katalogdatei) und grossen Testdateien d1..d4.bin.
 # HFS+ ohne Journal, 64-KiB-Block; Dateien zuerst (zusammenhaengend), dann NDIR*NFILE leere Dateien mit langen Namen (kleiner Faecher je Indexknoten -> tiefer Baum).
 # Aufruf: W=... bash katalog_abbild.sh [NDIR=300] [NFILE=1000] [NAME=dkat]   Ausgabe: $W/NAME.img, $W/NAME.sha256, Baumtiefe
 set -eu
-W=${W:-/Volumes/daten/xcode/drobo/p5e}; ND=${1:-300}; NF=${2:-1000}; NAME=${3:-dkat}
+W=${W:-$DROBO_BUILD/work/p5e}; ND=${1:-300}; NF=${2:-1000}; NAME=${3:-dkat}
 mkdir -p "$W"; IMG=$W/$NAME.img; rm -f "$IMG"; truncate -s "$(( 1024 + ND * NF * 400 / 1048576 + 600 ))m" "$IMG"
 d=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nomount "$IMG" | awk 'NR==1{print $1}'); newfs_hfs -b 65536 -v "$NAME" "${d/disk/rdisk}" >/dev/null; hdiutil detach "$d" >/dev/null
 mkdir -p "$W/mnt_$NAME"; d=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nobrowse -mountpoint "$W/mnt_$NAME" "$IMG" | awk 'NR==1{print $1}')

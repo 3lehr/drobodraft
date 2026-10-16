@@ -1,12 +1,13 @@
 #!/bin/bash
+. "$(dirname "${BASH_SOURCE[0]:-$0}")/identity.sh"; mkdir -p "$DROBO_BUILD/work"
 # Phase 3 (A): Haertetest ueber den FSKit-Mount (hfsdrobo) an Test-Abbildern. Kernel richtet danach (fsck_hfs -fn, ro-Mount, md5).
 # Aufruf: bash hard_fskit.sh [dauer|frag|gross|alles]. NUR Abbilder; Platzbedarf bis ~25 GiB (gross) -> vorher df pruefen.
-W=${W:-/Volumes/daten/xcode/drobo/hartfs}
+W=${W:-$DROBO_BUILD/work/hartfs}
 cd "$(dirname "$0")" || exit 2
 source ./eich_fskit.sh
 LOG=$W/hard_fskit.log; : > "$LOG"
 MINFREE_GIB=${MINFREE_GIB:-30}
-free_gib() { df -g /Volumes/daten | awk 'NR==2{print $4}'; }
+free_gib() { df -g "$DROBO_BUILD" | awk 'NR==2{print $4}'; }
 
 watch_mem() { # pid file
   ( while kill -0 "$1" 2>/dev/null; do echo "$(date +%s) $(ps -o rss=,vsz= -p "$1" 2>/dev/null | tr -s ' ')" >> "$2"; sleep 3; done ) >/dev/null 2>&1 &
@@ -125,7 +126,7 @@ t_gross() {
     t0=$(now); chk "$n nurlesen (Direktweg): 17-GiB-Datei md5 gleich Referenz" test "$(md5 -q "$MNT/huge.bin")" = "$want"; t1=$(now)
     say "   nurlesen lesen+md5: $(python3 -c "print('%.0f MB/s' % (17408/($t1-$t0)))")"
     umount "$MNT"; sleep 2; hdiutil detach "$DEV" >>"$LOG" 2>&1
-    local sl; sl=$(/usr/bin/log show --last 5m --info --style compact --predicate 'subsystem == "de.begod.drobofsprobe"' 2>/dev/null | grep "STATS-LESEN" | tail -1 | sed 's/.*STATS-LESEN/STATS-LESEN/'); say "   $sl"
+    local sl; sl=$(/usr/bin/log show --last 5m --info --style compact --predicate 'subsystem == "'$DROBO_APP_ID'"' 2>/dev/null | grep "STATS-LESEN" | tail -1 | sed 's/.*STATS-LESEN/STATS-LESEN/'); say "   $sl"
     chk "$n nurlesen: direkt_reads=$(fld "$sl" direkt_reads) > 0, fallback_reads=$(fld "$sl" fallback_reads)" test "$(fld "$sl" direkt_reads)" -gt 0
   else fail "$n nurlesen mount"; hdiutil detach "$DEV" >>"$LOG" 2>&1; fi
   rmw "$n.img" "mnt_$n"

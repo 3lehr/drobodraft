@@ -187,7 +187,7 @@ struct VolumeAnsicht: View {
                         Button { m.zugriffPruefen() } label: { Label("Festplattenzugriff prüfen", systemImage: "checkmark.shield") }.disabled(!a.verbunden || a.eingehaengt || m.arbeit != nil)
                     }
                     Karte(titel: "Sicherungen der Verwaltungsdaten") {
-                        Text("Vor jedem Einhängen zum Schreiben wird automatisch gesichert. Aufbewahrt werden \(m.einstellungen.sicherungAnzahl) Sicherungen in \(m.einstellungen.sicherungOrt).").font(.callout).foregroundStyle(.secondary)
+                        Text("Vor jedem Einhängen zum Schreiben wird automatisch gesichert. Aufbewahrt werden \(m.einstellungen.sicherungAnzahl) Sicherungen in \(m.einstellungen.sicherungOrt.isEmpty ? String(localized: "(noch kein Ort gewählt)") : m.einstellungen.sicherungOrt).").font(.callout).foregroundStyle(.secondary)
                         if a.sicherungen.isEmpty { Text("Noch keine Sicherung.") }
                         ForEach(a.sicherungen, id: \.self) { Text(sicherungsZeit($0)).font(.callout.monospacedDigit()) }
                         Button { m.pruefen() } label: { Label("Jetzt prüfen", systemImage: "stethoscope") }.disabled(!a.verbunden || a.eingehaengt || m.arbeit != nil)
@@ -271,13 +271,19 @@ struct SchreibenBestaetigung: View {
             Text("Zum Schreiben einhängen?").font(.title2).accessibilityAddTraits(.isHeader)
             Text("Vorher wird eine Sicherung der Verwaltungsdaten des Laufwerks angelegt. Ohne gelungene Sicherung wird nicht zum Schreiben eingehängt.")
             if m.spotlightHinweisNoetig { Hinweis(symbol: "magnifyingglass", text: "Spotlight ist für die Drobo noch nicht ausgeschlossen (empfohlen, siehe Anleitung in den Einstellungen).") }
+            if m.einstellungen.sicherungOrt.isEmpty {
+                Hinweis(symbol: "externaldrive.badge.exclamationmark", text: "Schreiben ist gesperrt, bis ein Sicherungsort gewählt ist: ein Ordner auf einem anderen Laufwerk als dem Startvolume und der Drobo, mit einigen GB Platz.", farbe: .red)
+                Button("Sicherungsort wählen …") { m.sicherungsOrtWaehlen() }
+            } else {
+                Text("Sicherungsort: \(m.einstellungen.sicherungOrt)").font(.callout).foregroundStyle(.secondary)
+            }
             HStack {
                 Spacer()
                 Button("Abbrechen") { dismiss() }.keyboardShortcut(.defaultAction)
                 Button("Zum Schreiben einhängen") {
                     dismiss()
                     if m.aktuell?.eingehaengt == true { m.neuZumSchreiben() } else { m.einhaengen(schreiben: true) }
-                }
+                }.disabled(m.einstellungen.sicherungOrt.isEmpty)
             }
         }.padding(24).frame(width: 480)
     }

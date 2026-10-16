@@ -1,12 +1,13 @@
 #!/bin/bash
+. "$(dirname "${BASH_SOURCE[0]:-$0}")/identity.sh"; mkdir -p "$DROBO_BUILD/work"
 # Phase 5d: Lesedurchsatz am Testabbild (frag_abbild.sh) je Variante, 3 Laeufe frisch gemountet, dd bs=1m ueber alle d*.bin nacheinander, danach sha256-Abgleich.
 # Varianten (Schalterdateien im Modulcontainer): alt = direktweg_aus + knotencache_aus (alter fsops_read-Weg), B = Direktweg ohne Knotencache und Lagecache, Bcache = mit Knotencache (Phase 5f), Blage = zusaetzlich Lagecache (Phase 5g).
 # CRAWLER=1: waehrend des Lesens laeuft `find MOUNT -ls` in Schleife (Fremdzugriff auf den Katalog, Phase 5e); CRAWLER=scandir: Python os.scandir + stat
 # ueber alle Verzeichnisse in Schleife (grosse Verzeichnisse per readdir in Chunks, Phase 5f); Name im Ergebnis mit Suffix +crawler.
 # Aufruf: bash messen_modell.sh IMG SHAFILE LABEL [VARIANTEN="alt B cache"]   Ergebnis: $W/modell_LABEL.txt
 set -u
-IMG=$1; SHA=$2; LAB=$3; VAR=${4:-"alt B Bcache Blage"}; W=${W:-/Volumes/daten/xcode/drobo/p5d}; RUNS=${RUNS:-3}
-C="$HOME/Library/Containers/de.begod.drobofsprobe.fsmodule/Data"; F=$C/freigabe.json; RES=$W/modell_$LAB.txt; : > "$RES"; M=$W/mnt_modell
+IMG=$1; SHA=$2; LAB=$3; VAR=${4:-"alt B Bcache Blage"}; W=${W:-$DROBO_BUILD/work/p5d}; RUNS=${RUNS:-3}
+C="$HOME/Library/Containers/$DROBO_MODULE_ID/Data"; F=$C/freigabe.json; RES=$W/modell_$LAB.txt; : > "$RES"; M=$W/mnt_modell
 say() { echo "$*" | tee -a "$RES"; }
 [ -f "$W/freigabe.orig.json" ] || cp "$F" "$W/freigabe.orig.json"
 d=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nomount "$IMG" | awk 'NR==1{print $1}'); u=$(diskutil info "$d" | awk '/Volume UUID/{print $3}'); hdiutil detach "$d" >/dev/null
@@ -45,7 +46,7 @@ while not os.path.exists(stop):
     say "$v${CRAWLER:+ +crawler} lauf$i $(python3 -c "print('%.1f MB/s (%d MiB in %.1f s)' % ($tot/1e6/($t1-$t0), $tot/1048576, $t1-$t0))")"
     if [ "$i" = 1 ] && [ -z "${DATEIEN:-}" ]; then ok=0; bad=0; while read -r h n; do g=$(shasum -a 256 "$M/$n" | cut -d' ' -f1); [ "$g" = "$h" ] && ok=$((ok+1)) || bad=$((bad+1)); done < "$SHA"; say "   sha256: $ok OK, $bad abweichend"; fi
     umount "$M"; sleep 2; hdiutil detach "$d" >/dev/null
-    /usr/bin/log show --last 2m --info --style compact --predicate 'subsystem == "de.begod.drobofsprobe"' 2>/dev/null | grep -E "STATS-(LESEN|KLEIN|LOCK)" | tail -3 | sed 's/.*STATS-/   STATS-/' | tee -a "$RES"
+    /usr/bin/log show --last 2m --info --style compact --predicate 'subsystem == "'$DROBO_APP_ID'"' 2>/dev/null | grep -E "STATS-(LESEN|KLEIN|LOCK)" | tail -3 | sed 's/.*STATS-/   STATS-/' | tee -a "$RES"
   done
 done
 rm -f "$C/direktweg_aus" "$C/extentcache_aus" "$C/knotencache_aus" "$C/lage_aus"; cp "$W/freigabe.orig.json" "$F"

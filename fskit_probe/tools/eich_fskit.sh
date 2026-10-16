@@ -1,10 +1,11 @@
 #!/bin/bash
+. "$(dirname "${BASH_SOURCE[0]:-$0}")/identity.sh"; mkdir -p "$DROBO_BUILD/work"
 # Phase 2 Eichung: HFS+ ueber das FSKit-Modul (mount -F -t hfsdrobo) an Test-Abbildern; der macOS-Kernel richtet danach (fsck_hfs -fn, ro-Mount, md5).
 # Beruehrt NUR Abbilddateien unter $W. Es werden nur selbst angehaengte Geraete benutzt.  Aufruf: bash eich_fskit.sh [normal|absturz|alles]
 set -u
 cd "$(dirname "${BASH_SOURCE[0]}")" || exit 2
 M=$(cd ../.. && pwd)                         # macos/
-W=${W:-/Volumes/daten/xcode/drobo/eichfs}; mkdir -p "$W"
+W=${W:-$DROBO_BUILD/work/eichfs}; mkdir -p "$W"
 SHORT=hfsdrobo
 LOG=$W/eich_fskit.log; : > "$LOG"
 NPASS=0; NFAIL=0
@@ -36,7 +37,7 @@ fmount() { # DEV MNT : mount -F, einmal wiederholen (erster Start des Modulproze
 fsck_ok() { local dev; dev=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nomount "$1" | awk 'NR==1{print $1}')
   fsck_hfs -fn "${dev/disk/rdisk}" > "$W/fsck.out" 2>&1; local rc=$?; hdiutil detach "$dev" >>"$LOG" 2>&1
   { echo "--- fsck_hfs -fn $1 rc=$rc"; cat "$W/fsck.out"; } >>"$LOG"; [ $rc = 0 ] && grep -q 'appears to be OK' "$W/fsck.out"; }
-stats_line() { /usr/bin/log show --last "${1:-3}m" --info --style compact --predicate 'subsystem == "de.begod.drobofsprobe"' 2>/dev/null | grep "STATS unmount" | tail -1 | sed 's/.*STATS/STATS/'; }
+stats_line() { /usr/bin/log show --last "${1:-3}m" --info --style compact --predicate 'subsystem == "'$DROBO_APP_ID'"' 2>/dev/null | grep "STATS unmount" | tail -1 | sed 's/.*STATS/STATS/'; }
 fld() { echo "$1" | sed -n "s/.*[ ]$2=\([0-9]*\).*/\1/p"; }
 
 mksrc() { # einmalig: Quellen
@@ -128,13 +129,13 @@ t_sperre() {
     attach "$img"; mkdir -p "$MNT"; local T0; T0=$(date "+%Y-%m-%d %H:%M:%S")
     if mount -F -t $SHORT "$DEV" "$MNT" >>"$LOG" 2>&1; then fail "SPERRE $n: Modul hat das Abbild eingehaengt"; umount "$MNT" >/dev/null 2>&1
     else pass "SPERRE $n: mount -F abgelehnt"; fi
-    /usr/bin/log show --start "$T0" --info --style compact --predicate 'subsystem == "de.begod.drobofsprobe"' 2>/dev/null | grep -E "probe|load" | sed 's/.*\] /   /' | tail -2 | tee -a "$LOG"
+    /usr/bin/log show --start "$T0" --info --style compact --predicate 'subsystem == "'$DROBO_APP_ID'"' 2>/dev/null | grep -E "probe|load" | sed 's/.*\] /   /' | tail -2 | tee -a "$LOG"
     hdiutil detach "$DEV" >>"$LOG" 2>&1; rmw "$n.img" "mnt_$n"
   done
 }
 
 # Freigabeliste (Phase 4 Vorbereitung): Geraet OHNE Marker nur ueber freigabe.json im Container des Moduls; Modus nurlesen = nichts darf schreiben.
-FREIGABE="$HOME/Library/Containers/de.begod.drobofsprobe.fsmodule/Data/freigabe.json"
+FREIGABE="$HOME/Library/Containers/$DROBO_MODULE_ID/Data/freigabe.json"
 sha() { shasum -a 256 "$1" | awk '{print $1}'; }
 mkplain() { # name journaled MiB -> Abbild OHNE Marker, vom Kernel gefuellt; setzt VUUID, $W/name.ref.md5
   local n=$1 f=$W/$1.img d; rmw "$n.img"; truncate -s "${3}m" "$f"
@@ -202,7 +203,7 @@ t_freigabe() {
   sha0=$(sha "$img"); attach "$img"; MNT=$W/mnt_fg; mkdir -p "$MNT"
   mount -F -t $SHORT -o rdonly "$DEV" "$MNT" >>"$LOG" 2>&1 && { fail "$n nurlesen mit nicht leerem Journal eingehaengt"; umount "$MNT"; } || pass "$n nurlesen + Journal nicht leer: abgelehnt"
   hdiutil detach "$DEV" >>"$LOG" 2>&1
-  /usr/bin/log show --last 2m --info --style compact --predicate 'subsystem == "de.begod.drobofsprobe"' 2>/dev/null | grep -E "Journal nicht leer" | tail -1 | sed 's/.*\] /   /' | tee -a "$LOG"
+  /usr/bin/log show --last 2m --info --style compact --predicate 'subsystem == "'$DROBO_APP_ID'"' 2>/dev/null | grep -E "Journal nicht leer" | tail -1 | sed 's/.*\] /   /' | tee -a "$LOG"
   chk "$n Abbild-SHA256 vorher == nachher (abgelehnt, nichts geschrieben)" test "$sha0" = "$(sha "$img")"
   local kd; mkdir -p "$W/mnt_fgk"; kd=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nobrowse -mountpoint "$W/mnt_fgk" "$img" | awk 'NR==1{print $1}'); hdiutil detach "$kd" >>"$LOG" 2>&1   # Kernel spielt das Journal ein
   fg_mount "$img" "-o rdonly" && pass "$n Kontrolle: nach Kernel-Replay wird nurlesen angenommen" || fail "$n Kontrolle: nach Replay immer noch abgelehnt"
@@ -285,7 +286,7 @@ t_decmpfs() {
 # Phase 5c: Fehlerpfade beim Lesen. NUR mit Pruefbau (XC_EXTRA='SWIFT_ACTIVE_COMPILATION_CONDITIONS=TEST_FEHLER' tools/install_module.sh), danach Normalbau wieder installieren.
 # fehler.txt im Modulcontainer: "3 wirf" / "3 kurz" = die 3. grosse Geraetelesung scheitert bzw. kommt halb. Erwartet: EIO, davor nur ein byte-genauer Praefix.
 t_fehler() {
-  local n=fe img=$W/fe.img CD="$HOME/Library/Containers/de.begod.drobofsprobe.fsmodule/Data" pfad modus kd sl out err
+  local n=fe img=$W/fe.img CD="$HOME/Library/Containers/$DROBO_MODULE_ID/Data" pfad modus kd sl out err
   trap fg_zurueck RETURN; fg_sichern
   mkplain fe 0 64
   mkdir -p "$W/kro_fe"; kd=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nobrowse -readonly -mountpoint "$W/kro_fe" "$img" | awk 'NR==1{print $1}'); cp "$W/kro_fe/a.bin" "$W/fe_ref.bin"; hdiutil detach "$kd" >>"$LOG" 2>&1
@@ -298,13 +299,13 @@ t_fehler() {
     esac
     cat "$MNT/a.bin" > "$W/fe_out.bin" 2> "$W/fe_err.txt"; err=$(cat "$W/fe_err.txt"); out=$(wc -c < "$W/fe_out.bin" | tr -d ' ')
     umount "$MNT"; sleep 2; hdiutil detach "$DEV" >>"$LOG" 2>&1
-    sl=$(/usr/bin/log show --last 2m --info --style compact --predicate 'subsystem == "de.begod.drobofsprobe"' 2>/dev/null | grep "STATS-LESEN" | tail -1 | sed 's/.*STATS-LESEN/STATS-LESEN/')
+    sl=$(/usr/bin/log show --last 2m --info --style compact --predicate 'subsystem == "'$DROBO_APP_ID'"' 2>/dev/null | grep "STATS-LESEN" | tail -1 | sed 's/.*STATS-LESEN/STATS-LESEN/')
     [ "$(fld "$sl" fehler_bau)" = 1 ] || { say "SKIP fehler: Modul ist kein Pruefbau TEST_FEHLER (fehler_bau=$(fld "$sl" fehler_bau))"; rm -f "$CD/fehler.txt" "$CD/direktweg_aus"; return; }
     say "   $pfad $modus: $out Bytes, '$err'  [$(echo "$sl" | sed 's/.*direkt_reads/direkt_reads/;s/ max_dev.*//')]"
     if [ $modus = kontrolle ]; then chk "fe $pfad ohne Fehler: md5 gleich" cmp -s "$W/fe_out.bin" "$W/fe_ref.bin"
     else
       # Treffer im Modul-Log belegen; dann entweder EIO mit byte-genauem Praefix ODER (Kernel wiederholt eine gescheiterte Vorauslesung) die komplette Datei byte-gleich
-      local hits; hits=$(/usr/bin/log show --last 2m --info --style compact --predicate 'subsystem == "de.begod.drobofsprobe"' 2>/dev/null | grep -c "Treffer bei grosser Lesung")
+      local hits; hits=$(/usr/bin/log show --last 2m --info --style compact --predicate 'subsystem == "'$DROBO_APP_ID'"' 2>/dev/null | grep -c "Treffer bei grosser Lesung")
       if [ "$hits" -gt 0 ] && echo "$err" | grep -q "Input/output error" && [ "$out" -lt 20000000 ] && { [ "$out" = 0 ] || [ "$(head -c "$out" "$W/fe_ref.bin" | md5 -q)" = "$(md5 -q "$W/fe_out.bin")" ]; }; then pass "fe $pfad $modus: Treffer, EIO nach $out Bytes, Praefix byte-genau"
       elif [ "$hits" -gt 0 ] && [ -z "$err" ] && cmp -s "$W/fe_out.bin" "$W/fe_ref.bin"; then pass "fe $pfad $modus: Treffer, Fehler vom Kernel wiederholt, Datei byte-gleich (kein falsches Byte)"
       else fail "fe $pfad $modus: Treffer=$hits, $out Bytes, '$err', cmp: $(cmp "$W/fe_out.bin" "$W/fe_ref.bin" 2>&1 | head -1)"; fi

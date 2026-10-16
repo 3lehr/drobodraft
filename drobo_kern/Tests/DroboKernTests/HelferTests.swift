@@ -82,8 +82,16 @@ final class HelferTests: XCTestCase {
     }
     func testAnforderungIstGueltigUndNimmtFremdeKennungNicht() {
         var req: SecRequirement?
+        let a = anforderung(prefix: "org.example.x", team: "ABCDE12345")
+        XCTAssertEqual(SecRequirementCreateWithString(a as CFString, [], &req), errSecSuccess)
+        XCTAssertTrue(a.contains("ABCDE12345") && a.contains("\"org.example.x.drobofsprobe\"") && a.contains("\"org.example.x.drobo\"") && !a.contains("anchor trusted"))
+        XCTAssertFalse(a.contains("de.begod"), "kein fest eingebauter Praefix")
+        // die zur Laufzeit gebildete Anforderung ist ebenfalls gueltig (Team aus der eigenen Signatur, im Test ggf. leer)
         XCTAssertEqual(SecRequirementCreateWithString(helferAnforderung as CFString, [], &req), errSecSuccess)
-        XCTAssertTrue(helferAnforderung.contains(teamID) && helferAnforderung.contains("\"\(appKennung)\"") && !helferAnforderung.contains("anchor trusted"))
+    }
+    func testPraefixKommtAusUmgebungOderBundleNichtAusDemCode() {
+        XCTAssertTrue(helferDienst.hasSuffix(".drobohelper") && appKennung.hasSuffix(".drobofsprobe") && modulKennung.hasSuffix(".drobofsprobe.fsmodule"))
+        XCTAssertEqual(appKennung, Identitaet.prefix + ".drobofsprobe"); XCTAssertEqual(cliKennung, Identitaet.prefix + ".drobo")
     }
     func testTempHomeNichtEchtesHome() {
         XCTAssertFalse(home.hasPrefix(NSHomeDirectory()), "Temp-Home darf nicht das echte Home sein")

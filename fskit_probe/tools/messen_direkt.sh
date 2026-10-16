@@ -1,19 +1,20 @@
 #!/bin/bash
+. "$(dirname "${BASH_SOURCE[0]:-$0}")/identity.sh"; mkdir -p "$DROBO_BUILD/work"
 # Phase 5 Schritt 2: Hebel B (Direktweg) messen. Abbild $W/p5.img (aus messen_lesen.sh prep), Modul nurlesen, je Zelle 3 Laeufe frisch gemountet.
 # Aufruf:  bash messen_direkt.sh freigabe          Freigabeeintrag fuers Abbild (Sicherung in $W/freigabe.orig.json, falls noch keine)
 #          bash messen_direkt.sh messen NAME       Zellen alt+neu fuer den installierten Bau (STATS-LESEN zeigt drobo_bau=0/1); Ergebnis $W/direkt_NAME.txt
 #          (REV=1: erst alt, dann neu)
 #          bash messen_direkt.sh fallback          md5 von komprimierter und fragmentierter Datei ueber das Modul (neuer Weg), Vergleich mit $W/src2.md5
 #          bash messen_direkt.sh abbau             Freigabeliste zurueckstellen, Schalter direktweg_aus entfernen
-# Schalter: Datei $HOME/Library/Containers/de.begod.drobofsprobe.fsmodule/Data/direktweg_aus = alter Weg (nur Messung).
+# Schalter: Datei $HOME/Library/Containers/$DROBO_MODULE_ID/Data/direktweg_aus = alter Weg (nur Messung).
 set -u
-W=${W:-/Volumes/daten/xcode/drobo/p5messung}; IMG=$W/p5.img; LOG=$W/direkt.log
-C="$HOME/Library/Containers/de.begod.drobofsprobe.fsmodule/Data"; FREIGABE=$C/freigabe.json; SCHALTER=$C/direktweg_aus
+W=${W:-$DROBO_BUILD/work/p5messung}; IMG=$W/p5.img; LOG=$W/direkt.log
+C="$HOME/Library/Containers/$DROBO_MODULE_ID/Data"; FREIGABE=$C/freigabe.json; SCHALTER=$C/direktweg_aus
 RUNS=${RUNS:-3}
 say() { echo "$*" | tee -a "$RES"; }
 mbs() { python3 -c "print('%.1f' % ($1/1e6))"; }
 attach_img() { hdiutil attach -imagekey diskimage-class=CRawDiskImage -nomount "$IMG" | awk 'NR==1{print $1}'; }
-stats() { sleep 2; /usr/bin/log show --last 2m --info --style compact --predicate 'subsystem == "de.begod.drobofsprobe"' 2>/dev/null | grep "STATS" | tail -2 | sed 's/.*STATS/STATS/'; }
+stats() { sleep 2; /usr/bin/log show --last 2m --info --style compact --predicate 'subsystem == "'$DROBO_APP_ID'"' 2>/dev/null | grep "STATS" | tail -2 | sed 's/.*STATS/STATS/'; }
 fmount() { mkdir -p "$2"; mount -F -t hfsdrobo -o rdonly "$1" "$2" >>"$LOG" 2>&1 || { sleep 3; mount -F -t hfsdrobo -o rdonly "$1" "$2" >>"$LOG" 2>&1; }; }
 shaok() { [ "$(shasum -a 256 "$1" | cut -d' ' -f1)" = "$(grep " $2" "$W/src.sha256" | cut -d' ' -f1)" ] && echo OK || echo FALSCH; }
 
