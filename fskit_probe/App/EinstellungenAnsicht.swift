@@ -16,11 +16,11 @@ struct EinstellungenAnsicht: View {
     var body: some View {
         Form {
             Section("Einhängen") {
-                HStack {
-                    TextField("Einhängeort", text: $m.einstellungen.einhaengeort).onSubmit { m.einstellungenSpeichern() }
-                    Button("Wählen …") { if let p = ordnerWaehlen(m.einstellungen.einhaengeort) { m.einstellungen.einhaengeort = p; m.einstellungenSpeichern() } }
+                Picker("Einhängeort", selection: Binding(get: { m.einstellungen.einhaengeort == vorgabeOrt ? vorgabeOrt : vorgabeVolumes }, set: { m.einstellungen.einhaengeort = $0; m.einstellungenSpeichern() })) {
+                    Text("Im Finder sichtbar (unter „Orte“)").tag(vorgabeVolumes)
+                    Text("Verdeckt (nur über „Im Finder öffnen“)").tag(vorgabeOrt)
                 }
-                Text("Der Ort darf nicht in Ihrem Benutzerordner liegen, sonst indexiert Spotlight das Laufwerk.").font(.callout).foregroundStyle(.secondary)
+                Text("Sichtbar: das Laufwerk erscheint wie jedes andere im Finder. Spotlight läuft dort nach Messung nicht hinein. Der Ordner wird vom Hilfsdienst angelegt und beim Aushängen wieder entfernt. Der Ort darf nie im Benutzerordner liegen.").font(.callout).foregroundStyle(.secondary)
                 Picker("Vorgabe beim Einhängen", selection: $m.einstellungen.vorgabeSchreiben) {
                     Text("Nur lesen").tag(false)
                     Text("Schreiben").tag(true)
@@ -87,6 +87,7 @@ struct MenueleistenInhalt: View {
     @EnvironmentObject var m: DroboModell
     @Environment(\.openWindow) private var openWindow
     var body: some View {
+        Text("DroboDraft · Frühe Alpha 0.1.0")
         if let a = m.aktuell {
             Text("\(a.eintrag.name): \(a.zustandText)")
             if m.liste.count > 1 {
@@ -100,6 +101,6 @@ struct MenueleistenInhalt: View {
         Button("Fenster öffnen …") { openWindow(id: "haupt"); NSApp.activate(ignoringOtherApps: true) }
         SettingsLink { Text("Einstellungen …") }.keyboardShortcut(",", modifiers: .command)
         Divider()
-        Button("Drobo beenden") { NSApp.terminate(nil) }.keyboardShortcut("q", modifiers: .command)
+        Button("DroboDraft beenden") { NSApp.terminate(nil) }.keyboardShortcut("q", modifiers: .command)
     }
 }

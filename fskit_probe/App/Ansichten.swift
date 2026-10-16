@@ -44,15 +44,10 @@ struct HauptAnsicht: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) { Statusleiste() }
-        .navigationTitle("Drobo")
+        .navigationTitle("DroboDraft")
         .sheet(isPresented: $anleitung) { SpotlightAnleitung() }
         .onReceive(NotificationCenter.default.publisher(for: .schreibenFrage)) { _ in rwFrage = true }
-        .alert("Zum Schreiben einhängen?", isPresented: $rwFrage) {
-            Button("Abbrechen", role: .cancel) {}
-            Button("Zum Schreiben") { if m.aktuell?.eingehaengt == true { m.neuZumSchreiben() } else { m.einhaengen(schreiben: true) } }
-        } message: {
-            Text("Vorher wird eine Sicherung der Verwaltungsdaten des Laufwerks angelegt. Ohne gelungene Sicherung wird nicht zum Schreiben eingehängt." + (m.spotlightHinweisNoetig ? " Spotlight ist für die Drobo noch nicht ausgeschlossen (empfohlen, siehe Anleitung)." : ""))
-        }
+        .sheet(isPresented: $rwFrage) { SchreibenBestaetigung() }
         .alert(item: $m.meldung) { Alert(title: Text(LocalizedStringKey($0.titel)), message: Text($0.text), dismissButton: .default(Text("OK"))) }
         .overlay(alignment: .top) { if let a = m.arbeit { Label("\(a) …", systemImage: "hourglass").padding(8).background(.regularMaterial, in: Capsule()).padding(.top, 8) } }
     }
@@ -86,6 +81,7 @@ struct UebersichtAnsicht: View {
                         ZustandPunkt(stufe: a.stufe)
                         Text(a.eintrag.name).font(.largeTitle).accessibilityAddTraits(.isHeader)
                         Spacer()
+                        FruehAlphaAbzeichen()
                     }
                     Text(a.zustandText).font(.title3).foregroundStyle(.secondary)
                     if a.eintrag.rolle == .timemachine {
@@ -141,7 +137,7 @@ struct AktionsZeile: View {
         HStack {
             if a.eingehaengt {
                 Button { m.aushaengen() } label: { Label("Aushängen", systemImage: "eject") }.keyboardShortcut("e", modifiers: .command)
-                if a.nurlesen { Button { rwFrage = true } label: { Label("Zum Schreiben neu", systemImage: "pencil") }.keyboardShortcut("w", modifiers: .command) }
+                if a.nurlesen { Button { rwFrage = true } label: { Label("Zum Schreiben neu", systemImage: "pencil") } }
             } else if a.verbunden {
                 Button { m.einhaengen(schreiben: false) } label: { Label("Einhängen (nur lesen)", systemImage: "externaldrive.badge.plus") }
                 Button { rwFrage = true } label: { Label("Zum Schreiben einhängen", systemImage: "pencil") }
@@ -228,5 +224,26 @@ struct LaufwerkeAnsicht: View {
             Text("Laufwerke").font(.largeTitle).accessibilityAddTraits(.isHeader)
             Label("Folgt: Schächte, Schutzstufe, Warnungen und der echte Füllstand der Drobo. Dafür muss zuerst der Weg für Statusabfragen gemessen werden.", systemImage: "hourglass")
         }.padding(20)
+    }
+}
+
+/// Bestätigung vor jedem Schreib-Einhängen. "Abbrechen" ist die Standardaktion (Return/Escape), das Schreiben hat keine Tastenkürzel.
+struct SchreibenBestaetigung: View {
+    @EnvironmentObject var m: DroboModell
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Zum Schreiben einhängen?").font(.title2).accessibilityAddTraits(.isHeader)
+            Text("Vorher wird eine Sicherung der Verwaltungsdaten des Laufwerks angelegt. Ohne gelungene Sicherung wird nicht zum Schreiben eingehängt.")
+            if m.spotlightHinweisNoetig { Hinweis(symbol: "magnifyingglass", text: "Spotlight ist für die Drobo noch nicht ausgeschlossen (empfohlen, siehe Anleitung in den Einstellungen).") }
+            HStack {
+                Spacer()
+                Button("Abbrechen") { dismiss() }.keyboardShortcut(.defaultAction)
+                Button("Zum Schreiben einhängen") {
+                    dismiss()
+                    if m.aktuell?.eingehaengt == true { m.neuZumSchreiben() } else { m.einhaengen(schreiben: true) }
+                }
+            }
+        }.padding(24).frame(width: 480)
     }
 }

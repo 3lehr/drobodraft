@@ -24,7 +24,7 @@ enum EinhaengeArt: String, AppEnum {
 }
 
 struct DroboEinhaengenIntent: AppIntent {
-    static var title: LocalizedStringResource = "Drobo einhängen"
+    static var title: LocalizedStringResource = "DroboDraft: Drobo einhängen"
     static var description = IntentDescription("Hängt die Drobo nur lesend oder zum Schreiben ein. Zum Schreiben wird vorher die Verwaltungsdaten-Sicherung angelegt.")
     @Parameter(title: "Art", default: .nurLesen) var art: EinhaengeArt
     func perform() async throws -> some IntentResult & ProvidesDialog {
@@ -38,7 +38,7 @@ struct DroboEinhaengenIntent: AppIntent {
 }
 
 struct DroboAushaengenIntent: AppIntent {
-    static var title: LocalizedStringResource = "Drobo aushängen"
+    static var title: LocalizedStringResource = "DroboDraft: Drobo aushängen"
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let k = try kurzKern()
         let p = try kurz { try k.aushaengen() }
@@ -47,7 +47,7 @@ struct DroboAushaengenIntent: AppIntent {
 }
 
 struct DroboStatusIntent: AppIntent {
-    static var title: LocalizedStringResource = "Drobo-Status"
+    static var title: LocalizedStringResource = "DroboDraft: Drobo-Status"
     func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
         let k = try kurzKern(); let z = try kurz { try k.zustand(mitFreigabe: false) }
         return .result(value: z.kurz, dialog: "\(z.kurz)")
@@ -55,7 +55,7 @@ struct DroboStatusIntent: AppIntent {
 }
 
 struct DroboTempoIntent: AppIntent {
-    static var title: LocalizedStringResource = "Drobo-Lesetempo messen"
+    static var title: LocalizedStringResource = "DroboDraft: Lesetempo messen"
     static var description = IntentDescription("Misst die Lesegeschwindigkeit an der eingehängten Drobo. Nur lesend.")
     func perform() async throws -> some IntentResult & ReturnsValue<Double> & ProvidesDialog {
         let k = try kurzKern(); let r = try kurz { try k.tempoTesten() }

@@ -361,6 +361,76 @@
         }
       }
     },
+    "DroboDraft": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboDraft"
+          }
+        }
+      }
+    },
+    "DroboDraft beenden": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboDraft beenden"
+          }
+        }
+      }
+    },
+    "DroboDraft · Frühe Alpha 0.1.0": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboDraft · Frühe Alpha 0.1.0"
+          }
+        }
+      }
+    },
+    "DroboDraft: Drobo aushängen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboDraft: Drobo aushängen"
+          }
+        }
+      }
+    },
+    "DroboDraft: Drobo einhängen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboDraft: Drobo einhängen"
+          }
+        }
+      }
+    },
+    "DroboDraft: Drobo-Status": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboDraft: Drobo-Status"
+          }
+        }
+      }
+    },
+    "DroboDraft: Lesetempo messen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboDraft: Lesetempo messen"
+          }
+        }
+      }
+    },
     "Drobos": {
       "localizations": {
         "de": {
@@ -511,6 +581,36 @@
         }
       }
     },
+    "Frühe Alpha": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frühe Alpha"
+          }
+        }
+      }
+    },
+    "Frühe Alpha, Version 0.1.0": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frühe Alpha, Version 0.1.0"
+          }
+        }
+      }
+    },
+    "Frühe Alpha. Funktionen und Oberfläche ändern sich noch; nicht für den Dauerbetrieb gedacht.\n\nDroboDraft hängt eine Drobo über das Treibermodul ein und sichert vorher die Verwaltungsdaten des Laufwerks.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frühe Alpha. Funktionen und Oberfläche ändern sich noch; nicht für den Dauerbetrieb gedacht.\n\nDroboDraft hängt eine Drobo über das Treibermodul ein und sichert vorher die Verwaltungsdaten des Laufwerks."
+          }
+        }
+      }
+    },
     "Für ein Time-Machine-Ziel gibt es hier nichts einzustellen.": {
       "localizations": {
         "de": {
@@ -557,6 +657,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ich habe die Drobo bei Spotlight und Time Machine ausgeschlossen"
+          }
+        }
+      }
+    },
+    "Im Finder sichtbar (unter „Orte“)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Im Finder sichtbar (unter „Orte“)"
           }
         }
       }
@@ -891,12 +1001,32 @@
         }
       }
     },
+    "Sichtbar: das Laufwerk erscheint wie jedes andere im Finder. Spotlight läuft dort nach Messung nicht hinein. Der Ordner wird vom Hilfsdienst angelegt und beim Aushängen wieder entfernt. Der Ort darf nie im Benutzerordner liegen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sichtbar: das Laufwerk erscheint wie jedes andere im Finder. Spotlight läuft dort nach Messung nicht hinein. Der Ordner wird vom Hilfsdienst angelegt und beim Aushängen wieder entfernt. Der Ort darf nie im Benutzerordner liegen."
+          }
+        }
+      }
+    },
     "Spotlight ist für die Drobo nicht ausgeschlossen. Beim Schreiben bremst das und verändert das Laufwerk. Der Ausschluss ist freiwillig.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
             "value": "Spotlight ist für die Drobo nicht ausgeschlossen. Beim Schreiben bremst das und verändert das Laufwerk. Der Ausschluss ist freiwillig."
+          }
+        }
+      }
+    },
+    "Spotlight ist für die Drobo noch nicht ausgeschlossen (empfohlen, siehe Anleitung in den Einstellungen).": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotlight ist für die Drobo noch nicht ausgeschlossen (empfohlen, siehe Anleitung in den Einstellungen)."
           }
         }
       }
@@ -1011,6 +1141,16 @@
         }
       }
     },
+    "Verdeckt (nur über „Im Finder öffnen“)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verdeckt (nur über „Im Finder öffnen“)"
+          }
+        }
+      }
+    },
     "Volume": {
       "localizations": {
         "de": {
@@ -1057,6 +1197,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vorgabe beim Einhängen"
+          }
+        }
+      }
+    },
+    "Vorher wird eine Sicherung der Verwaltungsdaten des Laufwerks angelegt. Ohne gelungene Sicherung wird nicht zum Schreiben eingehängt.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorher wird eine Sicherung der Verwaltungsdaten des Laufwerks angelegt. Ohne gelungene Sicherung wird nicht zum Schreiben eingehängt."
           }
         }
       }
@@ -1257,6 +1407,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "schreiben"
+          }
+        }
+      }
+    },
+    "Über DroboDraft": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Über DroboDraft"
           }
         }
       }

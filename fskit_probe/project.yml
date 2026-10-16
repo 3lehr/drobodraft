@@ -22,9 +22,13 @@ targets:
     info:
       path: App/Info.plist
       properties:
-        CFBundleName: Drobo
-        CFBundleDisplayName: Drobo
+        CFBundleName: DroboDraft
+        CFBundleDisplayName: DroboDraft
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleLocalizations: [de]
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        NSPrincipalClass: NSApplication
         NSRemovableVolumesUsageDescription: "Die Drobo-App braucht Zugriff auf das Laufwerk, um es einzuhängen."
     sources:
       - App
@@ -37,10 +41,12 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: de.begod.drobofsprobe
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        INFOPLIST_KEY_CFBundleName: Drobo
-        INFOPLIST_KEY_CFBundleDisplayName: Drobo
+        INFOPLIST_KEY_CFBundleName: DroboDraft
+        INFOPLIST_KEY_CFBundleDisplayName: DroboDraft
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "3"
         SWIFT_EMIT_LOC_STRINGS: YES
-        GENERATE_INFOPLIST_FILE: YES
+        GENERATE_INFOPLIST_FILE: NO
         ENABLE_HARDENED_RUNTIME: YES
     dependencies:
       - package: DroboKern

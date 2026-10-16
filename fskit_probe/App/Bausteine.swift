@@ -69,6 +69,17 @@ struct StatusChip: View {
     }
 }
 
+/// Kennzeichnung "Frühe Alpha": Text + Symbol (nicht nur Farbe).
+struct FruehAlphaAbzeichen: View {
+    var body: some View {
+        Label("Frühe Alpha", systemImage: "hammer.fill").font(.caption.bold())
+            .padding(.horizontal, 8).padding(.vertical, 3)
+            .background(Color.orange.opacity(0.2), in: Capsule())
+            .overlay(Capsule().stroke(Color.orange, lineWidth: 1))
+            .accessibilityLabel("Frühe Alpha, Version 0.1.0")
+    }
+}
+
 struct SpotlightAnleitung: View {
     @Environment(\.dismiss) private var dismiss
     var body: some View {
