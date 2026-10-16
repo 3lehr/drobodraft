@@ -60,6 +60,8 @@ targets:
       - sdk: DiskArbitration.framework
       - target: DroboFSProbeModule
         embed: true
+      - target: DroboFSProbeISCSI
+        embed: true
       - target: DroboFSProbeHelper
         embed: true
         codeSign: true
@@ -98,6 +100,25 @@ targets:
         ENABLE_HARDENED_RUNTIME: YES
         CODE_SIGN_ENTITLEMENTS: Module/DroboFSProbeModule.entitlements
         INFOPLIST_FILE: Module/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        SWIFT_OBJC_BRIDGING_HEADER: Module/Bridge.h
+        HEADER_SEARCH_PATHS: ["$(SRCROOT)/../livefiles_shim"]
+        OTHER_LDFLAGS: ["$(SRCROOT)/../build/liblivefiles_hfs.a", "-framework", "CoreFoundation", "-framework", "IOKit"]
+  DroboFSProbeISCSI:
+    # Zweites FSKit-Modul nur fuer Netzwerk-Adressen (iscsi://, FSGenericURLResource). Getrennt vom Block-Modul,
+    # weil Block+URL in einem Modul gemessen das Modul fuer mount -F unauffindbar machte (Plan DroboPro Schritt 2).
+    type: app-extension
+    platform: macOS
+    sources:
+      - Module
+      - ../drobo_kern/Sources/DroboKern/DroboStatus.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(DROBO_BUNDLE_PREFIX).drobofsprobe.iscsi
+        ENABLE_APP_SANDBOX: YES
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_ENTITLEMENTS: ModuleISCSI/DroboFSProbeISCSI.entitlements
+        INFOPLIST_FILE: ModuleISCSI/Info.plist
         GENERATE_INFOPLIST_FILE: NO
         SWIFT_OBJC_BRIDGING_HEADER: Module/Bridge.h
         HEADER_SEARCH_PATHS: ["$(SRCROOT)/../livefiles_shim"]
