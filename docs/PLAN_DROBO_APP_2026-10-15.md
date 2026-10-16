@@ -140,3 +140,10 @@ Betreiber: "Time Machine schreibt über den Mac-Kernel, ist das nicht umleitbar?
 - Befund: HFS-Volume-Kopf meldet ~6.1 TB frei, physisch frei sind 4.25 TB (Thin Provisioning) → Platzwarnung der App muss den physischen Wert nehmen.
 - **Eichung am Geraet (2026-10-16T13:34:01+0200, Betreiber):** Schacht 1 (oberster) leuchtet gelb, Schaechte 2–5 gruen → Slot-Status 0x02 = gelb, 0x03 = gruen bestaetigt. Blaue Fuellstandsleiste: alle bis auf die letzte an → >90 % passt zu 63.54/67.79 TB = 93.7 %.
 - Bauweg Status in der App: Dext liest die Allowlist-Seiten periodisch (z. B. 60 s) selbst und legt die Rohantworten + Zeitstempel als eigene Registry-Property ab; App/Kern liest per IORegistry (kein UserClient-Entitlement noetig) und decodiert in Swift (Portierung von dext_probe/tools/drobo_decode.py).
+
+## Physischer Füllstand im Finder und harte Platzsperre (2026-10-16T14:15:13+0200)
+Betreiber: "bekommen wir es hin das mac os die echte belegung der drobo angezeigt bekommt und nutzt, also das so auch im finder angezeigt wird? weil ansonsten könnte es zur katastrophe kommen?" — Finder (Modul-statfs): Kapazität 70,37 TB, verfügbar 6,72 TB; physisch laut Drobo frei 4,25 TB.
+- Modul meldet in den Volume-Statistiken verfügbar = min(HFS frei, physisch frei aus DroboStatus), Gesamt bleibt HFS. Quelle: Registry-Property DroboStatus (Dext 3.6), ausgehend vom eigenen Blockgerät im Service-Baum aufwärts.
+- Harte Sperre im Modul: physisch frei < Reserve (max(2 %, 500 GB), einstellbar) → neue Zuweisungen ENOSPC; Löschen/Kürzen immer erlaubt.
+- Keine/zu alte Statusdaten (> 300 s): HFS-Werte + deutlicher Hinweis in der App; keine Sperre aus veralteten Daten in die unsichere Richtung (veraltet = letzter bekannter physischer Wert minus seither geschriebene Bytes).
+- Offen/zu messen: darf die sandboxed FSKit-Erweiterung die IORegistry lesen; Verzoegerung der physischen Freigabe nach Loeschen (L-13d120).
