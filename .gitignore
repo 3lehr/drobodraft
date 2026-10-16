@@ -1,1 +1,8 @@
 build/
+.build/
+**/.build/
+__pycache__/
+*.pyc
+fskit_probe/DroboFSProbe.xcodeproj/
+xcuserdata/
+.DS_Store
