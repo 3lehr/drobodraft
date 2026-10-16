@@ -346,7 +346,7 @@ ph_ende() { umount "$MNT"; sleep 1; hdiutil detach "$DEV" >>"$LOG" 2>&1; ST=$(st
 avail() { df -k "$MNT" | awk 'NR==2{print $4*1024}'; }
 t_physisch() {
   local CD="$HOME/Library/Containers/$DROBO_MODULE_ID/Data" a r e w1 w2 r1 r2 sum
-  trap 'fg_zurueck; rm -f "$CD/physisch.plist"' RETURN; fg_sichern; rm -f "$CD/physisch.plist"
+  trap "fg_zurueck; rm -f '$CD/physisch.plist'; trap - RETURN" RETURN; fg_sichern; rm -f "$CD/physisch.plist"
   say "=== PHYSISCH (Platzsperre)"; mkimg ph 1 1g
   # (1) ohne Statusdaten: HFS-Werte, keine Sperre
   ph_mount || { fail "ph mount"; return; }; a=$(avail)
@@ -355,19 +355,20 @@ t_physisch() {
   echo "$ST" | grep -q "physisch=unbekannt" && pass "ph ohne Daten: STATS physisch=unbekannt" || fail "ph ohne Daten: $ST"
   chk "ph ohne Daten: df verfuegbar $a > 900 MiB (HFS-Wert)" test "$a" -gt $((900*MIB))
   chk "ph ohne Daten: 50 MiB schreiben ($r)" test "$r" = "$((50*MIB)) 0"
-  # (2) frei 200 MiB, Reserve 100 MiB: statfs = min, Schreiben ueber die Reserve -> ENOSPC, Bestand bleibt bearbeitbar
+  # (2) frei 200 MiB, Reserve 100 MiB: statfs = min, Schreiben ueber die Reserve -> ENOSPC, Bestand bleibt bearbeitbar.
+  # Geraetebytes = 2x Nutzdaten beim Anwachsen: livefiles_hfs nullt jede neue Zuweisung vorab (lf_hfs_volume_allocation.c "KBZ"), gemessen 48 MiB -> 96 MiB.
   fg_set '{"reserve_bytes": 104857600, "eintraege": []}'; ph_set $((200*MIB)) $((10*1024*MIB)) 0
   ph_mount || { fail "ph mount 2"; return; }; a=$(avail)
   chk "ph min: df verfuegbar $a zwischen 190 und 200 MiB (statt HFS ~1 GiB)" test "$a" -le $((200*MIB)) -a "$a" -ge $((190*MIB))
-  r=$(ph_schreib "$MNT/w1.bin" 60); chk "ph 60 MiB unter der Reserve: ok ($r)" test "$r" = "$((60*MIB)) 0"
-  a=$(avail); chk "ph nach 60 MiB: df verfuegbar $a zwischen 120 und 140 MiB (Geraetebytes abgezogen)" test "$a" -le $((140*MIB)) -a "$a" -ge $((120*MIB))
+  r=$(ph_schreib "$MNT/w1.bin" 30); chk "ph 30 MiB (60 MiB Geraet) unter der Reserve: ok ($r)" test "$r" = "$((30*MIB)) 0"
+  a=$(avail); chk "ph nach 30 MiB: df verfuegbar $a zwischen 130 und 140 MiB (Geraetebytes abgezogen)" test "$a" -le $((140*MIB)) -a "$a" -ge $((130*MIB))
   r=$(ph_schreib "$MNT/w2.bin" 80); set -- $r
-  chk "ph ueber die Reserve: ENOSPC (errno $2), geschrieben $1 <= 44 MiB" test "$2" = 28 -a "$1" -le $((44*MIB))
+  chk "ph ueber die Reserve: ENOSPC (errno $2), geschrieben $1 <= 24 MiB" test "$2" = 28 -a "$1" -le $((24*MIB))
   chk "ph Ueberschreiben im Bestand erlaubt" dd if=/dev/urandom of="$MNT/w1.bin" bs=1m count=5 conv=notrunc
   ! truncate -s 120m "$MNT/w1.bin" >>"$LOG" 2>&1 && pass "ph Verlaengern gesperrt" || fail "ph Verlaengern gelang"
   chk "ph Kuerzen erlaubt" truncate -s 10m "$MNT/w1.bin"
   ! touch "$MNT/neu" >>"$LOG" 2>&1 && pass "ph Anlegen gesperrt" || fail "ph Anlegen gelang"
-  chk "ph Loeschen erlaubt" rm "$MNT/w1.bin" "$MNT/w2.bin"
+  chk "ph Loeschen erlaubt" rm "$MNT/w1.bin"; [ -e "$MNT/w2.bin" ] && chk "ph Loeschen erlaubt (w2)" rm "$MNT/w2.bin"
   ph_ende; chk "ph platz_gesperrt=$(fld "$ST" platz_gesperrt) > 0" test "$(fld "$ST" platz_gesperrt)" -gt 0
   /usr/bin/log show --last 2m --info --style compact --predicate 'subsystem == "'$DROBO_APP_ID'"' 2>/dev/null | grep -m1 "PLATZ-SPERRE" | sed 's/.*PLATZ/   PLATZ/' | tee -a "$LOG"
   # (3) veraltete Messung (1000 s): letzter Wert minus Geschriebenes, keine Rueckkehr zu HFS
@@ -378,12 +379,12 @@ t_physisch() {
   ! touch "$MNT/v1" >>"$LOG" 2>&1 && pass "ph Vorgabe-Reserve: 400 GB frei < 500 GB -> Anlegen gesperrt" || fail "ph Vorgabe-Reserve griff nicht"; ph_ende
   ph_set 600000000000 1000000000000 0; ph_mount || { fail "ph mount 5"; return; }
   chk "ph Vorgabe-Reserve: 600 GB frei -> Anlegen erlaubt" touch "$MNT/v1"; ph_ende
-  # (5) zwei parallele Schreiber, frei = Reserve + 150 MiB, je 100 MiB: nie beide fertig, Ueberholen hoechstens um laufende Befehle (Toleranz 8 MiB)
+  # (5) zwei parallele Schreiber, frei = Reserve + 150 MiB (= 75 MiB Nutzdaten), je 100 MiB: nie beide fertig, Ueberholen hoechstens um laufende Befehle (Toleranz 8 MiB)
   fg_set '{"reserve_bytes": 104857600, "eintraege": []}'; ph_set $((250*MIB)) $((10*1024*MIB)) 0; ph_mount || { fail "ph mount 6"; return; }
   ph_schreib "$MNT/p1.bin" 100 > "$W/p1.out" & ph_schreib "$MNT/p2.bin" 100 > "$W/p2.out" & wait
   r1=$(cat "$W/p1.out"); r2=$(cat "$W/p2.out"); sum=$(( ${r1% *} + ${r2% *} )); say "   parallel: p1=($r1) p2=($r2) Summe=$sum"
   chk "ph parallel: nicht beide fertig" test "${r1#* }" != 0 -o "${r2#* }" != 0
-  chk "ph parallel: Summe $sum <= 150 MiB + 8 MiB" test "$sum" -le $((158*MIB))
+  chk "ph parallel: Summe $sum <= 75 MiB + 8 MiB" test "$sum" -le $((83*MIB))
   ph_ende; rmw ph.img mnt_ph
 }
 
