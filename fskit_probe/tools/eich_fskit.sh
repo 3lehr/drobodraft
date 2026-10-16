@@ -3,6 +3,7 @@
 # Phase 2 Eichung: HFS+ ueber das FSKit-Modul (mount -F -t hfsdrobo) an Test-Abbildern; der macOS-Kernel richtet danach (fsck_hfs -fn, ro-Mount, md5).
 # Beruehrt NUR Abbilddateien unter $W. Es werden nur selbst angehaengte Geraete benutzt.  Aufruf: bash eich_fskit.sh [normal|absturz|alles]
 set -u
+exec </dev/null   # keine Rueckfragen von rm/cp an ein Terminal (rm auf ro-Volume fragt sonst "override ...?" und der Lauf steht)
 cd "$(dirname "${BASH_SOURCE[0]}")" || exit 2
 M=$(cd ../.. && pwd)                         # macos/
 W=${W:-$DROBO_BUILD/work/eichfs}; mkdir -p "$W"
