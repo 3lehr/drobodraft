@@ -20,8 +20,8 @@ final class ISCSITests: XCTestCase {
     var logPfad: String { dir + "/ziel.jsonl" }
 
     /// Startet das Ziel (2 LUNs a 4 MiB) und gibt den Port zurueck.
-    func ziel(_ extra: [String] = []) throws -> UInt16 {
-        for i in 0..<2 { FileManager.default.createFile(atPath: "\(dir)/lun\(i).img", contents: Data(count: 4 << 20)) }
+    func ziel(_ extra: [String] = [], mib: Int = 4) throws -> UInt16 {
+        for i in 0..<2 { FileManager.default.createFile(atPath: "\(dir)/lun\(i).img", contents: nil); truncate("\(dir)/lun\(i).img", off_t(mib) << 20) }
         let skript = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("iscsi_ziel.py").path
         let p = Process(); let aus = Pipe()
         p.executableURL = URL(fileURLWithPath: "/usr/bin/env")
@@ -160,5 +160,50 @@ final class ISCSITests: XCTestCase {
         let s = try sitzung(try ziel(["--drop-after", "1"]))      // Befehl 1 = READ CAPACITY, Befehl 2 = WRITE -> Verbindung zu
         XCTAssertThrowsError(try s.schreiben(lun: 1, lba: 0, daten: muster(4096))) { guard case ISCSIFehler.verbindung = $0 else { return XCTFail("\($0)") } }
         XCTAssertEqual(ereignisse("dataout").count, 0)
+    }
+
+    // MARK: Neueinrichtung (iscsi-format)
+
+    func formatiere(_ port: UInt16, lun: Int = 1, ausfuehren: Bool, groesse: UInt64? = nil, _ log: inout [String]) throws {
+        var m: [String] = []
+        defer { log = m }
+        try iscsiFormat(host: "127.0.0.1", port: port, lun: lun, name: "FMTTEST", partitionBytes: groesse, ausfuehren: ausfuehren, arbeitsordner: dir, meldung: { m.append($0) })
+    }
+
+    func testFormatTrockenlaufSchreibtNichts() throws {
+        let port = try ziel(mib: 128)
+        var l: [String] = []
+        try formatiere(port, ausfuehren: false, &l)
+        XCTAssertTrue(l.contains { $0.hasPrefix("dry run") }, "\(l)")
+        XCTAssertTrue(ereignisse("write").isEmpty, "Trockenlauf darf nichts schreiben")
+        XCTAssertEqual(try Data(contentsOf: URL(fileURLWithPath: dir + "/lun1.img")).filter { $0 != 0 }.count, 0)
+    }
+
+    func testFormatLehntLUN0Ab() throws {
+        let port = try ziel(mib: 128)
+        var l: [String] = []
+        XCTAssertThrowsError(try formatiere(port, lun: 0, ausfuehren: true, &l)) { guard case ISCSIFehler.verboten = $0 else { return XCTFail("\($0)") } }
+        XCTAssertTrue(log().isEmpty, "LUN 0 abgelehnt, bevor das Ziel kontaktiert wurde")
+    }
+
+    /// Ergebnis wird vom macOS-Kernel gerichtet: GPT muss sich anhaengen lassen, die Partition muss fsck_hfs -fn bestehen.
+    func testFormatErgebnisBestehtFsckUndNurLUN1Beschrieben() throws {
+        let port = try ziel(mib: 128)
+        try Data(repeating: 0xA5, count: 128 << 20).write(to: URL(fileURLWithPath: dir + "/lun1.img"))      // Altlast: nicht geschriebene belegte Bloecke fielen in fsck auf
+        var l: [String] = []
+        try formatiere(port, ausfuehren: true, &l)
+        XCTAssertTrue(l.contains { $0.hasPrefix("verified:") }, "\(l)")
+        XCTAssertEqual(try Data(contentsOf: URL(fileURLWithPath: dir + "/lun0.img")).filter { $0 != 0 }.count, 0, "LUN 0 unberuehrt")
+        XCTAssertLessThanOrEqual(ereignisse("write").map { $0["bytes"] as! Int }.max()!, 524288)
+        XCTAssertTrue(ereignisse("befehl").allSatisfy { ($0["lun"] as! Int) == 1 || ($0["op"] as! Int) == 0xA0 }, "nur LUN 1 (und REPORT LUNS) erreichte das Ziel")
+        let (rc, out) = ausfuehren("/usr/bin/hdiutil", ["attach", "-imagekey", "diskimage-class=CRawDiskImage", "-nomount", dir + "/lun1.img"])
+        XCTAssertEqual(rc, 0, out)
+        let dev = out.split(separator: "\n").first?.split(separator: " ").first.map(String.init) ?? ""
+        defer { ausfuehren("/usr/bin/hdiutil", ["detach", dev, "-force"]) }
+        XCTAssertTrue(out.contains("Apple_HFS") || out.contains("48465300"), out)
+        let teil = out.split(separator: "\n").compactMap { $0.split(separator: " ").first.map(String.init) }.first { $0.hasPrefix(dev + "s") } ?? ""
+        let (r2, o2) = ausfuehren("/sbin/fsck_hfs", ["-fn", "/dev/r" + teil.dropFirst(5)])
+        XCTAssertEqual(r2, 0, o2); XCTAssertTrue(o2.contains("appears to be OK"), o2)
+        let (_, nf) = ausfuehren("/usr/sbin/diskutil", ["info", teil]); XCTAssertTrue(nf.contains("Journal:                  Not Journaled") || !nf.contains("Journal:                  Journaled"), nf)
     }
 }
