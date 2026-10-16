@@ -51,3 +51,12 @@ Betreiber: „können wir das nicht alles in unser drobo dashboard implementiere
 - **Neueinrichtung der DroboPro** (Betreiber: „nichts wichtiges“): HFS+ für eine LUN ohne lokales Blockgerät — newfs_hfs auf eine lokale Sparse-Datei gleicher Größe, dann nur Volume-Header, Ersatz-Header und die laut Bitmap belegten Blöcke per iSCSI schreiben; GPT mit einer HFS+-Partition davor.
 - **Schritte 3 (Quelle) und Neueinrichtungswerkzeug erledigt (2026-10-16T22:05:00+0200):** `Geraet`-Protokoll in `fskit_probe/Module/Geraet.swift`; `hfsdropro` öffnet `iscsi://HOST[:PORT]/<IQN>/<LUN>`, liest die GPT, nimmt die erste HFS+-Partition. `drobo iscsi-format --lun 1 --name N [--partition-gib G] [--execute]` (nur LUN 1). Eichung `fskit_probe/tools/eich_iscsi.sh` gegen das Python-Ziel: 19 PASS / 0 FAIL, max WRITE am Ziel 524288 B, `fsck_hfs -fn` auf der Partition OK.
 - **Offen:** Freigabeliste im Container des iSCSI-Moduls (Shell gesperrt, TCC), SYNCHRONIZE CACHE/Schreibcache der DroboPro ungemessen, Platzsperre bei iSCSI ohne Statusdaten (Schritt 5). Das Formatieren der echten LUN 1 und die Montage stehen noch aus.
+
+## Volume-Verwaltung der DroboPro (2026-10-16T23:16:22+0200)
+
+Betreiber: „wir müssen für diese ja auch noch rausfinden wie neue platten anlegen und formatieren usw“.
+Gemessen (nur lesend, Seiten 5A/3A mit **genau passender Allokationslänge** — 04/07 antworten bei 512 nicht, bei 157 schon; Länge = drobo-utils-Strukturgröße):
+- 04 LUNInfo: 2 aktive LUNs; geschützt 17,88 TB, belegt 0,99 TB. 07 LUNInfo2: LUN 0/1 je 16 TiB, GPT, 1 Partition, Format-Kennung 0x40 (in drobo-utils nicht belegt, offen); LUN 2–7 16 TiB, ohne Schema (Platzhalter).
+- 05 Name „DroboPro“; 03 SlotInfo (Platten ST8000DM004); 30 Schwellen gelb 85 %, rot 95 %.
+Modell (drobo-utils Drobo.py SetLunSize/GetSubPageLUNs, gelesen): Volumes = LUNs, die die Firmware selbst anlegt; einstellbar ist nur die **LUN-Größe** (EA 10 00 0F, 4 Byte TiB, ausgehängt). Anzahl LUNs folgt aus geschützter Kapazität / LUN-Größe. Formatieren macht der Host (iscsi-format).
+Schritte: (V1) Kern liest 04/07/05/03/30 mit exakter Länge, Dashboard zeigt LUNs. (V2) LUN-Größe setzen: EA 10 0F mit Daten **im Befehls-PDU** (DroboPro startet sonst neu), nur bei ausgehängt, nur DroboPro (Testgerät), Messung: Neustart? Datenerhalt? neue LUN-Zahl. (V3) iscsi-format je LUN. Offen: EA 10 0x02 (Drobo-Format = alles löschen) nur auf eigenes Wort.
