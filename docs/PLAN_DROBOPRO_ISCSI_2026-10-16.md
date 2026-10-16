@@ -60,3 +60,14 @@ Gemessen (nur lesend, Seiten 5A/3A mit **genau passender Allokationslänge** —
 - 05 Name „DroboPro“; 03 SlotInfo (Platten ST8000DM004); 30 Schwellen gelb 85 %, rot 95 %.
 Modell (drobo-utils Drobo.py SetLunSize/GetSubPageLUNs, gelesen): Volumes = LUNs, die die Firmware selbst anlegt; einstellbar ist nur die **LUN-Größe** (EA 10 00 0F, 4 Byte TiB, ausgehängt). Anzahl LUNs folgt aus geschützter Kapazität / LUN-Größe. Formatieren macht der Host (iscsi-format).
 Schritte: (V1) Kern liest 04/07/05/03/30 mit exakter Länge, Dashboard zeigt LUNs. (V2) LUN-Größe setzen: EA 10 0F mit Daten **im Befehls-PDU** (DroboPro startet sonst neu), nur bei ausgehängt, nur DroboPro (Testgerät), Messung: Neustart? Datenerhalt? neue LUN-Zahl. (V3) iscsi-format je LUN. Offen: EA 10 0x02 (Drobo-Format = alles löschen) nur auf eigenes Wort.
+
+## Netzweg: Weiterleitung im Hilfsdienst (2026-10-16T23:34:30+0200)
+
+Betreiber: „Na dann fixe das!“ (auf: Weiterleitung in den Hilfsdienst).
+Gemessen: Das Modul hfsdropro bekommt zu 192.168.178.x „connect: No route to host“; nehelper „Could not find bundle ID or display name for app: de.begod.drobofsprobe.iscsi“ → macOS-Datenschutz *Lokales Netzwerk* sperrt die Erweiterung, eine Abfrage erscheint nicht (auch nicht mit NSLocalNetworkUsageDescription im appex). Über eine Weiterleitung auf 127.0.0.1 (Loopback ist ausgenommen) liest/hängt das Modul die LUN ein (DROPRO1, 2,0 TiB, nurlesen). Außerdem: das FSKit-URL-Volume gilt für TCC als **Netzwerkvolume** (kTCCServiceSystemPolicyNetworkVolumes je zugreifender App).
+Entwurf (verworfen: Weiterleitung in der App — Volume stirbt mit der App; Drittanbieter-Initiator — siehe oben):
+- Hilfsdienst (launchd-Daemon; laut Apple TN3179 nicht vom Datenschutz *Lokales Netzwerk* erfasst — **erst messen**) bekommt XPC `iscsiWeiterleitung(host, port) -> lokaler Port`.
+- Grenzen: Ziel nur IPv4-Literal in 10/8, 172.16/12, 192.168/16, 169.254/16; Port nur 3260; Listener nur 127.0.0.1, Port vom System; eine Weiterleitung je Ziel, wiederverwendet. Jeder lokale Prozess kann den Loopback-Port nutzen — gleichwertig zum direkten LAN-Zugang, keine neue Reichweite.
+- Leerlauf-Ende des Dienstes nur, wenn auch keine weitergeleitete Verbindung offen ist.
+- CLI `drobo iscsi-mount` holt den Port, setzt die Freigabe im Container des iSCSI-Moduls über den Dienst und hängt `iscsi://127.0.0.1:PORT/IQN/LUN` ein.
+Erfolg: Modul hängt DroboPro-LUN 1 ohne Terminal-Weiterleitung ein; Gegenprobe Weiterleitung aus → `No route to host`.
