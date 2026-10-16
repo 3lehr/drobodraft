@@ -13,6 +13,10 @@ private var libInitDone = false
 
 final class HFSFileSystem: FSUnaryFileSystem, FSUnaryFileSystemOperations, FSManageableResourceMaintenanceOperations {
     func probeResource(resource: FSResource, replyHandler: @escaping (FSProbeResult?, (any Error)?) -> Void) {
+        if #available(macOS 26, *), let u = resource as? FSGenericURLResource {   // Machbarkeit iSCSI (Plan DroboPro Schritt 2): nur protokollieren
+            hfsLog.notice("URL-PROBE scheme=\(u.url.scheme ?? "-", privacy: .public)")
+            return replyHandler(u.url.scheme?.lowercased() == "iscsi" ? .usable(name: "DroboPro", containerID: FSContainerIdentifier(uuid: UUID(uuidString: "00000000-0000-0000-0000-00000000150C")!)) : .notRecognized, nil)
+        }
         guard let dev = resource as? FSBlockDeviceResource else { return replyHandler(.notRecognized, nil) }
         do {
             let head = try Gate.readHead(dev, 4096)
@@ -34,6 +38,10 @@ final class HFSFileSystem: FSUnaryFileSystem, FSUnaryFileSystemOperations, FSMan
     }
 
     func loadResource(resource: FSResource, options: FSTaskOptions, replyHandler: @escaping (FSVolume?, (any Error)?) -> Void) {
+        if #available(macOS 26, *), let u = resource as? FSGenericURLResource {   // Machbarkeit: Ankunft belegen, dann bewusst ablehnen
+            hfsLog.notice("URL-LOAD scheme=\(u.url.scheme ?? "-", privacy: .public) host=\(u.url.host() != nil ? 1 : 0) opts=\(options.taskOptions, privacy: .public)")
+            return replyHandler(nil, posixError(ENOTSUP))
+        }
         guard let dev = resource as? FSBlockDeviceResource, let head = try? Gate.readHead(dev, 4096), Gate.isHFSPlus(head) else {
             hfsLog.error("load: kein HFS+ / nicht lesbar -> abgelehnt")
             return replyHandler(nil, posixError(EINVAL))
