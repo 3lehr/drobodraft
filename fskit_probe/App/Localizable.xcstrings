@@ -177,6 +177,22 @@
         }
       }
     },
+    "(noch kein Ort gewählt)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(noch kein Ort gewählt)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(no location chosen yet)"
+          }
+        }
+      }
+    },
     "1. Systemeinstellungen öffnen, Siri & Spotlight, Spotlight-Datenschutz.": {
       "localizations": {
         "de": {
@@ -2017,6 +2033,22 @@
         }
       }
     },
+    "Schreiben ist gesperrt, bis ein Sicherungsort gewählt ist: ein Ordner auf einem anderen Laufwerk als dem Startvolume und der Drobo, mit einigen GB Platz.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schreiben ist gesperrt, bis ein Sicherungsort gewählt ist: ein Ordner auf einem anderen Laufwerk als dem Startvolume und der Drobo, mit einigen GB Platz."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Writing is locked until a backup location is chosen: a folder on a drive other than the startup volume and the Drobo, with a few GB free."
+          }
+        }
+      }
+    },
     "Schreibtempo messen": {
       "localizations": {
         "de": {
@@ -2141,6 +2173,54 @@
           "stringUnit": {
             "state": "translated",
             "value": "Backup location"
+          }
+        }
+      }
+    },
+    "Sicherungsort wählen …": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sicherungsort wählen …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose backup location …"
+          }
+        }
+      }
+    },
+    "Sicherungsort: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sicherungsort: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Backup location: %@"
+          }
+        }
+      }
+    },
+    "Sicherungsort: nicht das Startvolume und nicht die Drobo": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sicherungsort: nicht das Startvolume und nicht die Drobo"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Backup location: not the startup volume and not the Drobo"
           }
         }
       }
@@ -3089,6 +3169,22 @@
         }
       }
     },
+    "noch nicht gewählt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "noch nicht gewählt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "not chosen yet"
+          }
+        }
+      }
+    },
     "nur lesen": {
       "localizations": {
         "de": {
@@ -3169,22 +3265,6 @@
         }
       }
     },
-    "„Sicherung zurückspielen“ ersetzt Verwaltungsdaten und macht alles rückgängig, was seitdem geschrieben wurde. Es gibt erst einen Probelauf und dann eine zweite Bestätigung.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "„Sicherung zurückspielen“ ersetzt Verwaltungsdaten und macht alles rückgängig, was seitdem geschrieben wurde. Es gibt erst einen Probelauf und dann eine zweite Bestätigung."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\"Restore backup\" replaces management data and undoes everything written since. A dry run comes first, then a second confirmation."
-          }
-        }
-      }
-    },
     "Übersicht": {
       "localizations": {
         "de": {
@@ -3197,6 +3277,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Overview"
+          }
+        }
+      }
+    },
+    "„Sicherung zurückspielen“ ersetzt Verwaltungsdaten und macht alles rückgängig, was seitdem geschrieben wurde. Es gibt erst einen Probelauf und dann eine zweite Bestätigung.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„Sicherung zurückspielen“ ersetzt Verwaltungsdaten und macht alles rückgängig, was seitdem geschrieben wurde. Es gibt erst einen Probelauf und dann eine zweite Bestätigung."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\"Restore backup\" replaces management data and undoes everything written since. A dry run comes first, then a second confirmation."
           }
         }
       }
