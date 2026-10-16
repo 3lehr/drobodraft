@@ -38,35 +38,31 @@ Drobo devices are no longer supported; the Drobo Dashboard and its drivers do no
 
 ## Install
 
-The project is wired to its author's signing team and bundle identifiers, so you must change them first. This is the roughest part of the alpha; none of it has been tried on a second Mac.
+The project's identifiers default to its author's team, which your team cannot sign. Set yours in one place; this is the roughest part of the alpha, and none of it has been tried on a second Mac.
 
-1. **Use your team and identifiers.**
-   - Put your 10-character team ID into `DEVELOPMENT_TEAM` in `fskit_probe/project.yml`, and into `teamID` in `drobo_kern/Sources/DroboKern/HelferLogik.swift` (the helper compares callers against it).
-   - The bundle identifiers `de.begod.*` belong to the author's team and cannot be signed by yours. Replace that prefix with your own (about 60 occurrences; find them with `grep -rl "de\.begod" --exclude-dir=build --exclude-dir=docs --exclude-dir=dext_probe .`, where `docs` is notes and `dext_probe` an unrelated experiment; one file is also *named* `de.begod.drobohelper.plist`).
-2. **First build and install by hand.** (The update script in step 4 refuses to run until the module is enabled, and the module can only be enabled once the app is installed.) `make` builds Apple's HFS code into a static library that the module links:
-   ```bash
-   make
-   cd fskit_probe && xcodegen generate
-   xcodebuild -project DroboFSProbe.xcodeproj -scheme DroboFSProbe -configuration Debug \
-     -derivedDataPath ~/DroboDraftBuild -allowProvisioningUpdates build
-   rsync -a --delete ~/DroboDraftBuild/Build/Products/Debug/DroboFSProbe.app/ /Applications/DroboFSProbe.app/
+1. **Use your team and identifiers.** Create `fskit_probe/Identity.local.xcconfig` (it is not checked in) with your 10-character team ID and a bundle prefix of your own:
    ```
+   DROBO_BUNDLE_PREFIX = com.example
+   DROBO_TEAM = ABCDE12345
+   ```
+   This one file feeds the app, the file system module, the helper service (including its launchd file) and the CLI identifier. The helper reads its prefix and team from its own bundle and signature at run time; nothing is hard-coded in Swift any more.
+2. **Build and install.** `install_module.sh` runs `make` (Apple's HFS code as a static library the module links), generates the Xcode project, builds, and copies the app to `/Applications` in place. The build folder is `build/xcode` in the repository (set `DD` to use another):
+   ```bash
+   bash fskit_probe/tools/install_module.sh
+   ```
+   On a first install the script installs the app and then tells you to enable the module (step 3); that is not an error. The script never changes system settings.
 3. **Enable the module:** System Settings → General → Login Items & Extensions → *File System Extensions* → switch on the DroboDraft module. If the switch does not stay on, restart the Mac and check again.
-4. **Later updates only:** the script, which rebuilds and replaces the app in place so the module stays enabled. Set `DD` to the build folder you want (the default is a folder on the author's disk):
-   ```bash
-   cd fskit_probe && DD=~/DroboDraftBuild bash tools/install_module.sh
-   ```
-   The script never changes system settings. If the module is not enabled it stops with exit code 3 and says so.
+4. **Later updates:** run the same script again. It replaces the app in place so the module stays enabled; if an update ever loses the module's enabled state it stops with exit code 3 and tells you to switch it on again.
 5. **Allow the helper:** open `/Applications/DroboFSProbe.app` once, then System Settings → General → Login Items & Extensions → *Allow in the Background* → enable the Drobo helper service.
 6. **Give the helper Full Disk Access:** System Settings → Privacy & Security → Full Disk Access → **+** → press ⌘⇧G and enter `/Applications/DroboFSProbe.app/Contents/MacOS/drobohelper`. Without it macOS does not let a background helper hand a USB disk's device to you. The status bar shows *Disk access: all good* when it works. (The "Driver module" in the status bar is this user-space file system module, not a kernel extension.)
-7. **Choose a backup location:** Settings (⌘,) → *Backup location*, before your first write session (see Use). It needs a disk that is neither the startup volume nor the Drobo, with a few GB free.
+7. **Choose a backup location.** There is no default: writing stays locked until you pick a folder (the app asks in the confirmation window of the first write mount, or Settings (⌘,) → *Backup location*). It needs a disk that is neither the startup volume nor the Drobo, with a few GB free.
 8. **Tell DroboDraft which disk is your Drobo.** Under *Drives* (or Settings, ⌘,) add it with a name and its **volume identifier**: the volume UUID of the Drobo's HFS+ volume. With the Drobo connected, `diskutil info -all` lists it as *Volume UUID*. The helper only ever releases the device of a volume you added.
 
-**Uninstall:** quit the app, switch off the module and the helper in System Settings, delete `/Applications/DroboFSProbe.app`, remove its entry under Full Disk Access, and delete the backup folder if you no longer need it.
+**Uninstall:** `bash fskit_probe/tools/uninstall.sh` (add `--data` to also delete settings, log and permission list) quits the app, unregisters the helper and deletes `/Applications/DroboFSProbe.app`. It prints the steps it cannot do for you: switch off the module and the helper in System Settings, remove the *drobohelper* entry under Full Disk Access, and delete your backup folder if you no longer need it.
 
 ## Use
 
-Open **DroboDraft**, select your Drobo and click **Mount (read-only)** or **Mount for writing**. Mounting for writing first makes and verifies the management data backup, so choose a *Backup location* in Settings before your first write session. It must not be on the startup volume or on the Drobo. The built-in default points to a folder that exists only on the author's machine.
+Open **DroboDraft**, select your Drobo and click **Mount (read-only)** or **Mount for writing**. Mounting for writing first makes and verifies the management data backup, so a *Backup location* must be chosen first (no default; the app asks). It must not be on the startup volume or on the Drobo.
 
 Always click **Unmount Drobo**, not eject in the Finder, so that the check runs right away. A mounted Drobo appears in Finder under *Locations*; a setting can hide it (then use **Open in Finder**).
 
@@ -74,25 +70,30 @@ If you mount for writing, consider excluding the Drobo from Spotlight and Time M
 
 ### Command line
 
-The core has a command line tool, `drobo` (`cd drobo_kern && swift build -c release`). Its commands and messages are German only; English meaning in the comments:
+The core has a command line tool, `drobo` (`cd drobo_kern && swift build -c release`). Commands are English; the former German names (`einhaengen`, `aushaengen`, `sichern`, ...) still work as aliases. Messages coming from the core are still German.
 
 ```bash
-drobo status              # connection, mount state, module and helper
-drobo einhaengen          # mount read-only (add --schreiben to mount for writing)
-drobo aushaengen          # unmount and check
-drobo sichern             # management data backup only (volume must be unmounted)
-drobo sicherungen         # list backups, newest first
-drobo zurueckspielen NAME # restore: dry run; add --ausfuehren to really write
-drobo zugriff             # check helper access to the drive, no side effects
+drobo status                 # connection, mount state, module and helper
+drobo mount [--write]        # mount read-only; --write mounts for writing (backs up first)
+drobo unmount                # unmount and check
+drobo backup                 # management data backup only (volume must be unmounted)
+drobo backup-location [DIR]  # show or set the backup location
+drobo backups                # list backups, newest first
+drobo restore NAME           # restore: dry run; add --execute to really write
+drobo check                  # read-only check of the unmounted volume
+drobo access                 # check helper access to the drive, no side effects
+drobo uninstall              # how to remove DroboDraft
 ```
 
-The helper accepts only binaries signed by your team, so sign the CLI with your own identity:
+The helper accepts only binaries signed by your team, so sign the CLI with your own identity (the prefix comes from the same `Identity.local.xcconfig`):
 
 ```bash
-DROBO_SIGNATUR="Apple Development: Your Name (TEAMID)" B=~/DroboDraftBuild/kern bash fskit_probe/tools/sign_cli.sh   # run from the repository root
+DROBO_SIGNATUR="Apple Development: Your Name (TEAMID)" bash fskit_probe/tools/sign_cli.sh   # run from the repository root
 ```
 
-`DROBO_SIGNATUR` is the name of a code signing identity (`security find-identity -v -p codesigning` lists yours). `B` is the build folder (the default is a folder on the author's disk). The script prints the path of the signed binary.
+`DROBO_SIGNATUR` is the name of a code signing identity (`security find-identity -v -p codesigning` lists yours). `B` sets the build folder (default `build/drobo_kern` in the repository). The script prints the path of the signed binary.
+
+The Swift tests (`cd drobo_kern && swift test`) need `DROBO_TESTDIR`, a folder on a disk that is not the startup volume, for their disk images. Tests that compare against the optional Python tools are skipped unless `DROBO_WERKZEUGE` points at them.
 
 ## How it works
 
@@ -108,7 +109,7 @@ FSKit module "hfsdrobo"   Apple's livefiles HFS+ code, every device write ≤ 51
 
 - **Module** (`fskit_probe/Module`): an FSKit file system extension built on Apple's open source `livefiles_hfs` (hfs-715.100.10). One code path writes to the device and caps every command at 524,288 bytes; `make check-io` verifies that no other write path is linked in. The read path is tuned for slow devices (per-file extent cache, B-tree node cache).
 - **Helper** (`fskit_probe/Helper`): a small privileged service. It hands the Drobo's device node to the logged-in user and back, and creates and removes the mount folder. It accepts calls only from DroboDraft's own signed binaries and only for volumes you added.
-- **Core** (`drobo_kern`): a Swift package with the logic (find, check, mount, back up, restore, verify, copy) and the `drobo` tool; its tests run against disk images. An optional deeper catalog check after unmounting uses a Python script that is not part of this repository; without it the app still checks volume headers, journal and allocation bitmap.
+- **Core** (`drobo_kern`): a Swift package with the logic (find, check, mount, back up, restore, verify, copy) and the `drobo` tool; its tests run against disk images. An optional deeper catalog check after unmounting uses a Python script that is not part of this repository (set `DROBO_WERKZEUGE` to its folder); without it that step is reported as skipped and the app still checks volume headers, journal and allocation bitmap.
 
 ## Safety and limits
 
