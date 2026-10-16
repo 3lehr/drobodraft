@@ -38,6 +38,8 @@ fmount() { # DEV MNT : mount -F, einmal wiederholen (erster Start des Modulproze
 fsck_ok() { local dev; dev=$(hdiutil attach -imagekey diskimage-class=CRawDiskImage -nomount "$1" | awk 'NR==1{print $1}')
   fsck_hfs -fn "${dev/disk/rdisk}" > "$W/fsck.out" 2>&1; local rc=$?; hdiutil detach "$dev" >>"$LOG" 2>&1
   { echo "--- fsck_hfs -fn $1 rc=$rc"; cat "$W/fsck.out"; } >>"$LOG"; [ $rc = 0 ] && grep -q 'appears to be OK' "$W/fsck.out"; }
+modul_lehnte_ab() { # T0 -> 0, wenn das Modul seit T0 selbst "abgelehnt" protokolliert hat (sonst scheiterte mount aus anderem Grund, z. B. Modul nicht freigeschaltet)
+  sleep 1; /usr/bin/log show --start "$1" --info --style compact --predicate 'subsystem == "'$DROBO_APP_ID'"' 2>/dev/null | grep -qE "(probe|load).*abgelehnt"; }
 stats_line() { /usr/bin/log show --last "${1:-3}m" --info --style compact --predicate 'subsystem == "'$DROBO_APP_ID'"' 2>/dev/null | grep "STATS unmount" | tail -1 | sed 's/.*STATS/STATS/'; }
 fld() { echo "$1" | sed -n "s/.*[ ]$2=\([0-9]*\).*/\1/p"; }
 
@@ -129,7 +131,8 @@ t_sperre() {
     [ "$mk" = 1 ] && printf 'DROBOFSPROBE' | dd of="$img" bs=1 count=12 conv=notrunc 2>/dev/null
     attach "$img"; mkdir -p "$MNT"; local T0; T0=$(date "+%Y-%m-%d %H:%M:%S")
     if mount -F -t $SHORT "$DEV" "$MNT" >>"$LOG" 2>&1; then fail "SPERRE $n: Modul hat das Abbild eingehaengt"; umount "$MNT" >/dev/null 2>&1
-    else pass "SPERRE $n: mount -F abgelehnt"; fi
+    elif modul_lehnte_ab "$T0"; then pass "SPERRE $n: mount -F abgelehnt, vom Modul protokolliert"
+    else fail "SPERRE $n: mount scheiterte, aber das Modul hat nichts abgelehnt (nicht erreicht?)"; fi
     /usr/bin/log show --start "$T0" --info --style compact --predicate 'subsystem == "'$DROBO_APP_ID'"' 2>/dev/null | grep -E "probe|load" | sed 's/.*\] /   /' | tail -2 | tee -a "$LOG"
     hdiutil detach "$DEV" >>"$LOG" 2>&1; rmw "$n.img" "mnt_$n"
   done
@@ -171,7 +174,10 @@ t_freigabe() {
     chk "$n Abbild traegt keinen Marker" test "$(head -c 12 "$img" | tr -d "\\0")" != "DROBOFSPROBE"
     sha0=$(sha "$img")
     # (a) nicht gelistet -> abgelehnt
-    attach "$img"; MNT=$W/mnt_fg; mkdir -p "$MNT"; mount -F -t $SHORT "$DEV" "$MNT" >>"$LOG" 2>&1 && { fail "$n ohne Freigabe eingehaengt"; umount "$MNT"; } || pass "$n ohne Eintrag abgelehnt"; hdiutil detach "$DEV" >>"$LOG" 2>&1
+    attach "$img"; MNT=$W/mnt_fg; mkdir -p "$MNT"; local T0; T0=$(date "+%Y-%m-%d %H:%M:%S")
+    if mount -F -t $SHORT "$DEV" "$MNT" >>"$LOG" 2>&1; then fail "$n ohne Freigabe eingehaengt"; umount "$MNT"
+    elif modul_lehnte_ab "$T0"; then pass "$n ohne Eintrag abgelehnt, vom Modul protokolliert"
+    else fail "$n mount scheiterte, aber das Modul hat nichts abgelehnt"; fi; hdiutil detach "$DEV" >>"$LOG" 2>&1
     fg_set '[{"volume_uuid":"00000000-1111-3333-8888-000000000000","modus":"nurlesen","max_bytes":1073741824}]'
     attach "$img"; mount -F -t $SHORT "$DEV" "$MNT" >>"$LOG" 2>&1 && { fail "$n fremde UUID eingehaengt"; umount "$MNT"; } || pass "$n fremde UUID in der Liste: abgelehnt"; hdiutil detach "$DEV" >>"$LOG" 2>&1
     fg_set "[{\"volume_uuid\":\"$VUUID\",\"modus\":\"nurlesen\",\"max_bytes\":1048576}]"
