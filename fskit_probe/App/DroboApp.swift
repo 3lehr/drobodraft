@@ -32,7 +32,7 @@ struct DroboApp: App {
         MenuBarExtra {
             MenueleistenInhalt().environmentObject(modell)
         } label: {
-            Label("DroboDraft", systemImage: modell.aktuell.map { $0.stufe == .warnung ? "exclamationmark.triangle.fill" : ($0.eingehaengt ? "externaldrive.fill" : "externaldrive") } ?? "externaldrive")
+            Label("DroboDraft", systemImage: modell.gesamtSchwere == .kritisch ? "xmark.octagon.fill" : (modell.gesamtSchwere == .warnung || modell.aktuell?.stufe == .warnung ? "exclamationmark.triangle.fill" : (modell.aktuell?.eingehaengt == true ? "externaldrive.fill" : "externaldrive")))
         }
         Settings { EinstellungenAnsicht().environmentObject(modell) }
     }

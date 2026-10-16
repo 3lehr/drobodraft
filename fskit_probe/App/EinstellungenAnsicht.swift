@@ -97,6 +97,7 @@ struct MenueleistenInhalt: View {
         Text("DroboDraft · Frühe Alpha 0.1.0")
         if let a = m.aktuell {
             Text("\(a.eintrag.name): \(a.zustandText)")
+            if let s = a.hw?.schwere { Label(s == .kritisch ? "Zustand: kritisch" : (s == .warnung ? "Zustand: Warnung" : "Zustand: in Ordnung"), systemImage: s == .ok ? "checkmark.circle" : (s == .warnung ? "exclamationmark.triangle" : "xmark.octagon")) }
             if m.liste.count > 1 {
                 Picker("Drobo", selection: $m.auswahl) { ForEach(m.liste, id: \.eintrag.uuid) { Text($0.eintrag.name).tag($0.eintrag.uuid) } }
             }

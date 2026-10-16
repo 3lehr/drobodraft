@@ -18,6 +18,7 @@ struct DroboAnsicht: Equatable {
     var merker = Merker()
     var sicherungen: [String] = []
     var belegungVH: Belegung?      // aus dem Volume-Header, auch ohne Einhaengung
+    var hw: DroboStatus?           // Status der Drobo selbst (Dext), nil = kein Treiber/keine Daten
 
     var zustandText: String {
         if eintrag.rolle == .timemachine { return verbunden ? String(localized: "Time-Machine-Ziel, angeschlossen") : String(localized: "Time-Machine-Ziel, nicht angeschlossen") }
@@ -85,6 +86,7 @@ final class DroboModell: ObservableObject {
     private var waechter: [AbziehWaechter] = []
     private var timer: Timer?
     private var vorher: [String: DroboAnsicht.Stufe] = [:]
+    private var vorherSchwere: [String: Schweregrad] = [:]
 
     init() {
         let e = ablage.einstellungen()
@@ -93,6 +95,8 @@ final class DroboModell: ObservableObject {
     }
 
     var aktuell: DroboAnsicht? { drobos[auswahl] }
+    /// Schlimmster Zustand aller Drobos fuer die Menueleiste (nil = keine Statusdaten).
+    var gesamtSchwere: Schweregrad? { drobos.values.compactMap { $0.hw?.schwere }.max() }
     var liste: [DroboAnsicht] { einstellungen.drobos.compactMap { drobos[$0.uuid] } }
 
     func kern(_ uuid: String) -> Kern { var k = Kern(uuid: uuid); k.ablage = ablage; return k }
@@ -150,6 +154,7 @@ final class DroboModell: ObservableObject {
                 }
                 a.merker = ablage.merker(d.uuid)
                 a.belegungVH = a.merker.belegung
+                if a.verbunden { a.hw = liesDroboStatus(uuid: d.uuid) }
                 a.sicherungen = eigeneSicherungen(ort: ablage.einstellungen().sicherungOrt, uuid: d.uuid).reversed()
                 neu[d.uuid] = a
             }
@@ -189,6 +194,13 @@ final class DroboModell: ObservableObject {
                 }
             }
             vorher[u] = a.stufe
+            if let s = a.hw?.schwere {
+                if let v = vorherSchwere[u], s > v {
+                    let n = a.eintrag.name
+                    mitteilen(s == .kritisch ? String(localized: "\(n): kritischer Zustand") : String(localized: "\(n): Warnung"), a.hw?.meldungen.first { $0.schwere == s }.map { String(localized: String.LocalizationValue($0.text)) } ?? "")
+                }
+                vorherSchwere[u] = s
+            }
         }
         drobos = neu; modul = m; hilfsdienst = dienst
         protokoll = ablage.protokollLesen()
@@ -394,6 +406,9 @@ final class DroboModell: ObservableObject {
         if SMAppService.daemon(plistName: helferPlistName).status == .requiresApproval { SMAppService.openSystemSettingsLoginItems() }
         aktualisieren()
     }
+
+    /// Physisch weniger als 5 % frei (Capacity-Seite der Drobo): Warnung vor dem Schreiben.
+    var physischKnapp: Bool { (aktuell?.hw?.kapazitaet?.freiAnteil).map { $0 < 0.05 } ?? false }
 
     var spotlightHinweisNoetig: Bool {
         guard let a = aktuell, a.eintrag.rolle == .arbeitsvolume, !einstellungen.spotlightAusgeschlossen else { return false }

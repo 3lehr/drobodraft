@@ -161,6 +161,38 @@
         }
       }
     },
+    "%@: Warnung": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: Warnung"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: warning"
+          }
+        }
+      }
+    },
+    "%@: kritischer Zustand": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: kritischer Zustand"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: critical state"
+          }
+        }
+      }
+    },
     "%lld GB": {
       "localizations": {
         "de": {
@@ -221,6 +253,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld fps"
+          }
+        }
+      }
+    },
+    "%lld °C": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld °C"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld °C"
           }
         }
       }
@@ -365,6 +413,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Refresh"
+          }
+        }
+      }
+    },
+    "Aktualisiert": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktualisiert"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updated"
           }
         }
       }
@@ -525,6 +589,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Resolution"
+          }
+        }
+      }
+    },
+    "Aus": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aus"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Off"
           }
         }
       }
@@ -781,6 +861,54 @@
           "stringUnit": {
             "state": "translated",
             "value": "Usage is read as soon as disk access is in order."
+          }
+        }
+      }
+    },
+    "Die Drobo hat physisch weniger Platz frei, als das Volume anzeigt. Maßgeblich ist der physische Wert: Die Drobo meldet dem Mac mehr Speicher, als die Festplatten tatsächlich fassen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Drobo hat physisch weniger Platz frei, als das Volume anzeigt. Maßgeblich ist der physische Wert: Die Drobo meldet dem Mac mehr Speicher, als die Festplatten tatsächlich fassen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Drobo physically has less free space than the volume shows. The physical value is what counts: the Drobo reports more storage to the Mac than its disks actually hold."
+          }
+        }
+      }
+    },
+    "Die Drobo ist physisch fast voll: nur noch %@ frei (unter 5 %%). Schreiben auf eine fast volle Drobo kann scheitern oder sie verlangsamen. Schaffen Sie zuerst Platz oder setzen Sie größere Festplatten ein.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Drobo ist physisch fast voll: nur noch %@ frei (unter 5 %%). Schreiben auf eine fast volle Drobo kann scheitern oder sie verlangsamen. Schaffen Sie zuerst Platz oder setzen Sie größere Festplatten ein."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Drobo is almost physically full: only %@ free (under 5 %%). Writing to an almost full Drobo can fail or slow it down. Free up space first or add larger disks."
+          }
+        }
+      }
+    },
+    "Die Statusdaten sind veraltet. Läuft der Statustreiber noch und ist die Drobo angeschlossen?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Statusdaten sind veraltet. Läuft der Statustreiber noch und ist die Drobo angeschlossen?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The status data is out of date. Is the status driver still running and the Drobo connected?"
           }
         }
       }
@@ -1297,6 +1425,22 @@
         }
       }
     },
+    "Fehler: %lld": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fehler: %lld"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Errors: %lld"
+          }
+        }
+      }
+    },
     "Fenster schließen": {
       "localizations": {
         "de": {
@@ -1377,6 +1521,22 @@
         }
       }
     },
+    "Firmware": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Firmware"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Firmware"
+          }
+        }
+      }
+    },
     "Folgt: Schächte, Schutzstufe, Warnungen und der echte Füllstand der Drobo. Dafür muss zuerst der Weg für Statusabfragen gemessen werden.": {
       "localizations": {
         "de": {
@@ -1405,6 +1565,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Format table"
+          }
+        }
+      }
+    },
+    "Frei": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frei"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Free"
           }
         }
       }
@@ -1537,6 +1713,22 @@
         }
       }
     },
+    "Gelb": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gelb"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yellow"
+          }
+        }
+      }
+    },
     "Gemessen mit": {
       "localizations": {
         "de": {
@@ -1553,6 +1745,38 @@
         }
       }
     },
+    "Gerät": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gerät"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Device"
+          }
+        }
+      }
+    },
+    "Geschützter Speicher insgesamt: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geschützter Speicher insgesamt: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Total protected storage: %@"
+          }
+        }
+      }
+    },
     "Grundlage: %lld MB/s (%@)": {
       "localizations": {
         "de": {
@@ -1565,6 +1789,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Basis: %lld MB/s (%@)"
+          }
+        }
+      }
+    },
+    "Grün": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grün"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Green"
           }
         }
       }
@@ -1729,6 +1969,22 @@
         }
       }
     },
+    "Kein Laufwerk": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein Laufwerk"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No drive"
+          }
+        }
+      }
+    },
     "Keine Drobo eingerichtet": {
       "localizations": {
         "de": {
@@ -1793,6 +2049,22 @@
         }
       }
     },
+    "Keine Statusdaten der Drobo. Schächte, Schutzzustand und Warnungen kommen von einem optionalen Statustreiber (Systemerweiterung), der hier nicht aktiv ist oder noch keine Daten geliefert hat. Das Einhängen und alles andere funktioniert auch ohne.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Statusdaten der Drobo. Schächte, Schutzzustand und Warnungen kommen von einem optionalen Statustreiber (Systemerweiterung), der hier nicht aktiv ist oder noch keine Daten geliefert hat. Das Einhängen und alles andere funktioniert auch ohne."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No status data from the Drobo. Bays, protection state and warnings come from an optional status driver (system extension) that is not active here or has not delivered data yet. Mounting and everything else works without it."
+          }
+        }
+      }
+    },
     "Kopiert einen Ordner von der Drobo auf ein anderes Laufwerk. Nur lesend an der Drobo; bereits gesicherte, unveränderte Dateien werden übersprungen, jede Kopie wird per SHA-256 gegen das Original geprüft.": {
       "localizations": {
         "de": {
@@ -1837,6 +2109,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Drives"
+          }
+        }
+      }
+    },
+    "Leer": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leer"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empty"
           }
         }
       }
@@ -1937,6 +2225,22 @@
         }
       }
     },
+    "Meldungen der Drobo": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meldungen der Drobo"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Messages from the Drobo"
+          }
+        }
+      }
+    },
     "Messung": {
       "localizations": {
         "de": {
@@ -2029,6 +2333,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Notify on connect, disconnect and warnings"
+          }
+        }
+      }
+    },
+    "Modell": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modell"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model"
           }
         }
       }
@@ -2273,6 +2593,38 @@
         }
       }
     },
+    "Physisch (laut Drobo)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Physisch (laut Drobo)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Physical (as reported by the Drobo)"
+          }
+        }
+      }
+    },
+    "Physisch frei: %@ (%lld %%)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Physisch frei: %1$@ (%2$lld %%)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Physically free: %@ (%lld %%)"
+          }
+        }
+      }
+    },
     "Probelauf": {
       "localizations": {
         "de": {
@@ -2385,6 +2737,86 @@
         }
       }
     },
+    "Rot": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rot"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Red"
+          }
+        }
+      }
+    },
+    "Rot/Aus": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rot/Aus"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Red/Off"
+          }
+        }
+      }
+    },
+    "Rot/Gelb": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rot/Gelb"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Red/Yellow"
+          }
+        }
+      }
+    },
+    "Rot/Grün": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rot/Grün"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Red/Green"
+          }
+        }
+      }
+    },
+    "Schacht %lld": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schacht %lld"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bay %lld"
+          }
+        }
+      }
+    },
     "Schließen": {
       "localizations": {
         "de": {
@@ -2493,6 +2925,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Measure write speed"
+          }
+        }
+      }
+    },
+    "Schächte": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schächte"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bays"
           }
         }
       }
@@ -2669,6 +3117,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Visible: the drive appears in Finder like any other. By measurement, Spotlight does not walk into it. The helper service creates the folder and removes it again on unmount. The location must never be inside the home folder."
+          }
+        }
+      }
+    },
+    "Speicher (physisch)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speicher (physisch)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Storage (physical)"
           }
         }
       }
@@ -3041,6 +3505,22 @@
         }
       }
     },
+    "Unbekannt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unbekannt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unknown"
+          }
+        }
+      }
+    },
     "Verdeckt (nur über „Im Finder öffnen“)": {
       "localizations": {
         "de": {
@@ -3085,6 +3565,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Volume"
+          }
+        }
+      }
+    },
+    "Volume (laut Dateisystem)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volume (laut Dateisystem)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volume (as reported by the file system)"
           }
         }
       }
@@ -3521,6 +4017,54 @@
         }
       }
     },
+    "Zustand: Warnung": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zustand: Warnung"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "State: warning"
+          }
+        }
+      }
+    },
+    "Zustand: in Ordnung": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zustand: in Ordnung"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "State: all good"
+          }
+        }
+      }
+    },
+    "Zustand: kritisch": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zustand: kritisch"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "State: critical"
+          }
+        }
+      }
+    },
     "bereit": {
       "localizations": {
         "de": {
@@ -3885,6 +4429,278 @@
           "stringUnit": {
             "state": "translated",
             "value": "\"Restore backup\" replaces management data and undoes everything written since. A dry run comes first, then a second confirmation."
+          }
+        }
+      }
+    },
+    "Speicherplatz sehr knapp (rote Schwelle erreicht)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speicherplatz sehr knapp (rote Schwelle erreicht)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Storage space very low (red threshold reached)"
+          }
+        }
+      }
+    },
+    "Speicherplatz wird knapp (gelbe Schwelle erreicht)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speicherplatz wird knapp (gelbe Schwelle erreicht)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Storage space is getting low (yellow threshold reached)"
+          }
+        }
+      }
+    },
+    "Keine Festplatten eingesetzt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Festplatten eingesetzt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No disks inserted"
+          }
+        }
+      }
+    },
+    "Eine Festplatte ist defekt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Festplatte ist defekt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A disk has failed"
+          }
+        }
+      }
+    },
+    "Zu viele Festplatten fehlen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zu viele Festplatten fehlen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Too many disks are missing"
+          }
+        }
+      }
+    },
+    "Keine Redundanz: ein Festplattenausfall würde Daten kosten": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Redundanz: ein Festplattenausfall würde Daten kosten"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No redundancy: a disk failure would cost data"
+          }
+        }
+      }
+    },
+    "Kein Reserve-Laufwerk (Hotspare)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein Reserve-Laufwerk (Hotspare)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No spare drive (hot spare)"
+          }
+        }
+      }
+    },
+    "Kein Platz mehr": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein Platz mehr"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No space left"
+          }
+        }
+      }
+    },
+    "Die Drobo stellt die Redundanz wieder her (Relayout läuft)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Drobo stellt die Redundanz wieder her (Relayout läuft)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Drobo is restoring redundancy (relayout in progress)"
+          }
+        }
+      }
+    },
+    "Formatierung läuft": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Formatierung läuft"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Formatting in progress"
+          }
+        }
+      }
+    },
+    "Festplatten unterschiedlicher Größe gemischt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Festplatten unterschiedlicher Größe gemischt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disks of different sizes mixed"
+          }
+        }
+      }
+    },
+    "Unbekannte Firmware-Version": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unbekannte Firmware-Version"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unknown firmware version"
+          }
+        }
+      }
+    },
+    "Neue Firmware installiert": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neue Firmware installiert"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New firmware installed"
+          }
+        }
+      }
+    },
+    "Neues Volume nach dem Neustart": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neues Volume nach dem Neustart"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New volume after restart"
+          }
+        }
+      }
+    },
+    "Inkompatibles Festplatten-Paket": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inkompatibles Festplatten-Paket"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incompatible disk pack"
+          }
+        }
+      }
+    },
+    "Unbekannter Zustand": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unbekannter Zustand"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unknown state"
+          }
+        }
+      }
+    },
+    "Weitere Meldung der Drobo": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weitere Meldung der Drobo"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Another message from the Drobo"
           }
         }
       }

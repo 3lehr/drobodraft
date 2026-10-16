@@ -117,11 +117,20 @@ struct UebersichtAnsicht: View {
                             Hinweis(symbol: "exclamationmark.triangle.fill", text: "Vor dem nächsten Einhängen wird geprüft: \(g)", farbe: .red)
                         }
                         Karte(titel: "Belegung") {
-                            if a.eingehaengt, a.gesamt > 0 {
-                                BelegungsBalken(belegt: a.belegt, gesamt: a.gesamt, stand: nil)
-                            } else if let v = a.belegungVH {
-                                BelegungsBalken(belegt: v.belegt, gesamt: v.gesamt, stand: v.zeit)
+                            let vol: (belegt: UInt64, gesamt: UInt64, stand: String?)? = a.eingehaengt && a.gesamt > 0 ? (a.belegt, a.gesamt, nil) : a.belegungVH.map { ($0.belegt, $0.gesamt, $0.zeit) }
+                            if let v = vol {
+                                Text("Volume (laut Dateisystem)").font(.subheadline).foregroundStyle(.secondary)
+                                BelegungsBalken(belegt: v.belegt, gesamt: v.gesamt, stand: v.stand)
                             } else { Text("Die Belegung wird gelesen, sobald der Festplattenzugriff in Ordnung ist.").foregroundStyle(.secondary) }
+                            if let k = a.hw?.kapazitaet, k.gesamtGeschuetzt > 0 {
+                                Divider()
+                                Text("Physisch (laut Drobo)").font(.subheadline).foregroundStyle(.secondary)
+                                BelegungsBalken(belegt: k.benutzt, gesamt: k.gesamtGeschuetzt, stand: nil, warnung: k.freiAnteil < 0.05 ? .red : (k.freiAnteil < 0.10 ? .orange : nil))
+                                Text("Physisch frei: \(groesseText(k.frei)) (\(Int((k.freiAnteil * 100).rounded())) %)").font(.callout)
+                                if let v = vol, v.gesamt > v.belegt, k.frei < v.gesamt - v.belegt {
+                                    Hinweis(symbol: "exclamationmark.triangle.fill", text: "Die Drobo hat physisch weniger Platz frei, als das Volume anzeigt. Maßgeblich ist der physische Wert: Die Drobo meldet dem Mac mehr Speicher, als die Festplatten tatsächlich fassen.")
+                                }
+                            }
                         }
                         Karte(titel: "Einhängung") {
                             if a.eingehaengt {
@@ -247,14 +256,6 @@ struct ProtokollAnsicht: View {
     }
 }
 
-struct LaufwerkeAnsicht: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Laufwerke").font(.largeTitle).accessibilityAddTraits(.isHeader)
-            Label("Folgt: Schächte, Schutzstufe, Warnungen und der echte Füllstand der Drobo. Dafür muss zuerst der Weg für Statusabfragen gemessen werden.", systemImage: "hourglass")
-        }.padding(20)
-    }
-}
 
 /// Bestätigung vor jedem Schreib-Einhängen. "Abbrechen" ist die Standardaktion (Return/Escape), das Schreiben hat keine Tastenkürzel.
 struct SchreibenBestaetigung: View {
@@ -265,6 +266,9 @@ struct SchreibenBestaetigung: View {
             Text("Zum Schreiben einhängen?").font(.title2).accessibilityAddTraits(.isHeader)
             Text("Vorher wird eine Sicherung der Verwaltungsdaten des Laufwerks angelegt. Ohne gelungene Sicherung wird nicht zum Schreiben eingehängt.")
             if m.spotlightHinweisNoetig { Hinweis(symbol: "magnifyingglass", text: "Spotlight ist für die Drobo noch nicht ausgeschlossen (empfohlen, siehe Anleitung in den Einstellungen).") }
+            if m.physischKnapp, let k = m.aktuell?.hw?.kapazitaet {
+                Hinweis(symbol: "externaldrive.badge.exclamationmark", text: "Die Drobo ist physisch fast voll: nur noch \(groesseText(k.frei)) frei (unter 5 %). Schreiben auf eine fast volle Drobo kann scheitern oder sie verlangsamen. Schaffen Sie zuerst Platz oder setzen Sie größere Festplatten ein.", farbe: .red)
+            }
             if m.einstellungen.sicherungOrt.isEmpty {
                 Hinweis(symbol: "externaldrive.badge.exclamationmark", text: "Schreiben ist gesperrt, bis ein Sicherungsort gewählt ist: ein Ordner auf einem anderen Laufwerk als dem Startvolume und der Drobo, mit einigen GB Platz.", farbe: .red)
                 Button("Sicherungsort wählen …") { m.sicherungsOrtWaehlen() }
@@ -291,9 +295,11 @@ func sicherungsZeit(_ ordner: String) -> String {
 
 struct BelegungsBalken: View {
     let belegt: UInt64, gesamt: UInt64, stand: String?
+    var warnung: Color?
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             ProgressView(value: Double(belegt), total: Double(max(gesamt, 1))) { Text("Belegt") }
+                .tint(warnung)
                 .accessibilityValue("\(groesseText(belegt)) / \(groesseText(gesamt))")
             Text("\(groesseText(belegt)) von \(groesseText(gesamt)) belegt").font(.callout).foregroundStyle(.secondary)
             if let s = stand { Text("Stand \(zeitLesbar(s)), aus den Verwaltungsdaten des Laufwerks").font(.caption).foregroundStyle(.secondary) }
