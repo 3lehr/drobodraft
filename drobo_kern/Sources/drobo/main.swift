@@ -16,6 +16,7 @@ func hilfe() -> Never {
     drobo restore NAME [--execute]             dry run; with --execute write it back (unmounted only, loses everything written since the backup)
     drobo copy-folder SOURCE TARGET            copy a folder from the mounted Drobo to another disk (incremental, SHA-256 verified)
     drobo speed [--size GB] [--cycles N] [--write]   read speed (large existing files); with --write a write+read cycle in .drobodraft_speedtest, only when mounted writable with a backup and 2x free space
+    drobo hardware                             bays, capacity and status as reported by the Drobo (needs the optional status driver)
     drobo access                               check without effect whether the helper may reach the device
     drobo state | log | speed-history | drives
     drobo detect                               list connected Drobos (SCSI vendor "Drobo") that are not set up yet
@@ -92,6 +93,12 @@ do {
             for r in [z.schreiben, z.lesen].compactMap({ $0 }) { print(String(format: "%@: %.1f MB/s (%d files, %llu bytes)", r.art, r.mbProSekunde, r.dateien, r.bytes)) }
         })
         if z.isEmpty { throw AppFehler.tempotest("nothing measured") }
+    case "hardware":
+        guard let h = liesDroboStatus(uuid: kern.uuid) else { print("No status data (status driver not active?)"); exit(1) }
+        print("\(h.modell)  firmware \(h.firmware) build \(h.firmwareBuild.map(String.init) ?? "-")  age \(Int(h.alter())) s  severity \(h.schwere)")
+        if let k = h.kapazitaet { print(String(format: "capacity: free %.2f TB, used %.2f TB, protected total %.2f TB (%.1f%% free)", Double(k.frei) / 1e12, Double(k.benutzt) / 1e12, Double(k.gesamtGeschuetzt) / 1e12, k.freiAnteil * 100)) }
+        h.schaechte.forEach { print("bay \($0.nr): \($0.farbe)  \($0.modell)  \(Double($0.kapazitaet) / 1e12) TB  errors \($0.fehler)") }
+        h.meldungen.forEach { print("message [\($0.schwere)]: \($0.text)") }
     case "access":
         if let f = kern.zugriffPruefen() { throw Fehler.helfer(f) }; print("access ok (no-effect probe)")
     case "backups": kern.sicherungen().forEach { print($0) }
