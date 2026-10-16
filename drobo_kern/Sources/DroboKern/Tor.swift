@@ -9,8 +9,6 @@ public struct Torbericht: Equatable {
     public var ok: Bool { probleme.isEmpty }
 }
 
-private func be32(_ a: [UInt8], _ o: Int) -> UInt32 { a[o..<o + 4].reduce(0) { $0 << 8 | UInt32($1) } }
-private func be64(_ a: [UInt8], _ o: Int) -> UInt64 { a[o..<o + 8].reduce(0) { $0 << 8 | UInt64($1) } }
 private func le64(_ a: [UInt8], _ o: Int) -> UInt64 { a[o..<o + 8].reversed().reduce(0) { $0 << 8 | UInt64($1) } }
 
 /// `pfad` ist ein Geraet (/dev/rdiskNsM) oder eine Abbilddatei; nur O_RDONLY, nie schreibend.

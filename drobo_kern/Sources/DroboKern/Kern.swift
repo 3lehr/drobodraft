@@ -76,6 +76,8 @@ public struct Kern {
     public var listeSetzen: (String, String, UInt64?) throws -> Void   // Modus: nurlesen|schreiben|entfernen
     public var modul: () -> ModulStatus
     public var home: [String]
+    public var ablage: Datenablage = Datenablage()
+    /// Messung/Test: Partitionsgroesse fuer die Volumeende-Bestimmung bei Geraeten kommt aus DiskArbitration.
     /// Hilfsdienst (freigeben|zurueckgeben): nil = ok, sonst Fehlertext. Nie fatal: reicht der Zugriff trotzdem, geht es weiter.
     public var helfer: (String, String) -> String? = { helferAufruf($0, uuid: $1) }
     public var meldung: (String) -> Void = { FileHandle.standardError.write(Data("HINWEIS: \($0)\n".utf8)) }
@@ -119,7 +121,7 @@ public struct Kern {
     public func freigabeEntfernen() throws { try listeSetzen(uuid, "entfernen", nil) }
 
     /// Ort liegt unter Home? Aufgeloest ueber Symlinks (der naechste vorhandene Vorfahr), damit /var/.. oder Links nicht taeuschen.
-    static func aufgeloest(_ pfad: String) -> String {
+    public static func aufgeloest(_ pfad: String) -> String {
         var url = URL(fileURLWithPath: pfad).standardizedFileURL; var rest: [String] = []
         while !FileManager.default.fileExists(atPath: url.path), url.path != "/" { rest.insert(url.lastPathComponent, at: 0); url.deleteLastPathComponent() }
         return rest.reduce(url.resolvingSymlinksInPath()) { $0.appendingPathComponent($1) }.path
@@ -130,8 +132,12 @@ public struct Kern {
         return home.contains { let h = Kern.aufgeloest($0); return o == h || o.hasPrefix(h + "/") }
     }
 
+    /// Rolle dieser Drobo laut Einstellungen; unbekannte UUID = Arbeitsvolume.
+    public var rolle: Rolle { ablage.einstellungen().drobos.first { $0.uuid == uuid }?.rolle ?? .arbeitsvolume }
+
     @discardableResult
     public func einhaengen(modus: Modus = .nurlesen, ort: String = vorgabeOrt) throws -> Einhaengung {
+        if rolle == .timemachine { throw AppFehler.nurAnzeige("Diese Drobo ist als Time-Machine-Ziel eingetragen und wird ueber unser Modul nie eingehaengt") }
         if unterHome(ort) { throw Fehler.ortUnterHome(ort) }
         guard let m = finden(uuid: uuid) else { throw Fehler.nichtGefunden(uuid) }
         if let e = einhaengungen()[m.geraet] { throw Fehler.eingehaengt("\(m.geraet) auf \(e.ort) (\(e.nurlesen ? "ro" : "rw"))") }
@@ -145,6 +151,25 @@ public struct Kern {
         if let h = helfer("freigeben", uuid) { meldung("Hilfsdienst: \(h)") }
         let t = try torpruefung(pfad: m.rohgeraet)
         if !t.ok { throw Fehler.tor(t.probleme) }
+        // Tor 2: offene Pruefung (Trennung im Schreibzustand, fehlgeschlagene Nachpruefung) VOR jedem Einhaengen, auch nurlesen
+        var mk = ablage.merker(uuid)
+        if mk.rwAktiv && einhaengungen()[m.geraet] == nil && mk.offenePruefung == nil {
+            mk.offenePruefung = "Beim letzten Mal war das Laufwerk im Schreibzustand eingehaengt und wurde nicht sauber ausgehaengt"
+            ablage.merkerAendern(uuid) { $0.rwAktiv = false; $0.offenePruefung = mk.offenePruefung }
+        }
+        if let grund = mk.offenePruefung {
+            let r = try nachpruefung(pfad: m.rohgeraet, partitionsgroesse: m.groesse)
+            ablage.merkerAendern(uuid) { $0.letztePruefung = r; if r.ok { $0.offenePruefung = nil } }
+            ablage.protokoll("Pruefung vor dem Einhaengen (\(grund)): " + (r.ok ? "in Ordnung" : "NICHT in Ordnung: " + r.probleme.joined(separator: "; ")))
+            if !r.ok { throw AppFehler.pruefung("Pruefung vor dem Einhaengen nicht bestanden (\(grund)): " + r.probleme.joined(separator: "; ")) }
+        }
+        var sicherungsOrdner: String? = nil
+        if modus == .schreiben {
+            let e = ablage.einstellungen()
+            let s = try metadatenSichern(quelle: m.rohgeraet, ort: e.sicherungOrt, uuid: uuid, anzahl: e.sicherungAnzahl, partitionsgroesse: m.groesse)
+            sicherungsOrdner = s.ordner
+            ablage.protokoll("Metadaten gesichert: \(s.ordner)")
+        }
         try FileManager.default.createDirectory(atPath: ort, withIntermediateDirectories: true)
         let (rc, out) = ausfuehren("/sbin/mount", ["-F", "-t", "hfsdrobo", "-o", modus == .nurlesen ? "rdonly" : "rw", m.geraet, ort])
         guard rc == 0 else { throw Fehler.mountFehlgeschlagen(out.isEmpty ? "Exit \(rc)" : out) }
@@ -153,15 +178,53 @@ public struct Kern {
             _ = ausfuehren("/sbin/umount", [ort])
             throw Fehler.mountFehlgeschlagen("Mount ist NICHT read-only gemeldet -> ausgehaengt")
         }
+        if modus == .schreiben {
+            ablage.merkerAendern(uuid) { $0.rwAktiv = true; $0.bsd = m.bsd; $0.ort = ort; $0.seit = jetztText(); $0.letzteSicherung = sicherungsOrdner }
+        } else { ablage.merkerAendern(uuid) { $0.bsd = m.bsd } }
+        ablage.protokoll("Eingehaengt (\(modus == .schreiben ? "schreiben" : "nur lesen")): \(ort)")
         return e
     }
 
-    public func aushaengen() throws {
+    /// Aushaengen; war das Volume im Schreibzustand, folgt VOR der Rueckgabe des Geraeteknotens die Nachpruefung (Ergebnis im Merker + Rueckgabe).
+    @discardableResult
+    public func aushaengen() throws -> PruefErgebnis? {
         guard let m = finden(uuid: uuid) else { throw Fehler.nichtGefunden(uuid) }
         guard let e = einhaengungen()[m.geraet] else { throw Fehler.nichtEingehaengt(uuid) }
         var (rc, out) = ausfuehren("/sbin/umount", [e.ort])
         if rc != 0 { (rc, out) = ausfuehren("/usr/sbin/diskutil", ["unmount", e.ort]) }
         if rc != 0 || einhaengungen()[m.geraet] != nil { throw Fehler.aushaengenFehlgeschlagen(out) }
+        var pruef: PruefErgebnis? = nil
+        if ablage.merker(uuid).rwAktiv {
+            ablage.merkerAendern(uuid) { $0.rwAktiv = false }
+            let r = (try? nachpruefung(pfad: m.rohgeraet, partitionsgroesse: m.groesse)) ?? { var x = PruefErgebnis(); x.zeit = jetztText(); x.probleme = ["Pruefung nicht moeglich (Geraet nicht lesbar)"]; return x }()
+            ablage.merkerAendern(uuid) { $0.letztePruefung = r; $0.offenePruefung = r.ok ? nil : "Pruefung nach dem Schreiben nicht bestanden" }
+            ablage.protokoll("Ausgehaengt, Pruefung: " + (r.ok ? "in Ordnung" : "NICHT in Ordnung: " + r.probleme.joined(separator: "; ")))
+            pruef = r
+        } else { ablage.protokoll("Ausgehaengt") }
         if let h = helfer("zurueckgeben", uuid) { meldung("Hilfsdienst: \(h). Knoten bleibt beim Nutzer; zurueck: sudo chown root:operator \(m.geraet) \(m.rohgeraet)") }
+        return pruef
+    }
+
+    /// Ordner wegsichern (Quelle muss auf der eingehaengten Drobo liegen, Ziel nie darauf).
+    public func wegsichern(quelle: String, ziel: String, fortschritt: ((String) -> Void)? = nil, abbrechen: () -> Bool = { false }) throws -> WegsichernBericht {
+        guard let m = finden(uuid: uuid), let e = einhaengungen()[m.geraet] else { throw Fehler.nichtEingehaengt(uuid) }
+        let q = Kern.aufgeloest(quelle), o = Kern.aufgeloest(e.ort)
+        guard q == o || q.hasPrefix(o + "/") else { throw AppFehler.wegsichern("Quellordner liegt nicht auf der eingehaengten Drobo (\(e.ort))") }
+        let b = try ordnerWegsichern(quelle: quelle, ziel: ziel, verboten: [e.ort], fortschritt: fortschritt, abbrechen: abbrechen)
+        ablage.protokoll("Wegsichern \((quelle as NSString).lastPathComponent) nach \(ziel): " + b.text)
+        return b
+    }
+
+    public func tempoTesten(schreiben: Bool = false, mib: Int = 64) throws -> TempoMessung {
+        guard let m = finden(uuid: uuid), let e = einhaengungen()[m.geraet] else { throw Fehler.nichtEingehaengt(uuid) }
+        if schreiben {
+            let mk = ablage.merker(uuid)
+            guard !e.nurlesen, mk.rwAktiv else { throw AppFehler.tempotest("Schreib-Tempotest nur bei Einhaengen zum Schreiben") }
+            guard let s = mk.letzteSicherung, FileManager.default.fileExists(atPath: s + "/" + markerName) else { throw AppFehler.tempotest("Schreib-Tempotest nur mit vorhandener Metadaten-Sicherung") }
+            let r = try tempoSchreiben(ort: e.ort, uuid: uuid, mib: mib, ablage: ablage)
+            ablage.protokoll(String(format: "Tempotest schreiben: %.1f MB/s", r.mbProSekunde)); return r
+        }
+        let r = try tempoLesen(ort: e.ort, uuid: uuid, ablage: ablage)
+        ablage.protokoll(String(format: "Tempotest lesen: %.1f MB/s", r.mbProSekunde)); return r
     }
 }

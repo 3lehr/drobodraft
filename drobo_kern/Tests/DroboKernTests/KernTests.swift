@@ -64,7 +64,14 @@ final class KernTests: XCTestCase {
     }
 
     func kern(_ u: String, _ f: String, modul: ModulStatus = ModulStatus(installiert: true, freigeschaltet: true)) -> Kern {
-        Kern(uuid: u, freigabePfad: f, modul: { modul })
+        var k = Kern(uuid: u, freigabePfad: f, modul: { modul }); k.ablage = testAblage(); return k
+    }
+
+    /// Eigene Datenablage je Test (nie die des Betreibers); Sicherungsort im Testordner auf /Volumes/daten.
+    func testAblage(anzahl: Int = 2) -> Datenablage {
+        let a = Datenablage(ordner: "\(dir)/daten")
+        var e = a.einstellungen(); e.sicherungOrt = "\(dir)/sicherungen"; e.sicherungAnzahl = anzahl
+        a.einstellungenSetzen(e); return a
     }
 
     func eintrag(_ u: String, _ m: String) -> [String: Any] { ["volume_uuid": u, "modus": m, "max_bytes": 1 << 40] }
@@ -263,14 +270,26 @@ final class KernTests: XCTestCase {
     func testEinhaengenSchreibenAushaengenDurchHfsdroboMarkerAbbild() throws {
         try XCTSkipUnless(modulStatus().freigeschaltet, "Modul nicht freigeschaltet")
         let dev = try anhaengen(try abbild("m")); let u = try uuid(dev)
-        let k = Kern(uuid: u, freigabePfad: try freigabe([eintrag(u, "schreiben")]))
+        let k = kern(u, try freigabe([eintrag(u, "schreiben")]))
         let o = ort()
         let e = try k.einhaengen(modus: .schreiben, ort: o)
         XCTAssertFalse(e.nurlesen); XCTAssertEqual(e.treiber, .hfsdrobo)
+        XCTAssertEqual(eigeneSicherungen(ort: "\(dir)/sicherungen", uuid: u).count, 1, "rw ohne Sicherung")
+        XCTAssertTrue(k.ablage.merker(u).rwAktiv)
         XCTAssertEqual(try k.zustand().kurz, "eingehaengt rw durch hfsdrobo")
         XCTAssertThrowsError(try k.einhaengen(modus: .schreiben, ort: o)) { XCTAssertEqual(($0 as? Fehler)?.code, 11) }
-        try k.aushaengen()
+        // Schreib-Tempotest: nur rw + Sicherung; fehlt die Sicherung, wird abgelehnt
+        let ok = try k.tempoTesten(schreiben: true, mib: 4); XCTAssertEqual(ok.art, "schreiben")
+        let sich = k.ablage.merker(u).letzteSicherung
+        k.ablage.merkerAendern(u) { $0.letzteSicherung = nil }
+        XCTAssertThrowsError(try k.tempoTesten(schreiben: true)) { XCTAssertTrue("\($0)".contains("Metadaten-Sicherung"), "\($0)") }
+        k.ablage.merkerAendern(u) { $0.letzteSicherung = sich; $0.rwAktiv = false }
+        XCTAssertThrowsError(try k.tempoTesten(schreiben: true)) { XCTAssertTrue("\($0)".contains("Einhaengen zum Schreiben"), "\($0)") }
+        k.ablage.merkerAendern(u) { $0.rwAktiv = true }
+        let pr = try k.aushaengen()
         XCTAssertEqual(try k.zustand().kurz, "angeschlossen, nicht eingehaengt")
+        XCTAssertEqual(pr?.ok, true, "\(String(describing: pr?.probleme))"); XCTAssertEqual(k.ablage.merker(u).letztePruefung?.ok, true)
+        XCTAssertFalse(k.ablage.merker(u).rwAktiv)
     }
 
     /// Abbild OHNE Marker: das Modul entscheidet nur nach seiner Freigabeliste (echte Datei im Container; sie wird hier absichtlich ergaenzt und im tearDown byteweise zurueckgestellt).
