@@ -17,12 +17,13 @@ struct DroboAnsicht: Equatable {
     var belegt: UInt64 = 0
     var merker = Merker()
     var sicherungen: [String] = []
+    var belegungVH: Belegung?      // aus dem Volume-Header, auch ohne Einhaengung
 
     var zustandText: String {
-        if eintrag.rolle == .timemachine { return verbunden ? "Time-Machine-Ziel, angeschlossen" : "Time-Machine-Ziel, nicht angeschlossen" }
-        if !verbunden { return "Nicht angeschlossen" }
-        if !eingehaengt { return "Angeschlossen, nicht eingehängt" }
-        return nurlesen ? "Eingehängt, nur lesen" : "Eingehängt, schreiben"
+        if eintrag.rolle == .timemachine { return verbunden ? String(localized: "Time-Machine-Ziel, angeschlossen") : String(localized: "Time-Machine-Ziel, nicht angeschlossen") }
+        if !verbunden { return String(localized: "Nicht angeschlossen") }
+        if !eingehaengt { return String(localized: "Angeschlossen, nicht eingehängt") }
+        return nurlesen ? String(localized: "Eingehängt, nur lesen") : String(localized: "Eingehängt, schreiben")
     }
     enum Stufe { case aus, bereit, lesen, schreiben, warnung }
     var stufe: Stufe {
@@ -31,6 +32,13 @@ struct DroboAnsicht: Equatable {
         if !eingehaengt { return .bereit }
         return nurlesen ? .lesen : .schreiben
     }
+}
+
+/// ISO-Zeit aus Protokoll/Merker lesbar und in der Systemsprache.
+func zeitLesbar(_ iso: String) -> String {
+    let f = ISO8601DateFormatter(); f.formatOptions = [.withInternetDateTime]
+    guard let d = f.date(from: iso) else { return iso }
+    return d.formatted(date: .abbreviated, time: .shortened)
 }
 
 struct Meldung: Identifiable { let id = UUID(); var titel: String; var text: String }
@@ -49,6 +57,10 @@ final class DroboModell: ObservableObject {
     @Published var arbeit: String?
     @Published var meldung: Meldung?
     @Published var wegsichernBericht = ""
+    @Published var restoreAuswahl = ""
+    @Published var restoreProbeText = ""
+    @Published var restoreProbeFuer = ""      // Name der Sicherung, fuer die der Probelauf lief
+    @Published var anmeldeStart = false
     private var waechter: [AbziehWaechter] = []
     private var timer: Timer?
     private var vorher: [String: DroboAnsicht.Stufe] = [:]
@@ -67,6 +79,7 @@ final class DroboModell: ObservableObject {
     // MARK: Start / Aktualisieren
 
     func starten() {
+        anmeldeStart = SMAppService.mainApp.status == .enabled
         aktualisieren()
         timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in Task { @MainActor in self?.aktualisieren(freigabe: false) } }
         waechterNeu()
@@ -78,7 +91,7 @@ final class DroboModell: ObservableObject {
             let w = AbziehWaechter(uuid: d.uuid, ablage: ablage) { [weak self] ereignis in
                 Task { @MainActor in
                     guard let self else { return }
-                    if case .getrennt(_, let schreiben) = ereignis, schreiben { self.mitteilen("Drobo im Schreibzustand getrennt", "Vor dem nächsten Einhängen wird das Laufwerk geprüft. Beim nächsten Mal bitte zuerst aushaengen.") }
+                    if case .getrennt(_, let schreiben) = ereignis, schreiben { self.mitteilen(String(localized: "Drobo im Schreibzustand getrennt"), String(localized: "Vor dem nächsten Einhängen wird das Laufwerk geprüft. Beim nächsten Mal bitte zuerst aushängen.")) }
                     self.aktualisieren(freigabe: false)
                 }
             }
@@ -91,6 +104,7 @@ final class DroboModell: ObservableObject {
         let alt = drobos
         Task.detached { [ablage] in
             var neu: [String: DroboAnsicht] = [:]
+            var zugriff: Bool?
             for d in ds {
                 var k = Kern(uuid: d.uuid); k.ablage = ablage
                 var a = DroboAnsicht(eintrag: d)
@@ -106,23 +120,34 @@ final class DroboModell: ObservableObject {
                     }
                     a.freigabe = freigabe ? z.freigabe : alt[d.uuid]?.freigabe
                 } else { a.freigabe = alt[d.uuid]?.freigabe }
+                if freigabe, a.verbunden, !a.eingehaengt, d.rolle == .arbeitsvolume {
+                    // wirkungslose Dienst-Probe + Belegung aus dem Header (nur wenn noch unbekannt oder aelter als 10 min)
+                    zugriff = k.zugriffPruefen() == nil
+                    let mk = ablage.merker(d.uuid)
+                    let alt = mk.belegung.flatMap { b in ISO8601DateFormatter().date(from: b.zeit) }.map { Date().timeIntervalSince($0) > 600 } ?? true
+                    if zugriff == true, alt { _ = try? k.belegungLesen() }
+                }
                 a.merker = ablage.merker(d.uuid)
+                a.belegungVH = a.merker.belegung
                 a.sicherungen = eigeneSicherungen(ort: ablage.einstellungen().sicherungOrt, uuid: d.uuid).reversed()
                 neu[d.uuid] = a
             }
             let m = modulStatus()
             let hd = Self.dienstText()
-            await MainActor.run { [neu] in self.uebernehmen(neu, modul: m, dienst: hd) }
+            await MainActor.run { [neu, zugriff] in
+                if let z = zugriff { self.festplattenzugriff = z ? String(localized: "in Ordnung") : String(localized: "fehlt") }
+                self.uebernehmen(neu, modul: m, dienst: hd)
+            }
         }
     }
 
     nonisolated static func dienstText() -> String {
         switch SMAppService.daemon(plistName: "de.begod.drobohelper.plist").status {
-        case .enabled: return "bereit"
-        case .requiresApproval: return "wartet auf Freigabe"
-        case .notRegistered: return "nicht eingerichtet"
-        case .notFound: return "nicht gefunden"
-        @unknown default: return "unbekannt"
+        case .enabled: return String(localized: "bereit")
+        case .requiresApproval: return String(localized: "wartet auf Freigabe")
+        case .notRegistered: return String(localized: "nicht eingerichtet")
+        case .notFound: return String(localized: "nicht gefunden")
+        @unknown default: return String(localized: "unbekannt")
         }
     }
 
@@ -131,11 +156,11 @@ final class DroboModell: ObservableObject {
             if let v = vorher[u], v != a.stufe {
                 let n = a.eintrag.name
                 switch (v, a.stufe) {
-                case (.aus, .bereit): mitteilen("\(n) angeschlossen", "Zum Einhängen die App oeffnen.")
-                case (_, .aus): mitteilen("\(n) getrennt", "")
-                case (.bereit, .lesen): mitteilen("\(n) eingehängt", "Nur lesen.")
-                case (.bereit, .schreiben): mitteilen("\(n) eingehängt", "Zum Schreiben. Metadaten-Sicherung liegt bereit.")
-                case (_, .warnung): mitteilen("Warnung zu \(n)", a.merker.offenePruefung ?? "")
+                case (.aus, .bereit): mitteilen(String(localized: "\(n) angeschlossen"), String(localized: "Zum Einhängen die App öffnen."))
+                case (_, .aus): mitteilen(String(localized: "\(n) getrennt"), "")
+                case (.bereit, .lesen): mitteilen(String(localized: "\(n) eingehängt"), String(localized: "Nur lesen."))
+                case (.bereit, .schreiben): mitteilen(String(localized: "\(n) eingehängt"), String(localized: "Zum Schreiben. Metadaten-Sicherung liegt bereit."))
+                case (_, .warnung): mitteilen(String(localized: "Warnung zu \(n)"), a.merker.offenePruefung ?? "")
                 default: break
                 }
             }
@@ -194,7 +219,7 @@ final class DroboModell: ObservableObject {
     func aushaengen() {
         let k = kern(auswahl)
         ausfuehren("Aushängen") {
-            if let p = try k.aushaengen(), !p.ok { return "Das Laufwerk ist ausgehängt. Die Prüfung nach dem Schreiben hat Auffälligkeiten gefunden: " + p.probleme.joined(separator: "; ") }
+            if let p = try k.aushaengen(), !p.ok { return String(localized: "Das Laufwerk ist ausgehängt. Die Prüfung nach dem Schreiben hat Auffälligkeiten gefunden: ") + p.probleme.joined(separator: "; ") }
             return nil
         }
     }
@@ -228,23 +253,52 @@ final class DroboModell: ObservableObject {
         }
     }
 
+    /// Wirkungslose Probe im Dienst (chown auf den bisherigen Eigentümer); Ergebnis in der Statuszeile.
     func zugriffPruefen() {
         let k = kern(auswahl); let u = auswahl
         ausfuehren("Festplattenzugriff prüfen") {
             guard finden(uuid: u) != nil else { throw Fehler.nichtGefunden(u) }
-            let a = k.helfer("freigeben", u); let b = k.helfer("zurueckgeben", u)
-            let ok = a == nil && b == nil
-            await MainActor.run { self.festplattenzugriff = ok ? "in Ordnung" : "fehlt" }
-            return ok ? "Der Hilfsdienst darf auf das Laufwerk zugreifen." : "Der Hilfsdienst darf nicht auf das Laufwerk zugreifen: \(a ?? b ?? ""). In den Systemeinstellungen unter Datenschutz und Sicherheit, Festplattenvollzugriff, den Drobo-Hilfsdienst einschalten."
+            let f = k.zugriffPruefen()
+            await MainActor.run { self.festplattenzugriff = f == nil ? String(localized: "in Ordnung") : String(localized: "fehlt") }
+            return f == nil ? String(localized: "Der Hilfsdienst darf auf das Laufwerk zugreifen.") : String(localized: "Der Hilfsdienst darf nicht auf das Laufwerk zugreifen. Bitte unter Systemeinstellungen, Datenschutz & Sicherheit, Festplattenvollzugriff den Drobo-Hilfsdienst einschalten.") + " (\(f ?? ""))"
         }
+    }
+
+    func festplattenzugriffOeffnen() { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!) }
+
+    // MARK: Sicherung zurückspielen (Probelauf, dann ausdrückliche Bestätigung)
+
+    func restoreProbe() {
+        let k = kern(auswahl); let name = restoreAuswahl
+        restoreProbeText = ""; restoreProbeFuer = ""
+        ausfuehren("Probelauf") {
+            let p = try k.zurueckspielenProbe(sicherung: name)
+            await MainActor.run { self.restoreProbeText = p.text; self.restoreProbeFuer = name }
+            return nil
+        }
+    }
+
+    func restoreAusfuehren() {
+        let k = kern(auswahl); let name = restoreAuswahl
+        ausfuehren("Zurückspielen") {
+            let r = try k.zurueckspielen(sicherung: name)
+            await MainActor.run { self.restoreProbeText = ""; self.restoreProbeFuer = "" }
+            return r.ok ? String(localized: "Zurückgespielt. Prüfung danach: in Ordnung.") : String(localized: "Zurückgespielt, aber die Prüfung danach hat Auffälligkeiten gefunden: ") + r.probleme.joined(separator: "; ")
+        }
+    }
+
+    func anmeldeStartSetzen(_ an: Bool) {
+        do { if an { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() } }
+        catch { meldung = Meldung(titel: "Beim Anmelden starten", text: "\(error.localizedDescription)") }
+        anmeldeStart = SMAppService.mainApp.status == .enabled
     }
 
     func wegsichern(quelle: String, ziel: String) {
         let k = kern(auswahl)
-        wegsichernBericht = "Läuft ..."
+        wegsichernBericht = String(localized: "Läuft ...")
         ausfuehren("Ordner wegsichern") {
             let b = try k.wegsichern(quelle: quelle, ziel: ziel)
-            await MainActor.run { self.wegsichernBericht = (b.ok ? "Fertig: " : "Mit Fehlern: ") + b.text }
+            await MainActor.run { self.wegsichernBericht = (b.ok ? String(localized: "Fertig: ") : String(localized: "Mit Fehlern: ")) + b.text }
             return nil
         }
     }
@@ -255,7 +309,7 @@ final class DroboModell: ObservableObject {
 
     func dienstRegistrieren() {
         do { try SMAppService.daemon(plistName: "de.begod.drobohelper.plist").register() } catch { meldung = Meldung(titel: "Hilfsdienst", text: "\(error)") }
-        if Self.dienstText() == "wartet auf Freigabe" { SMAppService.openSystemSettingsLoginItems() }
+        if SMAppService.daemon(plistName: "de.begod.drobohelper.plist").status == .requiresApproval { SMAppService.openSystemSettingsLoginItems() }
         aktualisieren()
     }
 

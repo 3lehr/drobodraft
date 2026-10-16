@@ -16,7 +16,7 @@ struct HauptAnsicht: View {
 
     var body: some View {
         NavigationSplitView {
-            List(selection: $abschnitt) {
+            List {
                 Section("Drobo") {
                     ForEach(m.liste, id: \.eintrag.uuid) { d in
                         Button { m.auswahl = d.eintrag.uuid } label: {
@@ -28,7 +28,16 @@ struct HauptAnsicht: View {
                     }
                 }
                 Section("Ansicht") {
-                    ForEach(Abschnitt.allCases) { a in Label(LocalizedStringKey(a.rawValue), systemImage: a.symbol).tag(Optional(a)) }
+                    ForEach(Abschnitt.allCases) { a in
+                        let gewaehlt = (abschnitt ?? .uebersicht) == a
+                        Button { abschnitt = a } label: {
+                            HStack { Label(LocalizedStringKey(a.rawValue), systemImage: a.symbol).fontWeight(gewaehlt ? .bold : .regular); Spacer() }
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .listRowBackground(gewaehlt ? Color.accentColor.opacity(0.28) : Color.clear)
+                        .accessibilityAddTraits(gewaehlt ? [.isSelected, .isButton] : .isButton)
+                    }
                 }
             }
             .navigationSplitViewColumnWidth(min: 200, ideal: 230)
@@ -57,8 +66,10 @@ struct Statusleiste: View {
     @EnvironmentObject var m: DroboModell
     var body: some View {
         HStack(spacing: 18) {
-            StatusChip(name: String(localized: "Hilfsdienst"), wert: m.hilfsdienst, gut: m.hilfsdienst == "bereit")
-            StatusChip(name: String(localized: "Festplattenzugriff"), wert: m.festplattenzugriff, gut: m.festplattenzugriff == "in Ordnung")
+            StatusChip(name: String(localized: "Hilfsdienst"), wert: m.hilfsdienst, gut: m.hilfsdienst == String(localized: "bereit"))
+            if m.hilfsdienst != String(localized: "bereit") { Button("Einrichten") { m.dienstRegistrieren() }.font(.callout) }
+            StatusChip(name: String(localized: "Festplattenzugriff"), wert: m.festplattenzugriff, gut: m.festplattenzugriff == String(localized: "in Ordnung"))
+            if m.festplattenzugriff == String(localized: "fehlt") { Button("Anleitung …") { m.festplattenzugriffOeffnen() }.font(.callout) }
             StatusChip(name: String(localized: "Treibermodul"), wert: !m.modul.installiert ? String(localized: "nicht installiert") : (m.modul.freigeschaltet ? String(localized: "bereit") : String(localized: "nicht freigeschaltet")), gut: m.modul.freigeschaltet)
             Spacer()
         }
@@ -87,15 +98,21 @@ struct UebersichtAnsicht: View {
                     if a.eintrag.rolle == .timemachine {
                         Hinweis(symbol: "clock.arrow.circlepath", text: "Dieses Laufwerk ist als Time-Machine-Ziel eingetragen. Die App zeigt nur den Anschluss; macOS verwaltet das Laufwerk und die App hängt es nie selbst ein.", farbe: .blue)
                     } else {
+                        if m.festplattenzugriff == String(localized: "fehlt") {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Hinweis(symbol: "lock.trianglebadge.exclamationmark", text: "Der Hilfsdienst darf nicht auf das Laufwerk zugreifen. Ohne Festplattenvollzugriff lässt sich die Drobo nicht einhängen.", farbe: .red)
+                                Button("Systemeinstellungen öffnen") { m.festplattenzugriffOeffnen() }
+                            }
+                        }
                         if let g = a.merker.offenePruefung {
                             Hinweis(symbol: "exclamationmark.triangle.fill", text: "Vor dem nächsten Einhängen wird geprüft: \(g)", farbe: .red)
                         }
                         Karte(titel: "Belegung") {
                             if a.eingehaengt, a.gesamt > 0 {
-                                ProgressView(value: Double(a.belegt), total: Double(a.gesamt)) { Text("Belegt") }
-                                    .accessibilityValue("\(groesseText(a.belegt)) von \(groesseText(a.gesamt)) belegt")
-                                Text("\(groesseText(a.belegt)) von \(groesseText(a.gesamt)) belegt").font(.callout).foregroundStyle(.secondary)
-                            } else { Text("Die Belegung ist nach dem Einhängen sichtbar.").foregroundStyle(.secondary) }
+                                BelegungsBalken(belegt: a.belegt, gesamt: a.gesamt, stand: nil)
+                            } else if let v = a.belegungVH {
+                                BelegungsBalken(belegt: v.belegt, gesamt: v.gesamt, stand: v.zeit)
+                            } else { Text("Die Belegung wird gelesen, sobald der Festplattenzugriff in Ordnung ist.").foregroundStyle(.secondary) }
                         }
                         Karte(titel: "Einhängung") {
                             if a.eingehaengt {
@@ -112,7 +129,7 @@ struct UebersichtAnsicht: View {
                             Karte(titel: "Letzte Prüfung") {
                                 Label(p.ok ? "In Ordnung" : "Auffälligkeiten", systemImage: p.ok ? "checkmark.seal.fill" : "exclamationmark.triangle.fill").foregroundStyle(p.ok ? Color.green : Color.red)
                                 if !p.ok { Text(p.probleme.joined(separator: "\n")).font(.callout) }
-                                Text(p.zeit).font(.caption).foregroundStyle(.secondary)
+                                Text(zeitLesbar(p.zeit)).font(.caption).foregroundStyle(.secondary)
                             }
                         }
                         if m.spotlightHinweisNoetig {
@@ -151,6 +168,7 @@ struct VolumeAnsicht: View {
     @Binding var rwFrage: Bool
     @State private var quelle = ""
     @State private var ziel = ""
+    @State private var restoreFrage = false
 
     func waehlen(_ start: String?, _ titel: String) -> String? {
         let p = NSOpenPanel(); p.canChooseDirectories = true; p.canChooseFiles = false; p.prompt = String(localized: "Wählen"); p.message = titel
@@ -171,8 +189,23 @@ struct VolumeAnsicht: View {
                     Karte(titel: "Sicherungen der Verwaltungsdaten") {
                         Text("Vor jedem Einhängen zum Schreiben wird automatisch gesichert. Aufbewahrt werden \(m.einstellungen.sicherungAnzahl) Sicherungen in \(m.einstellungen.sicherungOrt).").font(.callout).foregroundStyle(.secondary)
                         if a.sicherungen.isEmpty { Text("Noch keine Sicherung.") }
-                        ForEach(a.sicherungen, id: \.self) { Text($0.components(separatedBy: "_").last ?? $0).font(.callout.monospacedDigit()) }
+                        ForEach(a.sicherungen, id: \.self) { Text(sicherungsZeit($0)).font(.callout.monospacedDigit()) }
                         Button { m.pruefen() } label: { Label("Jetzt prüfen", systemImage: "stethoscope") }.disabled(!a.verbunden || a.eingehaengt || m.arbeit != nil)
+                    }
+                    Karte(titel: "Sicherung zurückspielen") {
+                        Text("Stellt die gesicherten Verwaltungsdaten wieder her. Nur bei ausgehängtem Laufwerk. Zuerst gibt es einen Probelauf, der nichts schreibt.").font(.callout).foregroundStyle(.secondary)
+                        if a.sicherungen.isEmpty { Text("Noch keine Sicherung.") } else {
+                            Picker("Sicherung", selection: $m.restoreAuswahl) {
+                                ForEach(a.sicherungen, id: \.self) { Text(sicherungsZeit($0)).tag($0) }
+                            }
+                            Button { m.restoreProbe() } label: { Label("Probelauf", systemImage: "doc.text.magnifyingglass") }
+                                .disabled(m.restoreAuswahl.isEmpty || !a.verbunden || a.eingehaengt || m.arbeit != nil)
+                            if !m.restoreProbeText.isEmpty {
+                                Text(m.restoreProbeText).font(.callout.monospaced()).textSelection(.enabled)
+                                Button(role: .destructive) { restoreFrage = true } label: { Label("Zurückspielen …", systemImage: "arrow.uturn.backward") }
+                                    .disabled(m.restoreProbeFuer != m.restoreAuswahl || a.eingehaengt || m.arbeit != nil)
+                            }
+                        }
                     }
                     Karte(titel: "Ordner wegsichern") {
                         Text("Kopiert einen Ordner von der Drobo auf ein anderes Laufwerk. Nur lesend an der Drobo; bereits gesicherte, unveränderte Dateien werden übersprungen, jede Kopie wird per SHA-256 gegen das Original geprüft.").font(.callout).foregroundStyle(.secondary)
@@ -192,7 +225,7 @@ struct VolumeAnsicht: View {
                         Text("Lesen: große Dateien auf der Drobo, nur lesend. Schreiben: nur im eigenen Testordner, nur beim Einhängen zum Schreiben mit vorhandener Sicherung.").font(.callout).foregroundStyle(.secondary)
                         ForEach(Array(m.tempo.filter { $0.uuid == a.eintrag.uuid }.suffix(8).reversed().enumerated()), id: \.offset) { _, t in
                             HStack {
-                                Text(t.zeit).font(.caption.monospacedDigit())
+                                Text(zeitLesbar(t.zeit)).font(.caption.monospacedDigit())
                                 Text(t.art == "lesen" ? "lesen" : "schreiben").font(.caption)
                                 ProgressView(value: min(t.mbProSekunde, 250), total: 250).accessibilityHidden(true)
                                 Text(String(format: "%.0f MB/s", t.mbProSekunde)).font(.callout.monospacedDigit())
@@ -200,6 +233,8 @@ struct VolumeAnsicht: View {
                         }
                     }
                 }.padding(20)
+                .onAppear { if m.restoreAuswahl.isEmpty || !a.sicherungen.contains(m.restoreAuswahl) { m.restoreAuswahl = a.sicherungen.first ?? "" } }
+                .sheet(isPresented: $restoreFrage) { RestoreBestaetigung() }
             } else { Text("Für ein Time-Machine-Ziel gibt es hier nichts einzustellen.").padding(20) }
         }
     }
@@ -212,7 +247,7 @@ struct ProtokollAnsicht: View {
             Text("Protokoll").font(.largeTitle).accessibilityAddTraits(.isHeader).padding([.top, .horizontal], 20)
             if m.protokoll.isEmpty { Text("Noch keine Einträge.").padding(20).foregroundStyle(.secondary) }
             List(Array(m.protokoll.reversed().enumerated()), id: \.offset) { _, e in
-                VStack(alignment: .leading) { Text(e.text); Text(e.zeit).font(.caption).foregroundStyle(.secondary) }.accessibilityElement(children: .combine)
+                VStack(alignment: .leading) { Text(e.text); Text(zeitLesbar(e.zeit)).font(.caption).foregroundStyle(.secondary) }.accessibilityElement(children: .combine)
             }
         }
     }
@@ -245,5 +280,41 @@ struct SchreibenBestaetigung: View {
                 }
             }
         }.padding(24).frame(width: 480)
+    }
+}
+
+func sicherungsZeit(_ ordner: String) -> String {
+    let f = DateFormatter(); f.dateFormat = "yyyyMMdd-HHmmss"; f.locale = Locale(identifier: "en_US_POSIX")
+    guard let d = f.date(from: ordner.components(separatedBy: "_").last ?? "") else { return ordner }
+    return d.formatted(date: .abbreviated, time: .shortened)
+}
+
+struct BelegungsBalken: View {
+    let belegt: UInt64, gesamt: UInt64, stand: String?
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ProgressView(value: Double(belegt), total: Double(max(gesamt, 1))) { Text("Belegt") }
+                .accessibilityValue("\(groesseText(belegt)) / \(groesseText(gesamt))")
+            Text("\(groesseText(belegt)) von \(groesseText(gesamt)) belegt").font(.callout).foregroundStyle(.secondary)
+            if let s = stand { Text("Stand \(zeitLesbar(s)), aus den Verwaltungsdaten des Laufwerks").font(.caption).foregroundStyle(.secondary) }
+        }
+    }
+}
+
+/// Zweite, ausdrückliche Bestätigung. Abbrechen ist die Standardaktion; das Zurückspielen hat kein Tastenkürzel.
+struct RestoreBestaetigung: View {
+    @EnvironmentObject var m: DroboModell
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Sicherung wirklich zurückspielen?").font(.title2).accessibilityAddTraits(.isHeader)
+            Hinweis(symbol: "exclamationmark.triangle.fill", text: "Alles, was seit dieser Sicherung auf die Drobo geschrieben wurde, geht verloren. Das lässt sich nicht rückgängig machen.", farbe: .red)
+            Text(m.restoreProbeText).font(.callout.monospaced())
+            HStack {
+                Spacer()
+                Button("Abbrechen") { dismiss() }.keyboardShortcut(.defaultAction)
+                Button("Zurückspielen", role: .destructive) { dismiss(); m.restoreAusfuehren() }
+            }
+        }.padding(24).frame(width: 520)
     }
 }

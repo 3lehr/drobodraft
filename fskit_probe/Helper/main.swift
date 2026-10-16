@@ -43,6 +43,10 @@ final class Dienst: NSObject, NSXPCListenerDelegate, DroboHelferProtokoll {
         lauf("ordnerEntfernen", u, reply) { try self.logik.ordnerEntfernen(u, uid: self.uid) }
     }
 
+    func zugriffPruefen(_ u: String, reply: @escaping (String?) -> Void) {
+        lauf("zugriffPruefen", u, reply) { try self.logik.zugriffPruefen(u, uid: self.uid) }
+    }
+
     func lauf(_ name: String, _ u: String, _ reply: (String?) -> Void, _ f: () throws -> Void) {
         do { try f(); log.notice("\(name, privacy: .public) uid=\(self.uid, privacy: .public) uuid=\(u, privacy: .public): ok"); reply(nil) }
         catch { log.error("\(name, privacy: .public) uid=\(self.uid, privacy: .public) uuid=\(u, privacy: .public): ABGELEHNT \("\(error)", privacy: .public)"); reply("\(error)") }

@@ -8,6 +8,60 @@
             "state": "translated",
             "value": "%@"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@"
+          }
+        }
+      }
+    },
+    "%@ / %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ / %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ / %@"
+          }
+        }
+      }
+    },
+    "%@ angeschlossen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ angeschlossen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ connected"
+          }
+        }
+      }
+    },
+    "%@ eingehängt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ eingehängt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ mounted"
+          }
         }
       }
     },
@@ -17,6 +71,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ entfernen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove %@"
+          }
+        }
+      }
+    },
+    "%@ getrennt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ getrennt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ disconnected"
           }
         }
       }
@@ -28,12 +104,24 @@
             "state": "translated",
             "value": "%@ von %@ belegt"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ of %@ used"
+          }
         }
       }
     },
     "%@ …": {
       "localizations": {
         "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ …"
+          }
+        },
+        "en": {
           "stringUnit": {
             "state": "translated",
             "value": "%@ …"
@@ -48,12 +136,24 @@
             "state": "translated",
             "value": "%@, %@"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, %@"
+          }
         }
       }
     },
     "%@: %@": {
       "localizations": {
         "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: %@"
+          }
+        },
+        "en": {
           "stringUnit": {
             "state": "translated",
             "value": "%@: %@"
@@ -68,6 +168,12 @@
             "state": "translated",
             "value": "%lld MB pro Sekunde."
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld MB per second."
+          }
         }
       }
     },
@@ -77,6 +183,44 @@
           "stringUnit": {
             "state": "translated",
             "value": "1. Systemeinstellungen öffnen, Siri & Spotlight, Spotlight-Datenschutz."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1. Open System Settings, Siri & Spotlight, Spotlight Privacy."
+          }
+        }
+      }
+    },
+    "1. Systemeinstellungen, Allgemein, Anmeldeobjekte & Erweiterungen: den Drobo-Hilfsdienst einschalten.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1. Systemeinstellungen, Allgemein, Anmeldeobjekte & Erweiterungen: den Drobo-Hilfsdienst einschalten."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1. System Settings, General, Login Items & Extensions: turn on the Drobo helper service."
+          }
+        }
+      }
+    },
+    "2. Dort bei Erweiterungen (Dateisystemerweiterungen) das Modul „hfsdrobo“ einschalten.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2. Dort bei Erweiterungen (Dateisystemerweiterungen) das Modul „hfsdrobo“ einschalten."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2. Under Extensions (file system extensions) turn on the \"hfsdrobo\" module."
           }
         }
       }
@@ -88,6 +232,12 @@
             "state": "translated",
             "value": "2. Mit dem Plus-Knopf den Einhängeort der Drobo hinzufügen (Standard: /private/tmp/drobo_mnt, im Finder über Gehe zu Ordner)."
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2. Use the plus button to add the Drobo's mount location (default: /private/tmp/drobo_mnt, reachable in Finder via Go to Folder)."
+          }
         }
       }
     },
@@ -97,6 +247,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "3. Für Time Machine: Systemeinstellungen, Allgemein, Time Machine, Optionen, die Drobo zur Liste der ausgeschlossenen Objekte hinzufügen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3. For Time Machine: System Settings, General, Time Machine, Options, add the Drobo to the list of excluded items."
+          }
+        }
+      }
+    },
+    "3. Systemeinstellungen, Datenschutz & Sicherheit, Festplattenvollzugriff: den Drobo-Hilfsdienst einschalten. Die Statuszeile unten zeigt, ob der Zugriff funktioniert.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3. Systemeinstellungen, Datenschutz & Sicherheit, Festplattenvollzugriff: den Drobo-Hilfsdienst einschalten. Die Statuszeile unten zeigt, ob der Zugriff funktioniert."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3. System Settings, Privacy & Security, Full Disk Access: turn on the Drobo helper service. The status bar below shows whether access works."
           }
         }
       }
@@ -108,6 +280,12 @@
             "state": "translated",
             "value": "Abbrechen"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
         }
       }
     },
@@ -117,6 +295,44 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aktualisieren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refresh"
+          }
+        }
+      }
+    },
+    "Alles, was seit dieser Sicherung auf die Drobo geschrieben wurde, geht verloren. Das lässt sich nicht rückgängig machen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles, was seit dieser Sicherung auf die Drobo geschrieben wurde, geht verloren. Das lässt sich nicht rückgängig machen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Everything written to the Drobo since this backup will be lost. This cannot be undone."
+          }
+        }
+      }
+    },
+    "Angeschlossen, nicht eingehängt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Angeschlossen, nicht eingehängt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connected, not mounted"
           }
         }
       }
@@ -128,6 +344,12 @@
             "state": "translated",
             "value": "Anleitung"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guide"
+          }
         }
       }
     },
@@ -137,6 +359,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Anleitung …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guide …"
           }
         }
       }
@@ -148,6 +376,12 @@
             "state": "translated",
             "value": "Ansicht"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View"
+          }
         }
       }
     },
@@ -157,6 +391,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Arbeitsvolume"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Working volume"
           }
         }
       }
@@ -168,6 +408,12 @@
             "state": "translated",
             "value": "Art"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kind"
+          }
         }
       }
     },
@@ -177,6 +423,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aufbewahrte Sicherungen: %lld"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Backups kept: %lld"
           }
         }
       }
@@ -188,6 +440,12 @@
             "state": "translated",
             "value": "Auffälligkeiten"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Findings"
+          }
         }
       }
     },
@@ -197,6 +455,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aushängen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unmount"
+          }
+        }
+      }
+    },
+    "Beim Anmelden starten": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beim Anmelden starten"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open at login"
           }
         }
       }
@@ -208,6 +488,12 @@
             "state": "translated",
             "value": "Beim Schreiben legt Spotlight eigene Dateien auf der Drobo an und liest sie dauernd. Das bremst und verändert das Laufwerk. Der Ausschluss ist freiwillig; die App ändert dazu nichts an den Systemeinstellungen."
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "While writing, Spotlight creates its own files on the Drobo and keeps reading them. This slows the drive down and changes it. Excluding it is optional; the app changes nothing in System Settings."
+          }
         }
       }
     },
@@ -217,6 +503,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Belegt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Used"
           }
         }
       }
@@ -228,6 +520,76 @@
             "state": "translated",
             "value": "Belegung"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usage"
+          }
+        }
+      }
+    },
+    "Das Laufwerk ist ausgehängt. Die Prüfung nach dem Schreiben hat Auffälligkeiten gefunden: ": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Laufwerk ist ausgehängt. Die Prüfung nach dem Schreiben hat Auffälligkeiten gefunden: "
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The drive is unmounted. The check after writing found issues: "
+          }
+        }
+      }
+    },
+    "Der Hilfsdienst darf auf das Laufwerk zugreifen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Hilfsdienst darf auf das Laufwerk zugreifen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The helper service may access the drive."
+          }
+        }
+      }
+    },
+    "Der Hilfsdienst darf nicht auf das Laufwerk zugreifen. Bitte unter Systemeinstellungen, Datenschutz & Sicherheit, Festplattenvollzugriff den Drobo-Hilfsdienst einschalten.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Hilfsdienst darf nicht auf das Laufwerk zugreifen. Bitte unter Systemeinstellungen, Datenschutz & Sicherheit, Festplattenvollzugriff den Drobo-Hilfsdienst einschalten."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The helper service may not access the drive. Please turn on the Drobo helper service under System Settings, Privacy & Security, Full Disk Access."
+          }
+        }
+      }
+    },
+    "Der Hilfsdienst darf nicht auf das Laufwerk zugreifen. Ohne Festplattenvollzugriff lässt sich die Drobo nicht einhängen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Hilfsdienst darf nicht auf das Laufwerk zugreifen. Ohne Festplattenvollzugriff lässt sich die Drobo nicht einhängen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The helper service may not access the drive. Without Full Disk Access the Drobo cannot be mounted."
+          }
         }
       }
     },
@@ -237,6 +599,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Der Hilfsdienst gibt nur den Gerätezugang genau dieser Drobo frei. Er benötigt einmalig Ihre Freigabe unter Anmeldeobjekte und den Festplattenvollzugriff."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The helper service only unlocks device access for exactly this Drobo. It needs your approval once under Login Items and Full Disk Access."
           }
         }
       }
@@ -248,6 +616,12 @@
             "state": "translated",
             "value": "Der Ort darf nicht in Ihrem Benutzerordner liegen, sonst indexiert Spotlight das Laufwerk."
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The location must not be inside your home folder, otherwise Spotlight indexes the drive."
+          }
         }
       }
     },
@@ -257,6 +631,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Die Belegung ist nach dem Einhängen sichtbar."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usage is shown once mounted."
+          }
+        }
+      }
+    },
+    "Die Belegung wird gelesen, sobald der Festplattenzugriff in Ordnung ist.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Belegung wird gelesen, sobald der Festplattenzugriff in Ordnung ist."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usage is read as soon as disk access is in order."
           }
         }
       }
@@ -268,12 +664,24 @@
             "state": "translated",
             "value": "Dieses Laufwerk ist als Time-Machine-Ziel eingetragen. Die App zeigt nur den Anschluss; macOS verwaltet das Laufwerk und die App hängt es nie selbst ein."
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This drive is registered as a Time Machine destination. The app only shows its connection; macOS manages the drive and the app never mounts it itself."
+          }
         }
       }
     },
     "Drobo": {
       "localizations": {
         "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drobo"
+          }
+        },
+        "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Drobo"
@@ -288,6 +696,12 @@
             "state": "translated",
             "value": "Drobo ausgehängt, aber die Prüfung hat Auffälligkeiten gefunden. Details im Protokoll."
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drobo unmounted, but the check found issues. Details in the log."
+          }
         }
       }
     },
@@ -297,6 +711,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Drobo ausgehängt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drobo unmounted."
           }
         }
       }
@@ -308,6 +728,12 @@
             "state": "translated",
             "value": "Drobo aushängen"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unmount Drobo"
+          }
         }
       }
     },
@@ -317,6 +743,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Drobo beenden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quit Drobo"
           }
         }
       }
@@ -328,6 +760,12 @@
             "state": "translated",
             "value": "Drobo eingehängt (%@)."
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drobo mounted (%@)."
+          }
         }
       }
     },
@@ -337,6 +775,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Drobo einhängen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mount Drobo"
+          }
+        }
+      }
+    },
+    "Drobo im Schreibzustand getrennt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drobo im Schreibzustand getrennt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drobo disconnected while writable"
           }
         }
       }
@@ -348,6 +808,12 @@
             "state": "translated",
             "value": "Drobo-Lesetempo messen"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Measure Drobo read speed"
+          }
         }
       }
     },
@@ -357,6 +823,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Drobo-Status"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drobo status"
           }
         }
       }
@@ -368,6 +840,28 @@
             "state": "translated",
             "value": "DroboDraft"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboDraft"
+          }
+        }
+      }
+    },
+    "DroboDraft Hilfe": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboDraft Hilfe"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboDraft Help"
+          }
         }
       }
     },
@@ -377,6 +871,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "DroboDraft beenden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quit DroboDraft"
+          }
+        }
+      }
+    },
+    "DroboDraft liegt in /Applications. Es enthält ein Treibermodul für das Dateisystem der Drobo (HFS+) und einen kleinen Hilfsdienst. Die Drobo wird per USB oder Thunderbolt angeschlossen und erscheint unter „Drobo“ in der Seitenleiste.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboDraft liegt in /Applications. Es enthält ein Treibermodul für das Dateisystem der Drobo (HFS+) und einen kleinen Hilfsdienst. Die Drobo wird per USB oder Thunderbolt angeschlossen und erscheint unter „Drobo“ in der Seitenleiste."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboDraft lives in /Applications. It contains a driver module for the Drobo's file system (HFS+) and a small helper service. Connect the Drobo by USB or Thunderbolt; it appears under \"Drobo\" in the sidebar."
           }
         }
       }
@@ -388,6 +904,12 @@
             "state": "translated",
             "value": "DroboDraft · Frühe Alpha 0.1.0"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboDraft · Early alpha 0.1.0"
+          }
         }
       }
     },
@@ -397,6 +919,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "DroboDraft: Drobo aushängen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboDraft: Unmount Drobo"
           }
         }
       }
@@ -408,6 +936,12 @@
             "state": "translated",
             "value": "DroboDraft: Drobo einhängen"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboDraft: Mount Drobo"
+          }
         }
       }
     },
@@ -417,6 +951,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "DroboDraft: Drobo-Status"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboDraft: Drobo status"
           }
         }
       }
@@ -428,6 +968,12 @@
             "state": "translated",
             "value": "DroboDraft: Lesetempo messen"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboDraft: Measure read speed"
+          }
         }
       }
     },
@@ -437,6 +983,44 @@
           "stringUnit": {
             "state": "translated",
             "value": "Drobos"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drobos"
+          }
+        }
+      }
+    },
+    "Eingehängt, nur lesen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eingehängt, nur lesen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mounted, read-only"
+          }
+        }
+      }
+    },
+    "Eingehängt, schreiben": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eingehängt, schreiben"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mounted, writable"
           }
         }
       }
@@ -448,6 +1032,12 @@
             "state": "translated",
             "value": "Einhängeart"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mount mode"
+          }
         }
       }
     },
@@ -457,6 +1047,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Einhängen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mount"
           }
         }
       }
@@ -468,6 +1064,12 @@
             "state": "translated",
             "value": "Einhängen (nur lesen)"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mount (read-only)"
+          }
         }
       }
     },
@@ -477,6 +1079,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Einhängeort"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mount location"
           }
         }
       }
@@ -488,6 +1096,12 @@
             "state": "translated",
             "value": "Einhängung"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mount"
+          }
         }
       }
     },
@@ -497,6 +1111,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Einrichten"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set up"
           }
         }
       }
@@ -508,6 +1128,12 @@
             "state": "translated",
             "value": "Einstellungen …"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Settings …"
+          }
         }
       }
     },
@@ -517,6 +1143,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fenster schließen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close Window"
           }
         }
       }
@@ -528,6 +1160,28 @@
             "state": "translated",
             "value": "Fenster öffnen …"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Window …"
+          }
+        }
+      }
+    },
+    "Fertig: ": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fertig: "
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done: "
+          }
         }
       }
     },
@@ -537,6 +1191,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Festplattenzugriff"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disk access"
           }
         }
       }
@@ -548,6 +1208,12 @@
             "state": "translated",
             "value": "Festplattenzugriff prüfen"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check disk access"
+          }
         }
       }
     },
@@ -557,6 +1223,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Folgt: Schächte, Schutzstufe, Warnungen und der echte Füllstand der Drobo. Dafür muss zuerst der Weg für Statusabfragen gemessen werden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coming: bays, protection level, warnings and the real fill level of the Drobo. The way to query status has to be measured first."
           }
         }
       }
@@ -568,6 +1240,28 @@
             "state": "translated",
             "value": "Freigabe"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permission"
+          }
+        }
+      }
+    },
+    "Freischaltungen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Freischaltungen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Approvals"
+          }
         }
       }
     },
@@ -577,6 +1271,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Freiwillig. Solange das aus ist, weist die App beim Schreiben darauf hin."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional. While off, the app points this out when writing."
           }
         }
       }
@@ -588,6 +1288,12 @@
             "state": "translated",
             "value": "Frühe Alpha"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Early alpha"
+          }
         }
       }
     },
@@ -597,6 +1303,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Frühe Alpha, Version 0.1.0"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Early alpha, version 0.1.0"
           }
         }
       }
@@ -608,6 +1320,28 @@
             "state": "translated",
             "value": "Frühe Alpha. Funktionen und Oberfläche ändern sich noch; nicht für den Dauerbetrieb gedacht.\n\nDroboDraft hängt eine Drobo über das Treibermodul ein und sichert vorher die Verwaltungsdaten des Laufwerks."
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Early alpha. Features and interface will still change; not meant for continuous use.\n\nDroboDraft mounts a Drobo through the driver module and backs up the drive's management data first."
+          }
+        }
+      }
+    },
+    "Frühe Alpha: Funktionen ändern sich noch. Nicht für den Dauerbetrieb und nicht für Daten ohne Zweitkopie gedacht.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frühe Alpha: Funktionen ändern sich noch. Nicht für den Dauerbetrieb und nicht für Daten ohne Zweitkopie gedacht."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Early alpha: features still change. Not meant for continuous use or for data without a second copy."
+          }
         }
       }
     },
@@ -617,6 +1351,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Für ein Time-Machine-Ziel gibt es hier nichts einzustellen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There is nothing to configure here for a Time Machine destination."
           }
         }
       }
@@ -628,6 +1368,12 @@
             "state": "translated",
             "value": "Hilfsdienst"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Helper service"
+          }
         }
       }
     },
@@ -637,6 +1383,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hinzufügen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add"
           }
         }
       }
@@ -648,6 +1400,12 @@
             "state": "translated",
             "value": "Hängt die Drobo nur lesend oder zum Schreiben ein. Zum Schreiben wird vorher die Verwaltungsdaten-Sicherung angelegt."
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mounts the Drobo read-only or writable. Before writing, a backup of the management data is made."
+          }
         }
       }
     },
@@ -657,6 +1415,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ich habe die Drobo bei Spotlight und Time Machine ausgeschlossen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I have excluded the Drobo from Spotlight and Time Machine"
           }
         }
       }
@@ -668,6 +1432,12 @@
             "state": "translated",
             "value": "Im Finder sichtbar (unter „Orte“)"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Visible in Finder (under \"Locations\")"
+          }
         }
       }
     },
@@ -677,6 +1447,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Im Finder öffnen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open in Finder"
+          }
+        }
+      }
+    },
+    "Immer erst aushängen, dann abziehen. Wird ein Laufwerk im Schreibzustand getrennt, prüft die App es vor dem nächsten Einhängen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Immer erst aushängen, dann abziehen. Wird ein Laufwerk im Schreibzustand getrennt, prüft die App es vor dem nächsten Einhängen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Always unmount first, then unplug. If a drive is disconnected while writable, the app checks it before the next mount."
           }
         }
       }
@@ -688,6 +1480,28 @@
             "state": "translated",
             "value": "In Ordnung"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All good"
+          }
+        }
+      }
+    },
+    "Installation": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installation"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installation"
+          }
         }
       }
     },
@@ -697,6 +1511,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Jetzt prüfen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check now"
           }
         }
       }
@@ -708,6 +1528,12 @@
             "state": "translated",
             "value": "Keine Drobo eingetragen. Einstellungen öffnen mit ⌘,."
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Drobo registered. Open Settings with ⌘,."
+          }
         }
       }
     },
@@ -717,6 +1543,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kopiert einen Ordner von der Drobo auf ein anderes Laufwerk. Nur lesend an der Drobo; bereits gesicherte, unveränderte Dateien werden übersprungen, jede Kopie wird per SHA-256 gegen das Original geprüft."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copies a folder from the Drobo to another drive. Read-only on the Drobo; files already backed up and unchanged are skipped, and every copy is verified against the original by SHA-256."
           }
         }
       }
@@ -728,6 +1560,12 @@
             "state": "translated",
             "value": "Laufwerke"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drives"
+          }
         }
       }
     },
@@ -737,6 +1575,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Lesen: große Dateien auf der Drobo, nur lesend. Schreiben: nur im eigenen Testordner, nur beim Einhängen zum Schreiben mit vorhandener Sicherung."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reading: large files on the Drobo, read-only. Writing: only in its own test folder, only when mounted writable and a backup exists."
           }
         }
       }
@@ -748,6 +1592,12 @@
             "state": "translated",
             "value": "Lesetempo messen"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Measure read speed"
+          }
         }
       }
     },
@@ -757,6 +1607,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Letzte Prüfung"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last check"
+          }
+        }
+      }
+    },
+    "Läuft ...": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Läuft ..."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Running ..."
           }
         }
       }
@@ -768,6 +1640,28 @@
             "state": "translated",
             "value": "Misst die Lesegeschwindigkeit an der eingehängten Drobo. Nur lesend."
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Measures the read speed on the mounted Drobo. Read-only."
+          }
+        }
+      }
+    },
+    "Mit Fehlern: ": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mit Fehlern: "
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "With errors: "
+          }
         }
       }
     },
@@ -777,6 +1671,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mitteilungen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notifications"
           }
         }
       }
@@ -788,12 +1688,24 @@
             "state": "translated",
             "value": "Mitteilungen bei Anschluss, Trennung und Warnungen"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notify on connect, disconnect and warnings"
+          }
         }
       }
     },
     "Name": {
       "localizations": {
         "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name"
+          }
+        },
+        "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Name"
@@ -808,6 +1720,28 @@
             "state": "translated",
             "value": "Name und eine gültige Volume-Kennung eingeben."
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter a name and a valid volume identifier."
+          }
+        }
+      }
+    },
+    "Nicht angeschlossen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht angeschlossen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not connected"
+          }
         }
       }
     },
@@ -817,6 +1751,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nicht auf dem Startvolume und nicht auf der Drobo selbst. Ältere Sicherungen werden erst gelöscht, wenn die neue gelungen und geprüft ist."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not on the startup volume and not on the Drobo itself. Older backups are only deleted once the new one succeeded and was verified."
           }
         }
       }
@@ -828,6 +1768,12 @@
             "state": "translated",
             "value": "Nicht eingehängt."
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not mounted."
+          }
         }
       }
     },
@@ -837,6 +1783,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Noch keine Einträge."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No entries yet."
           }
         }
       }
@@ -848,6 +1800,12 @@
             "state": "translated",
             "value": "Noch keine Sicherung."
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No backup yet."
+          }
         }
       }
     },
@@ -858,12 +1816,40 @@
             "state": "translated",
             "value": "Nur lesen"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read-only"
+          }
+        }
+      }
+    },
+    "Nur lesen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur lesen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read-only."
+          }
         }
       }
     },
     "OK": {
       "localizations": {
         "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        },
+        "en": {
           "stringUnit": {
             "state": "translated",
             "value": "OK"
@@ -878,6 +1864,12 @@
             "state": "translated",
             "value": "Ordner wegsichern"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back up folder"
+          }
         }
       }
     },
@@ -887,6 +1879,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ort"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Location"
+          }
+        }
+      }
+    },
+    "Probelauf": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Probelauf"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dry run"
           }
         }
       }
@@ -898,6 +1912,12 @@
             "state": "translated",
             "value": "Protokoll"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Log"
+          }
         }
       }
     },
@@ -907,6 +1927,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Quelle:"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Source:"
           }
         }
       }
@@ -918,6 +1944,12 @@
             "state": "translated",
             "value": "Quellordner auf der Drobo"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Source folder on the Drobo"
+          }
         }
       }
     },
@@ -927,6 +1959,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rolle von %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Role of %@"
           }
         }
       }
@@ -938,6 +1976,12 @@
             "state": "translated",
             "value": "Schließen"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close"
+          }
         }
       }
     },
@@ -947,6 +1991,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Schreiben"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Write"
           }
         }
       }
@@ -958,6 +2008,12 @@
             "state": "translated",
             "value": "Schreiben erlaubt"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Writing allowed"
+          }
         }
       }
     },
@@ -967,6 +2023,44 @@
           "stringUnit": {
             "state": "translated",
             "value": "Schreibtempo messen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Measure write speed"
+          }
+        }
+      }
+    },
+    "Sicherheit": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sicherheit"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Safety"
+          }
+        }
+      }
+    },
+    "Sicherung": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sicherung"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Backup"
           }
         }
       }
@@ -978,6 +2072,44 @@
             "state": "translated",
             "value": "Sicherung der Verwaltungsdaten"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Backup of management data"
+          }
+        }
+      }
+    },
+    "Sicherung wirklich zurückspielen?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sicherung wirklich zurückspielen?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Really restore this backup?"
+          }
+        }
+      }
+    },
+    "Sicherung zurückspielen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sicherung zurückspielen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore backup"
+          }
         }
       }
     },
@@ -987,6 +2119,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sicherungen der Verwaltungsdaten"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Management data backups"
           }
         }
       }
@@ -998,6 +2136,12 @@
             "state": "translated",
             "value": "Sicherungsort"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Backup location"
+          }
         }
       }
     },
@@ -1007,6 +2151,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sichtbar: das Laufwerk erscheint wie jedes andere im Finder. Spotlight läuft dort nach Messung nicht hinein. Der Ordner wird vom Hilfsdienst angelegt und beim Aushängen wieder entfernt. Der Ort darf nie im Benutzerordner liegen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Visible: the drive appears in Finder like any other. By measurement, Spotlight does not walk into it. The helper service creates the folder and removes it again on unmount. The location must never be inside the home folder."
           }
         }
       }
@@ -1018,6 +2168,12 @@
             "state": "translated",
             "value": "Spotlight ist für die Drobo nicht ausgeschlossen. Beim Schreiben bremst das und verändert das Laufwerk. Der Ausschluss ist freiwillig."
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotlight is not excluded for the Drobo. While writing, this slows the drive and changes it. Excluding it is optional."
+          }
         }
       }
     },
@@ -1027,6 +2183,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Spotlight ist für die Drobo noch nicht ausgeschlossen (empfohlen, siehe Anleitung in den Einstellungen)."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotlight is not yet excluded for the Drobo (recommended, see the guide in Settings)."
+          }
+        }
+      }
+    },
+    "Spotlight läuft nach unseren Messungen nicht in den Einhängeort unter /Volumes hinein. Wer ganz sicher gehen will, schließt die Drobo in den Systemeinstellungen bei Spotlight und Time Machine aus. Das ist freiwillig; die App ändert dazu nichts.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotlight läuft nach unseren Messungen nicht in den Einhängeort unter /Volumes hinein. Wer ganz sicher gehen will, schließt die Drobo in den Systemeinstellungen bei Spotlight und Time Machine aus. Das ist freiwillig; die App ändert dazu nichts."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "By our measurements Spotlight does not walk into the mount location under /Volumes. To be completely safe, exclude the Drobo from Spotlight and Time Machine in System Settings. This is optional; the app changes nothing."
           }
         }
       }
@@ -1038,6 +2216,12 @@
             "state": "translated",
             "value": "Spotlight und Time Machine"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotlight and Time Machine"
+          }
         }
       }
     },
@@ -1048,12 +2232,88 @@
             "state": "translated",
             "value": "Spotlight und Time Machine für die Drobo ausschließen"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exclude the Drobo from Spotlight and Time Machine"
+          }
+        }
+      }
+    },
+    "Stand %@, aus den Verwaltungsdaten des Laufwerks": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stand %@, aus den Verwaltungsdaten des Laufwerks"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As of %@, from the drive's management data"
+          }
+        }
+      }
+    },
+    "Standard ist „nur lesen“. Zum Schreiben wird vorher automatisch eine Sicherung der Verwaltungsdaten des Laufwerks angelegt und geprüft; gelingt das nicht, wird nicht geschrieben.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standard ist „nur lesen“. Zum Schreiben wird vorher automatisch eine Sicherung der Verwaltungsdaten des Laufwerks angelegt und geprüft; gelingt das nicht, wird nicht geschrieben."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The default is \"read-only\". Before writing, a backup of the drive's management data is made and verified automatically; if that fails, nothing is written."
+          }
+        }
+      }
+    },
+    "Standard: aus. Die App startet dann beim Anmelden im Hintergrund mit Symbol in der Menüleiste.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standard: aus. Die App startet dann beim Anmelden im Hintergrund mit Symbol in der Menüleiste."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default: off. The app then starts at login in the background with an icon in the menu bar."
+          }
+        }
+      }
+    },
+    "Start": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Startup"
+          }
         }
       }
     },
     "Status": {
       "localizations": {
         "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Status"
+          }
+        },
+        "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Status"
@@ -1068,6 +2328,28 @@
             "state": "translated",
             "value": "Statusleiste"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Status bar"
+          }
+        }
+      }
+    },
+    "Stellt die gesicherten Verwaltungsdaten wieder her. Nur bei ausgehängtem Laufwerk. Zuerst gibt es einen Probelauf, der nichts schreibt.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stellt die gesicherten Verwaltungsdaten wieder her. Nur bei ausgehängtem Laufwerk. Zuerst gibt es einen Probelauf, der nichts schreibt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restores the backed-up management data. Only while the drive is unmounted. A dry run that writes nothing comes first."
+          }
         }
       }
     },
@@ -1077,6 +2359,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Systemeinstellungen öffnen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open System Settings"
           }
         }
       }
@@ -1088,6 +2376,12 @@
             "state": "translated",
             "value": "Tempo"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speed"
+          }
         }
       }
     },
@@ -1097,6 +2391,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tempo zuletzt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Latest speed"
           }
         }
       }
@@ -1108,6 +2408,12 @@
             "state": "translated",
             "value": "Tempotest"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speed test"
+          }
         }
       }
     },
@@ -1117,6 +2423,44 @@
           "stringUnit": {
             "state": "translated",
             "value": "Time Machine (nur anzeigen)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Time Machine (display only)"
+          }
+        }
+      }
+    },
+    "Time-Machine-Ziel, angeschlossen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Time-Machine-Ziel, angeschlossen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Time Machine destination, connected"
+          }
+        }
+      }
+    },
+    "Time-Machine-Ziel, nicht angeschlossen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Time-Machine-Ziel, nicht angeschlossen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Time Machine destination, not connected"
           }
         }
       }
@@ -1128,6 +2472,12 @@
             "state": "translated",
             "value": "Treiber"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Driver"
+          }
         }
       }
     },
@@ -1137,6 +2487,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Treibermodul"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Driver module"
           }
         }
       }
@@ -1148,12 +2504,24 @@
             "state": "translated",
             "value": "Verdeckt (nur über „Im Finder öffnen“)"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hidden (only via \"Open in Finder\")"
+          }
         }
       }
     },
     "Volume": {
       "localizations": {
         "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volume"
+          }
+        },
+        "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Volume"
@@ -1168,6 +2536,28 @@
             "state": "translated",
             "value": "Volume-Kennung"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volume identifier"
+          }
+        }
+      }
+    },
+    "Vor dem nächsten Einhängen wird das Laufwerk geprüft. Beim nächsten Mal bitte zuerst aushängen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vor dem nächsten Einhängen wird das Laufwerk geprüft. Beim nächsten Mal bitte zuerst aushängen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The drive will be checked before the next mount. Next time please unmount first."
+          }
         }
       }
     },
@@ -1177,6 +2567,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vor dem nächsten Einhängen wird geprüft: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Before the next mount a check runs: %@"
           }
         }
       }
@@ -1188,6 +2584,12 @@
             "state": "translated",
             "value": "Vor jedem Einhängen zum Schreiben wird automatisch gesichert. Aufbewahrt werden %lld Sicherungen in %@."
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A backup is made automatically before every writable mount. %lld backups are kept in %@."
+          }
         }
       }
     },
@@ -1197,6 +2599,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Vorgabe beim Einhängen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default when mounting"
           }
         }
       }
@@ -1208,6 +2616,28 @@
             "state": "translated",
             "value": "Vorher wird eine Sicherung der Verwaltungsdaten des Laufwerks angelegt. Ohne gelungene Sicherung wird nicht zum Schreiben eingehängt."
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A backup of the drive's management data is made first. Without a successful backup nothing is mounted writable."
+          }
+        }
+      }
+    },
+    "Warnung zu %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warnung zu %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warning about %@"
+          }
         }
       }
     },
@@ -1217,6 +2647,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Wegsichern"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back up"
           }
         }
       }
@@ -1228,6 +2664,12 @@
             "state": "translated",
             "value": "Wenn beides erledigt ist, in den Einstellungen den Hinweis ausschalten."
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When both are done, turn the notice off in Settings."
+          }
         }
       }
     },
@@ -1237,6 +2679,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Wählen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose"
           }
         }
       }
@@ -1248,6 +2696,12 @@
             "state": "translated",
             "value": "Wählen …"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose …"
+          }
         }
       }
     },
@@ -1257,6 +2711,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ziel:"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Target:"
           }
         }
       }
@@ -1268,6 +2728,12 @@
             "state": "translated",
             "value": "Zielordner auf einem anderen Laufwerk"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Target folder on another drive"
+          }
         }
       }
     },
@@ -1277,6 +2743,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zugriff"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Access"
+          }
+        }
+      }
+    },
+    "Zum Einhängen die App öffnen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zum Einhängen die App öffnen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open the app to mount."
           }
         }
       }
@@ -1288,6 +2776,12 @@
             "state": "translated",
             "value": "Zum Schreiben"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For writing"
+          }
         }
       }
     },
@@ -1297,6 +2791,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zum Schreiben einhängen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mount for writing"
           }
         }
       }
@@ -1308,6 +2808,12 @@
             "state": "translated",
             "value": "Zum Schreiben einhängen?"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mount for writing?"
+          }
         }
       }
     },
@@ -1317,6 +2823,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zum Schreiben neu"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remount for writing"
           }
         }
       }
@@ -1328,6 +2840,92 @@
             "state": "translated",
             "value": "Zum Schreiben neu …"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remount for writing …"
+          }
+        }
+      }
+    },
+    "Zum Schreiben. Metadaten-Sicherung liegt bereit.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zum Schreiben. Metadaten-Sicherung liegt bereit."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For writing. Management data backup is ready."
+          }
+        }
+      }
+    },
+    "Zurückgespielt, aber die Prüfung danach hat Auffälligkeiten gefunden: ": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zurückgespielt, aber die Prüfung danach hat Auffälligkeiten gefunden: "
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restored, but the check afterwards found issues: "
+          }
+        }
+      }
+    },
+    "Zurückgespielt. Prüfung danach: in Ordnung.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zurückgespielt. Prüfung danach: in Ordnung."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restored. Check afterwards: all good."
+          }
+        }
+      }
+    },
+    "Zurückspielen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zurückspielen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore"
+          }
+        }
+      }
+    },
+    "Zurückspielen …": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zurückspielen …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore …"
+          }
         }
       }
     },
@@ -1337,6 +2935,44 @@
           "stringUnit": {
             "state": "translated",
             "value": "bereit"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ready"
+          }
+        }
+      }
+    },
+    "fehlt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "fehlt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "missing"
+          }
+        }
+      }
+    },
+    "in Ordnung": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "in Ordnung"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "all good"
           }
         }
       }
@@ -1348,6 +2984,28 @@
             "state": "translated",
             "value": "lesen"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "read"
+          }
+        }
+      }
+    },
+    "nicht eingerichtet": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nicht eingerichtet"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "not set up"
+          }
         }
       }
     },
@@ -1357,6 +3015,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "nicht freigeschaltet"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "not approved"
+          }
+        }
+      }
+    },
+    "nicht gefunden": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nicht gefunden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "not found"
           }
         }
       }
@@ -1368,6 +3048,12 @@
             "state": "translated",
             "value": "nicht gewählt"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "not chosen"
+          }
         }
       }
     },
@@ -1377,6 +3063,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "nicht installiert"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "not installed"
           }
         }
       }
@@ -1388,6 +3080,12 @@
             "state": "translated",
             "value": "noch nicht eingerichtet"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "not set up yet"
+          }
         }
       }
     },
@@ -1397,6 +3095,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "nur lesen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "read-only"
           }
         }
       }
@@ -1408,6 +3112,44 @@
             "state": "translated",
             "value": "schreiben"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "write"
+          }
+        }
+      }
+    },
+    "unbekannt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "unbekannt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "unknown"
+          }
+        }
+      }
+    },
+    "wartet auf Freigabe": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "wartet auf Freigabe"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "waiting for approval"
+          }
         }
       }
     },
@@ -1417,6 +3159,44 @@
           "stringUnit": {
             "state": "translated",
             "value": "Über DroboDraft"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About DroboDraft"
+          }
+        }
+      }
+    },
+    "„Sicherung zurückspielen“ ersetzt Verwaltungsdaten und macht alles rückgängig, was seitdem geschrieben wurde. Es gibt erst einen Probelauf und dann eine zweite Bestätigung.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„Sicherung zurückspielen“ ersetzt Verwaltungsdaten und macht alles rückgängig, was seitdem geschrieben wurde. Es gibt erst einen Probelauf und dann eine zweite Bestätigung."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\"Restore backup\" replaces management data and undoes everything written since. A dry run comes first, then a second confirmation."
+          }
+        }
+      }
+    },
+    "Übersicht": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Übersicht"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Overview"
           }
         }
       }

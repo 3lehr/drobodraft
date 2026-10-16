@@ -17,6 +17,7 @@ struct DroboApp: App {
         }
         .commands {
             // Standard-Menue "Schliessen" (⌘W) ersetzen: ⌘W gehoert laut Auftrag "Zum Schreiben neu"
+            HilfeBefehle()
             CommandGroup(replacing: .appInfo) { Button("Über DroboDraft") { ueberFenster() } }
             CommandMenu("Volume") {
                 Button("Im Finder öffnen") { modell.imFinderOeffnen() }.keyboardShortcut("o", modifiers: .command).disabled(modell.aktuell?.eingehaengt != true)
@@ -27,6 +28,7 @@ struct DroboApp: App {
                 Button("Aktualisieren") { modell.aktualisieren() }.keyboardShortcut("r", modifiers: .command)
             }
         }
+        Window("DroboDraft Hilfe", id: "hilfe") { HilfeAnsicht() }
         MenuBarExtra {
             MenueleistenInhalt().environmentObject(modell)
         } label: {
@@ -44,4 +46,11 @@ func ueberFenster() {
     text.addAttribute(.font, value: NSFont.systemFont(ofSize: NSFont.systemFontSize), range: NSRange(location: 0, length: text.length))
     NSApp.orderFrontStandardAboutPanel(options: [.applicationName: "DroboDraft", .applicationVersion: "0.1.0 (Frühe Alpha)", .version: "3", .credits: text])
     NSApp.activate(ignoringOtherApps: true)
+}
+
+struct HilfeBefehle: Commands {
+    @Environment(\.openWindow) private var openWindow
+    var body: some Commands {
+        CommandGroup(replacing: .help) { Button("DroboDraft Hilfe") { openWindow(id: "hilfe") }.keyboardShortcut("?", modifiers: .command) }
+    }
 }

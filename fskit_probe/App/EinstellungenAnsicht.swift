@@ -39,6 +39,10 @@ struct EinstellungenAnsicht: View {
                 Text("Freiwillig. Solange das aus ist, weist die App beim Schreiben darauf hin.").font(.callout).foregroundStyle(.secondary)
                 Button("Anleitung …") { anleitung = true }
             }
+            Section("Start") {
+                Toggle("Beim Anmelden starten", isOn: Binding(get: { m.anmeldeStart }, set: { m.anmeldeStartSetzen($0) }))
+                Text("Standard: aus. Die App startet dann beim Anmelden im Hintergrund mit Symbol in der Menüleiste.").font(.callout).foregroundStyle(.secondary)
+            }
             Section("Mitteilungen") {
                 Toggle("Mitteilungen bei Anschluss, Trennung und Warnungen", isOn: $m.einstellungen.mitteilungen).onChange(of: m.einstellungen.mitteilungen) { _, _ in m.einstellungenSpeichern() }
             }

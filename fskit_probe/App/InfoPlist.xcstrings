@@ -9,12 +9,24 @@
             "state": "translated",
             "value": "DroboDraft"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboDraft"
+          }
         }
       }
     },
     "CFBundleDisplayName": {
       "localizations": {
         "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboDraft"
+          }
+        },
+        "en": {
           "stringUnit": {
             "state": "translated",
             "value": "DroboDraft"
