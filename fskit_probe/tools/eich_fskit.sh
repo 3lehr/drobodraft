@@ -314,12 +314,85 @@ t_fehler() {
   rm -f "$CD/fehler.txt" "$CD/direktweg_aus"
 }
 
+# Physischer Fuellstand + harte Platzsperre (Platz.swift). NUR Pruefbau (XC_EXTRA='SWIFT_ACTIVE_COMPILATION_CONDITIONS=TEST_PHYSISCH' tools/install_module.sh):
+# physisch.plist im Modulcontainer ersetzt die Registry-Property DroboStatus (gleicher Decoder). Danach Normalbau wieder installieren.
+MIB=1048576
+ph_set() { # frei_bytes geschuetzt_bytes alter_s -> physisch.plist (p3A_02 wie vom Dext)
+  python3 -I - "$CD/physisch.plist" "$1" "$2" "$3" <<'PY2'
+import plistlib, struct, sys, time
+f, frei, g, alt = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), float(sys.argv[4])
+b = bytes([0x7A, 0x02, 0x00, 0x38]) + struct.pack(">QQQQ", frei, max(g - frei, 0), g, g)
+plistlib.dump({"zeit": time.time() - alt, "ok": True, "p3A_02": b}, open(f, "wb"))
+PY2
+}
+ph_schreib() { # datei MiB -> "geschrieben errno" (1 MiB je write, fsync am Ende, Fehler werden gemeldet statt verschluckt)
+  python3 -I - "$1" "$2" <<'PY2'
+import os, sys
+n, fd, e = 0, None, 0
+try:
+    fd = os.open(sys.argv[1], os.O_WRONLY | os.O_CREAT, 0o644); blk = os.urandom(1 << 20)
+    for _ in range(int(sys.argv[2])): n += os.write(fd, blk)
+    os.fsync(fd)
+except OSError as x: e = x.errno
+finally:
+    if fd is not None:
+        try: os.close(fd)
+        except OSError as x: e = e or x.errno
+print(n, e)
+PY2
+}
+ph_mount() { attach "$W/ph.img"; MNT=$W/mnt_ph; fmount "$DEV" "$MNT"; }
+ph_ende() { umount "$MNT"; sleep 1; hdiutil detach "$DEV" >>"$LOG" 2>&1; ST=$(stats_line 2); say "   $ST"; }
+avail() { df -k "$MNT" | awk 'NR==2{print $4*1024}'; }
+t_physisch() {
+  local CD="$HOME/Library/Containers/$DROBO_MODULE_ID/Data" a r e w1 w2 r1 r2 sum
+  trap 'fg_zurueck; rm -f "$CD/physisch.plist"' RETURN; fg_sichern; rm -f "$CD/physisch.plist"
+  say "=== PHYSISCH (Platzsperre)"; mkimg ph 1 1g
+  # (1) ohne Statusdaten: HFS-Werte, keine Sperre
+  ph_mount || { fail "ph mount"; return; }; a=$(avail)
+  r=$(ph_schreib "$MNT/frei.bin" 50); umount "$MNT"; sleep 1; hdiutil detach "$DEV" >>"$LOG" 2>&1; ST=$(stats_line 2); say "   $ST"
+  [ "$(fld "$ST" physisch_bau)" = 1 ] || { say "SKIP physisch: Modul ist kein Pruefbau TEST_PHYSISCH"; return; }
+  echo "$ST" | grep -q "physisch=unbekannt" && pass "ph ohne Daten: STATS physisch=unbekannt" || fail "ph ohne Daten: $ST"
+  chk "ph ohne Daten: df verfuegbar $a > 900 MiB (HFS-Wert)" test "$a" -gt $((900*MIB))
+  chk "ph ohne Daten: 50 MiB schreiben ($r)" test "$r" = "$((50*MIB)) 0"
+  # (2) frei 200 MiB, Reserve 100 MiB: statfs = min, Schreiben ueber die Reserve -> ENOSPC, Bestand bleibt bearbeitbar
+  fg_set '{"reserve_bytes": 104857600, "eintraege": []}'; ph_set $((200*MIB)) $((10*1024*MIB)) 0
+  ph_mount || { fail "ph mount 2"; return; }; a=$(avail)
+  chk "ph min: df verfuegbar $a zwischen 190 und 200 MiB (statt HFS ~1 GiB)" test "$a" -le $((200*MIB)) -a "$a" -ge $((190*MIB))
+  r=$(ph_schreib "$MNT/w1.bin" 60); chk "ph 60 MiB unter der Reserve: ok ($r)" test "$r" = "$((60*MIB)) 0"
+  a=$(avail); chk "ph nach 60 MiB: df verfuegbar $a zwischen 120 und 140 MiB (Geraetebytes abgezogen)" test "$a" -le $((140*MIB)) -a "$a" -ge $((120*MIB))
+  r=$(ph_schreib "$MNT/w2.bin" 80); set -- $r
+  chk "ph ueber die Reserve: ENOSPC (errno $2), geschrieben $1 <= 44 MiB" test "$2" = 28 -a "$1" -le $((44*MIB))
+  chk "ph Ueberschreiben im Bestand erlaubt" dd if=/dev/urandom of="$MNT/w1.bin" bs=1m count=5 conv=notrunc
+  ! truncate -s 120m "$MNT/w1.bin" >>"$LOG" 2>&1 && pass "ph Verlaengern gesperrt" || fail "ph Verlaengern gelang"
+  chk "ph Kuerzen erlaubt" truncate -s 10m "$MNT/w1.bin"
+  ! touch "$MNT/neu" >>"$LOG" 2>&1 && pass "ph Anlegen gesperrt" || fail "ph Anlegen gelang"
+  chk "ph Loeschen erlaubt" rm "$MNT/w1.bin" "$MNT/w2.bin"
+  ph_ende; chk "ph platz_gesperrt=$(fld "$ST" platz_gesperrt) > 0" test "$(fld "$ST" platz_gesperrt)" -gt 0
+  /usr/bin/log show --last 2m --info --style compact --predicate 'subsystem == "'$DROBO_APP_ID'"' 2>/dev/null | grep -m1 "PLATZ-SPERRE" | sed 's/.*PLATZ/   PLATZ/' | tee -a "$LOG"
+  # (3) veraltete Messung (1000 s): letzter Wert minus Geschriebenes, keine Rueckkehr zu HFS
+  ph_set $((200*MIB)) $((10*1024*MIB)) 1000; ph_mount || { fail "ph mount 3"; return; }; a=$(avail)
+  chk "ph veraltet: df verfuegbar $a <= 200 MiB" test "$a" -le $((200*MIB)); ph_ende
+  # (4) Vorgabe-Reserve max(2 %, 500 GB) ohne reserve_bytes
+  rm -f "$FREIGABE"; ph_set 400000000000 1000000000000 0; ph_mount || { fail "ph mount 4"; return; }
+  ! touch "$MNT/v1" >>"$LOG" 2>&1 && pass "ph Vorgabe-Reserve: 400 GB frei < 500 GB -> Anlegen gesperrt" || fail "ph Vorgabe-Reserve griff nicht"; ph_ende
+  ph_set 600000000000 1000000000000 0; ph_mount || { fail "ph mount 5"; return; }
+  chk "ph Vorgabe-Reserve: 600 GB frei -> Anlegen erlaubt" touch "$MNT/v1"; ph_ende
+  # (5) zwei parallele Schreiber, frei = Reserve + 150 MiB, je 100 MiB: nie beide fertig, Ueberholen hoechstens um laufende Befehle (Toleranz 8 MiB)
+  fg_set '{"reserve_bytes": 104857600, "eintraege": []}'; ph_set $((250*MIB)) $((10*1024*MIB)) 0; ph_mount || { fail "ph mount 6"; return; }
+  ph_schreib "$MNT/p1.bin" 100 > "$W/p1.out" & ph_schreib "$MNT/p2.bin" 100 > "$W/p2.out" & wait
+  r1=$(cat "$W/p1.out"); r2=$(cat "$W/p2.out"); sum=$(( ${r1% *} + ${r2% *} )); say "   parallel: p1=($r1) p2=($r2) Summe=$sum"
+  chk "ph parallel: nicht beide fertig" test "${r1#* }" != 0 -o "${r2#* }" != 0
+  chk "ph parallel: Summe $sum <= 150 MiB + 8 MiB" test "$sum" -le $((158*MIB))
+  ph_ende; rmw ph.img mnt_ph
+}
+
 NJ_OK=0; NJ_BAD=0
 
 main() {
   trap 'fg_zurueck; exit 130' INT TERM       # Abbruch (Ctrl-C/kill) stellt die Betreiber-Freigabeliste zurueck
   mksrc
-  case "${1:-alles}" in normal) t_normal;; absturz) t_absturz;; sperre) t_sperre;; freigabe) t_freigabe;; freigabe-modul) t_freigabe_modul;; decmpfs) t_decmpfs;; fehler) t_fehler;; alles) t_sperre; t_freigabe; t_decmpfs; t_normal; t_absturz;; esac
+  case "${1:-alles}" in normal) t_normal;; absturz) t_absturz;; sperre) t_sperre;; freigabe) t_freigabe;; freigabe-modul) t_freigabe_modul;; decmpfs) t_decmpfs;; fehler) t_fehler;; physisch) t_physisch;; alles) t_sperre; t_freigabe; t_decmpfs; t_normal; t_absturz;; esac
   say "=== ERGEBNIS PASS=$NPASS FAIL=$NFAIL (Log: $LOG)"; [ "$NFAIL" = 0 ]
 }
 [ "${BASH_SOURCE[0]}" = "$0" ] && main "$@"

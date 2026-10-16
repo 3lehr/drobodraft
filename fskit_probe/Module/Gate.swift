@@ -36,6 +36,12 @@ enum Gate {
         }
     }
 
+    /// Reserve fuer die harte Platzsperre (Platz.swift): {"reserve_bytes": N, "eintraege": [...]} (nur Objektform); fehlt = Vorgabe.
+    static func reserveBytes() -> UInt64? {
+        guard let d = try? Data(contentsOf: URL(fileURLWithPath: freigabePfad)), let j = try? JSONSerialization.jsonObject(with: d) as? [String: Any] else { return nil }
+        return (j["reserve_bytes"] as? NSNumber)?.uint64Value
+    }
+
     /// HFS-Volume-UUID wie diskutil (lifs_volume_uuid: MD5 ueber Namespace + finderInfo[6..7]); nil = Volume ohne ID.
     static func volumeUUID(_ head: [UInt8]) -> String? {
         guard head.count >= 1024 + 512 else { return nil }

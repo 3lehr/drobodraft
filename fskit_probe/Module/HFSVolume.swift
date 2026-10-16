@@ -83,6 +83,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
     private var items: [Node: HItem] = [:]
     private var closed = false
     private var userBytesWritten: UInt64 = 0
+    private let platz: Platz
     private var timer: DispatchSourceTimer?
     private let readOnly: Bool
     private var roBlocked = 0
@@ -130,7 +131,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         LockStat.l.lock(); LockStat.n = [Int](repeating: 0, count: 10); LockStat.wait = LockStat.n.map { _ in 0 }; LockStat.hold = LockStat.wait; LockStat.l.unlock()
         log.notice("GEOM dev.blockSize=\(dev.blockSize) dev.physicalBlockSize=\(dev.physicalBlockSize) hfs_logical_block_size=\(gl) hfs_physical_block_size=\(gp) hfsPlusIOPosOffset=\(go) blockCount=\(dev.blockCount)")
         let name = withUnsafePointer(to: &info.name) { $0.withMemoryRebound(to: CChar.self, capacity: 256) { String(cString: $0) } }
-        self.dev = dev; self.backend = backend; self.readOnly = ro
+        self.dev = dev; self.backend = backend; self.readOnly = ro; self.platz = Platz(bsd: dev.bsdName, reserve: Gate.reserveBytes())
         self.directRead = ro && !FileManager.default.fileExists(atPath: NSHomeDirectory() + "/direktweg_aus")
         self.rootItem = HItem(root!)
         self.mountedName = name.isEmpty ? "HFS+" : name
@@ -184,6 +185,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         let bs = info.blocksize == 0 ? 4096 : info.blocksize
         s.blockSize = Int(bs); s.ioSize = 1 << 20
         s.totalBlocks = info.total; s.freeBlocks = info.free_; s.availableBlocks = info.avail
+        if let p = platz.verfuegbar().map({ $0 / UInt64(bs) }) { s.freeBlocks = min(s.freeBlocks, p); s.availableBlocks = min(s.availableBlocks, p) }   // Gesamt bleibt HFS
         s.usedBlocks = info.total - min(info.total, info.free_)
         s.totalFiles = info.total; s.freeFiles = info.free_
         return s
@@ -215,7 +217,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
             return r
         }
         let st = lifs_dev_stats
-        log.notice("STATS unmount=\(r) nutz_geschrieben=\(self.userBytesWritten) dev_writes=\(st.writes) dev_bytes=\(st.bytes) max_cmd=\(st.max_cmd) max_call=\(st.max_call) chunked=\(st.chunked_calls) syncs=\(st.syncs) ro=\(self.readOnly ? 1 : 0) ro_blockiert=\(self.roBlocked) dev_schreibversuche=\(self.backend.writeAttempts) swift_dev_writes=\(self.backend.devWrites) swift_max=\(self.backend.devMax)")
+        log.notice("STATS unmount=\(r) nutz_geschrieben=\(self.userBytesWritten) dev_writes=\(st.writes) dev_bytes=\(st.bytes) max_cmd=\(st.max_cmd) max_call=\(st.max_call) chunked=\(st.chunked_calls) syncs=\(st.syncs) \(self.platz.zeile, privacy: .public) physisch_bau=\(physischBau) ro=\(self.readOnly ? 1 : 0) ro_blockiert=\(self.roBlocked) dev_schreibversuche=\(self.backend.writeAttempts) swift_dev_writes=\(self.backend.devWrites) swift_max=\(self.backend.devMax)")
         let be = backend
         be.statLock.lock()                                   // Direktweg-Lesungen koennen noch zaehlen: Werte konsistent kopieren
         let c = (be.rdCalls, be.rdBytes, be.rdHist, be.rdNanos, be.volReads, be.maxWaiting, be.waitNanos, be.directReads, be.fallbackReads, be.decmpfsReads, be.maxInflight)
@@ -239,6 +241,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         if let it = items[n] { it.refs += 1; return it }
         let it = HItem(n); items[n] = it; return it
     }
+    private func groesse(_ it: HItem) -> UInt64 { var u = UVFSFileAttributes(); _ = lockedT(4) { HFS_fsOps.fsops_getattr!(it.node, &u) }; return u.fa_size }
     private func item(_ i: FSItem) throws -> HItem { guard let h = i as? HItem else { throw posixError(EINVAL) }; return h }
 
     private func convert(_ u: UVFSFileAttributes) -> FSItem.Attributes {
@@ -277,7 +280,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         if new.isValid(.uid) { u.fa_validmask |= vUID; u.fa_uid = new.uid; consumed.insert(.uid) }
         if new.isValid(.gid) { u.fa_validmask |= vGID; u.fa_gid = new.gid; consumed.insert(.gid) }
         if new.isValid(.flags) { u.fa_validmask |= vFLAGS; u.fa_bsd_flags = new.flags; consumed.insert(.flags) }
-        if new.isValid(.size) { u.fa_validmask |= vSIZE; u.fa_size = new.size; consumed.insert(.size) }
+        if new.isValid(.size) { try platz.pruefen("kuerzen/verlaengern") { new.size > groesse(it) }; u.fa_validmask |= vSIZE; u.fa_size = new.size; consumed.insert(.size) }
         if new.isValid(.accessTime) { u.fa_validmask |= vATIME; u.fa_atime = new.accessTime; consumed.insert(.accessTime) }
         if new.isValid(.modifyTime) { u.fa_validmask |= vMTIME; u.fa_mtime = new.modifyTime; consumed.insert(.modifyTime) }
         if new.isValid(.birthTime) { u.fa_validmask |= vBIRTH; u.fa_birthtime = new.birthTime; consumed.insert(.birthTime) }
@@ -337,6 +340,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         if readOnly { try rofail() }
         let d = try item(directory)
         guard type == .file || type == .directory else { throw posixError(ENOTSUP) }
+        try platz.pruefen("anlegen") { true }
         var u = setAttrs(attributes, dir: type == .directory)
         return try locked { () throws -> (FSItem, FSFileName) in
             var out: Node? = nil
@@ -350,6 +354,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
     func createSymbolicLink(named name: FSFileName, inDirectory directory: FSItem, attributes: FSItem.SetAttributesRequest, linkContents contents: FSFileName) async throws -> (FSItem, FSFileName) {
         if readOnly { try rofail() }
         let d = try item(directory)
+        try platz.pruefen("symlink") { true }
         var u = setAttrs(attributes, dir: false)
         return try locked { () throws -> (FSItem, FSFileName) in
             var out: Node? = nil
@@ -363,6 +368,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
     func createLink(to item: FSItem, named name: FSFileName, inDirectory directory: FSItem) async throws -> FSFileName {
         if readOnly { try rofail() }
         let src = try self.item(item), d = try self.item(directory)
+        try platz.pruefen("link") { true }
         var af = UVFSFileAttributes(), ad = UVFSFileAttributes()
         try locked { withName(name) { HFS_fsOps.fsops_link!(src.node, d.node, $0, &af, &ad) } }.check()
         return name
@@ -533,6 +539,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
     func write(contents: Data, to item: FSItem, at offset: off_t) async throws -> Int {
         if readOnly { try rofail() }
         let it = try self.item(item)
+        try platz.pruefen("schreiben") { UInt64(offset) + UInt64(contents.count) > groesse(it) }
         var act = 0
         let r: Int32 = locked { contents.withUnsafeBytes { HFS_fsOps.fsops_write!(it.node, UInt64(offset), contents.count, $0.baseAddress, &act) } }
         try check(r)
@@ -567,6 +574,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
         @unknown default: throw posixError(EINVAL)
         }
         let v = value ?? Data()
+        if policy != .delete { try platz.pruefen("xattr") { true } }
         try locked { withName(name) { nm in v.withUnsafeBytes { HFS_fsOps.fsops_setxattr!(it.node, nm, $0.baseAddress, v.count, how) } } }.check()
     }
 

@@ -88,7 +88,9 @@ targets:
   DroboFSProbeModule:
     type: app-extension
     platform: macOS
-    sources: [Module]
+    sources:
+      - Module
+      - ../drobo_kern/Sources/DroboKern/DroboStatus.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(DROBO_BUNDLE_PREFIX).drobofsprobe.fsmodule
@@ -99,4 +101,4 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         SWIFT_OBJC_BRIDGING_HEADER: Module/Bridge.h
         HEADER_SEARCH_PATHS: ["$(SRCROOT)/../livefiles_shim"]
-        OTHER_LDFLAGS: ["$(SRCROOT)/../build/liblivefiles_hfs.a", "-framework", "CoreFoundation"]
+        OTHER_LDFLAGS: ["$(SRCROOT)/../build/liblivefiles_hfs.a", "-framework", "CoreFoundation", "-framework", "IOKit"]
