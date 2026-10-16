@@ -2,9 +2,10 @@
 #define MaxWriteProbe_h
 
 #include <DriverKit/IOService.iig>
-#include <DriverKit/IOTimerDispatchSource.iig>
 #include <SCSIPeripheralsDriverKit/IOUserSCSIPeripheralDeviceType00.iig>
 
+// Stufe 3b Messpunkt: Dext sendet Lese-CDBs (INQUIRY, MODE SENSE(10)) per UserSendCDB OHNE UserSuspendServices.
+// Ausloeser: Host setzt Property "ProbeCmd" (1 = INQUIRY, 2 = MODE SENSE(10) Seite 0x3F) per IORegistryEntrySetCFProperties.
 class MaxWriteProbe : public IOUserSCSIPeripheralDeviceType00
 {
 public:
@@ -12,8 +13,7 @@ public:
     virtual void free() override;
     virtual kern_return_t Start(IOService *provider) override;
     virtual kern_return_t UserDetermineDeviceCharacteristics(bool *result) override;
-    // Diagnose v1.4: Timer-Rueckruf, loggt die Properties erneut
-    virtual void TimerFired(OSAction *action, uint64_t time) TYPE(IOTimerDispatchSource::TimerOccurred);
+    virtual kern_return_t SetProperties(OSDictionary *properties) override;
 };
 
 #endif

@@ -6,7 +6,7 @@ import SystemExtensions
 private let dextID = "de.begod.drobo.dextprobe.dext"
 
 final class Activator: NSObject, ObservableObject, OSSystemExtensionRequestDelegate {
-    @Published var status = "Nicht angefordert"
+    @Published var status = "Nicht angefordert" { didSet { print("STATUS: \(status)"); fflush(stdout) } }
 
     func activate() {
         status = "Anforderung gesendet"
@@ -32,6 +32,7 @@ struct DextProbeApp: App {
                 Text(a.status)
                 Button("Dext aktivieren") { a.activate() }
             }.padding(24)
+            .onAppear { if CommandLine.arguments.contains("--activate") { a.activate() } }  // Kopflauf: DextProbeHost --activate
         }
     }
 }

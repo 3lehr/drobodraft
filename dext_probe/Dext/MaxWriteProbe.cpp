@@ -1,119 +1,108 @@
 #include <DriverKit/DriverKit.h>
-#include <DriverKit/IOKitKeys.h>
+#include <DriverKit/IOBufferMemoryDescriptor.h>
 #include <os/log.h>
-#include <time.h>
 #include <stdio.h>
+#include <string.h>
 #include "MaxWriteProbe.h"
 
-// Weg A (Plan Phase 0b): Schreibbefehle begrenzen, sonst Standardverhalten.
-// Die Drobo verdaut keine Schreibbefehle > 512 KiB, Kernel-HFS schickt 1 MiB (Ziel 524288/1024).
-// v1.3/1.4: Testwert 65536/128 am USB-2-Leser (Protokollwert 131072): VERKLEINERN wie bei der Drobo.
-static constexpr uint64_t kMaxWriteBytes  = 65536;
-static constexpr uint64_t kMaxWriteBlocks = 128;  // 128 * 512 B = 65536
+// Stufe 3b: nur Lese-CDBs, harte Allowlist. Kein UserSuspendServices, keine Schreibgroessen-Aenderung.
+static constexpr uint32_t kTimeoutMs = 5000;   // begrenzt Hangen (Plan: Timeout 30 s x Retry 20 am Treiber)
+static constexpr uint64_t kDataLen   = 255;    // INQUIRY 36, MODE SENSE(10) Alloc-Laenge 255
+static constexpr uint8_t  kSenseLen  = 32;
 
-struct MaxWriteProbe_IVars {
-    IOTimerDispatchSource *t2;
-    IOTimerDispatchSource *t10;
-    OSAction *action;
-    uint64_t startNs;
-};
+// Allowlist: ausschliesslich INQUIRY (0x12) und MODE SENSE(10) (0x5A).
+static bool OpcodeErlaubt(uint8_t op) { return op == 0x12 || op == 0x5A; }
 
-// v1.4 Diagnose: Properties am eigenen Objekt lesen und mit Marke loggen.
-static void LogProps(IOService *svc, const char *tag)
+static void Hex(const uint8_t *p, uint64_t n, char *out, size_t cap)
 {
-    OSDictionary *out = nullptr;
-    kern_return_t r = svc->CopyProperties(&out);
-    uint64_t bytes = 0, blocks = 0;
-    bool hasBytes = false, hasBlocks = false, hasUSP = false, uspBytes = false, uspBlocks = false;
-    uint32_t count = 0, uspCount = 0;
-    if (r == kIOReturnSuccess && out) {
-        count = out->getCount();
-        OSNumber *n = OSDynamicCast(OSNumber, out->getObject(kIOMaximumByteCountWriteKey));
-        if (n) { hasBytes = true; bytes = n->unsigned64BitValue(); }
-        n = OSDynamicCast(OSNumber, out->getObject(kIOMaximumBlockCountWriteKey));
-        if (n) { hasBlocks = true; blocks = n->unsigned64BitValue(); }
-        OSDictionary *usp = OSDynamicCast(OSDictionary, out->getObject("IOUserServiceProperties"));
-        if (usp) {
-            hasUSP = true; uspCount = usp->getCount();
-            uspBytes  = usp->getObject(kIOMaximumByteCountWriteKey) != nullptr;
-            uspBlocks = usp->getObject(kIOMaximumBlockCountWriteKey) != nullptr;
-        }
-    }
-    os_log(OS_LOG_DEFAULT,
-           "MaxWriteProbe: DIAG %{public}s copy=0x%x keys=%u bytes=%d:%llu blocks=%d:%llu IOUserServiceProperties=%d(count=%u bytes=%d blocks=%d)",
-           tag, r, count, hasBytes, bytes, hasBlocks, blocks, hasUSP, uspCount, uspBytes, uspBlocks);
-    OSSafeReleaseNULL(out);
+    size_t o = 0;
+    for (uint64_t i = 0; i < n && o + 3 < cap; i++) o += snprintf(out + o, cap - o, "%02x", p[i]);
+    out[o] = 0;
 }
 
-bool MaxWriteProbe::init()
-{
-    if (!super::init()) return false;
-    ivars = IONewZero(MaxWriteProbe_IVars, 1);
-    return ivars != nullptr;
-}
-
-void MaxWriteProbe::free()
-{
-    if (ivars) {
-        OSSafeReleaseNULL(ivars->t2);
-        OSSafeReleaseNULL(ivars->t10);
-        OSSafeReleaseNULL(ivars->action);
-        IOSafeDeleteNULL(ivars, MaxWriteProbe_IVars, 1);
-    }
-    super::free();
-}
+bool MaxWriteProbe::init() { return super::init(); }
+void MaxWriteProbe::free() { super::free(); }
 
 kern_return_t IMPL(MaxWriteProbe, Start)
 {
     kern_return_t ret = Start(provider, SUPERDISPATCH);
-    os_log(OS_LOG_DEFAULT, "MaxWriteProbe: DIAG Start super ret=0x%x", ret);
-    if (ret != kIOReturnSuccess) return ret;
-    LogProps(this, "Start");
-    // Timer 2 s und 10 s; Fehler nur loggen, das Geraet muss starten.
-    IODispatchQueue *q = nullptr;
-    ivars->startNs = clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
-    if (CopyDispatchQueue(kIOServiceDefaultQueueName, &q) == kIOReturnSuccess && q &&
-        CreateActionTimerFired(0, &ivars->action) == kIOReturnSuccess &&
-        IOTimerDispatchSource::Create(q, &ivars->t2) == kIOReturnSuccess &&
-        IOTimerDispatchSource::Create(q, &ivars->t10) == kIOReturnSuccess) {
-        ivars->t2->SetHandler(ivars->action);
-        ivars->t10->SetHandler(ivars->action);
-        ivars->t2->SetEnable(true);
-        ivars->t10->SetEnable(true);
-        ivars->t2->WakeAtTime(kIOTimerClockUptimeRaw, ivars->startNs + 2000000000ull, 0);
-        ivars->t10->WakeAtTime(kIOTimerClockUptimeRaw, ivars->startNs + 10000000000ull, 0);
-    } else {
-        os_log(OS_LOG_DEFAULT, "MaxWriteProbe: DIAG Timer-Aufbau fehlgeschlagen");
-    }
-    OSSafeReleaseNULL(q);
-    return kIOReturnSuccess;
-}
-
-void IMPL(MaxWriteProbe, TimerFired)
-{
-    uint64_t ms = (clock_gettime_nsec_np(CLOCK_UPTIME_RAW) - ivars->startNs) / 1000000ull;
-    char tag[32];
-    snprintf(tag, sizeof tag, "Timer+%llums", ms);
-    LogProps(this, tag);
+    os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b Start ret=0x%x", ret);
+    return ret;
 }
 
 kern_return_t IMPL(MaxWriteProbe, UserDetermineDeviceCharacteristics)
 {
-    OSDictionary *props = OSDictionary::withCapacity(2);
-    OSNumber *bytes  = OSNumber::withNumber(kMaxWriteBytes, 64);
-    OSNumber *blocks = OSNumber::withNumber(kMaxWriteBlocks, 64);
-    kern_return_t ret = kIOReturnNoMemory;
-    if (props && bytes && blocks) {
-        props->setObject(kIOMaximumByteCountWriteKey, bytes);
-        props->setObject(kIOMaximumBlockCountWriteKey, blocks);
-        ret = SetProperties(props, SUPERDISPATCH);
-    }
-    *result = true;  // Grenzen sind Zusatz; das Geraet muss auch bei Fehlschlag starten (ret wird geloggt)
-    os_log(OS_LOG_DEFAULT, "MaxWriteProbe: UserDetermineDeviceCharacteristics bytes=%llu blocks=%llu ret=0x%x result=%d",
-           kMaxWriteBytes, kMaxWriteBlocks, ret, (int)*result);
-    LogProps(this, "nach SetProperties");
-    OSSafeReleaseNULL(blocks);
-    OSSafeReleaseNULL(bytes);
-    OSSafeReleaseNULL(props);
+    *result = true;   // Standardverhalten, keine Grenzen gesetzt
+    os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b UserDetermineDeviceCharacteristics (keine Aenderung)");
     return kIOReturnSuccess;
+}
+
+// cmd 1 = INQUIRY 36 B, cmd 2 = MODE SENSE(10) Seite 0x3F
+static kern_return_t Senden(MaxWriteProbe *self, uint64_t cmd, char *line, size_t cap)
+{
+    IOBufferMemoryDescriptor *dbuf = nullptr, *sbuf = nullptr;
+    kern_return_t r = IOBufferMemoryDescriptor::Create(kIOMemoryDirectionInOut, kDataLen, 0, &dbuf);
+    if (r == kIOReturnSuccess) r = IOBufferMemoryDescriptor::Create(kIOMemoryDirectionInOut, kSenseLen, 0, &sbuf);
+    if (r != kIOReturnSuccess) { snprintf(line, cap, "cmd=%llu alloc ret=0x%x", cmd, r); goto out; }
+    {
+        dbuf->SetLength(kDataLen); sbuf->SetLength(kSenseLen);
+        IOAddressSegment d = {}, s = {};
+        dbuf->GetAddressRange(&d); sbuf->GetAddressRange(&s);
+        memset((void *)d.address, 0, kDataLen); memset((void *)s.address, 0, kSenseLen);
+
+        SCSIType00OutParameters out = {};
+        SCSIType00InParameters in = {};
+        uint64_t len = 0;
+        if (cmd == 1) {
+            INQUIRY(&out, d.address, &in, s.address);   // Helper fuellt CDB + Richtungen
+            len = out.fRequestedByteCountOfTransfer;
+        } else if (cmd == 2) {
+            INQUIRY(&out, d.address, &in, s.address);   // Richtungen/Felder uebernehmen, CDB danach ersetzen
+            memset(out.fCommandDescriptorBlock, 0, sizeof out.fCommandDescriptorBlock);
+            out.fCommandDescriptorBlock[0] = 0x5A;
+            out.fCommandDescriptorBlock[1] = 0x08;               // DBD
+            out.fCommandDescriptorBlock[2] = 0x3F;               // alle Seiten
+            out.fCommandDescriptorBlock[7] = (kDataLen >> 8) & 0xFF;
+            out.fCommandDescriptorBlock[8] = kDataLen & 0xFF;
+            out.fRequestedByteCountOfTransfer = kDataLen;
+            len = kDataLen;
+        } else { snprintf(line, cap, "cmd=%llu unbekannt", cmd); r = kIOReturnBadArgument; goto out; }
+        out.fLogicalUnitNumber = 0;
+        out.fTimeoutDuration = kTimeoutMs;
+        out.fSenseLengthRequested = kSenseLen;
+        out.fSenseBufferAddr = s.address;
+        out.fDataBufferAddr = d.address;
+
+        uint8_t op = out.fCommandDescriptorBlock[0];
+        if (!OpcodeErlaubt(op)) { snprintf(line, cap, "cmd=%llu opcode=0x%02x ABGELEHNT (Allowlist)", cmd, op); r = kIOReturnNotPermitted; goto out; }
+
+        os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b sende opcode=0x%02x len=%llu bufdir=%u xferdir=%u timeout=%u", op, len, out.fBufferDirection, out.fDataTransferDirection, out.fTimeoutDuration);
+        r = self->UserSendCDB(out, &in);
+        char dh[96], sh[48];
+        uint64_t n = in.fRealizedByteCountOfTransfer < 32 ? in.fRealizedByteCountOfTransfer : 32;
+        Hex((const uint8_t *)d.address, n, dh, sizeof dh);
+        Hex((const uint8_t *)s.address, 18, sh, sizeof sh);
+        snprintf(line, cap, "opcode=0x%02x ret=0x%x taskstatus=%u svc=%u bytes=%llu sensevalid=%d sense=%s data32=%s",
+                 op, r, (unsigned)in.fCompletionStatus, (unsigned)in.fServiceResponse,
+                 in.fRealizedByteCountOfTransfer, (int)in.fSenseDataValid, sh, dh);
+    }
+out:
+    OSSafeReleaseNULL(dbuf);
+    OSSafeReleaseNULL(sbuf);
+    return r;
+}
+
+kern_return_t IMPL(MaxWriteProbe, SetProperties)
+{
+    OSNumber *c = properties ? OSDynamicCast(OSNumber, properties->getObject("ProbeCmd")) : nullptr;
+    if (!c) return SetProperties(properties, SUPERDISPATCH);
+    char line[320] = {};
+    kern_return_t r = Senden(this, c->unsigned64BitValue(), line, sizeof line);
+    os_log(OS_LOG_DEFAULT, "MaxWriteProbe: 3b ERGEBNIS %{public}s", line);
+    OSDictionary *res = OSDictionary::withCapacity(1);
+    OSString *s = OSString::withCString(line);
+    if (res && s) { res->setObject("ProbeResult", s); SetProperties(res, SUPERDISPATCH); }
+    OSSafeReleaseNULL(s);
+    OSSafeReleaseNULL(res);
+    return r == kIOReturnSuccess ? kIOReturnSuccess : r;
 }
