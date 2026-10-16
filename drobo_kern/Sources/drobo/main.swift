@@ -11,6 +11,8 @@ func hilfe() -> Never {
     drobo pruefen [--ohne-katalog]               (Nachpruefung, Volume ausgehaengt, nur lesend)
     drobo wegsichern QUELLE ZIEL                 (Quelle auf der eingehaengten Drobo; Ziel nie darauf)
     drobo tempo [--schreiben]                    (Lesetempo; Schreiben nur rw + Sicherung)
+    drobo sicherungen                           (Liste, neueste zuerst)
+    drobo zurueckspielen NAME [--ausfuehren]    (Probelauf; mit --ausfuehren schreiben, nur ausgehaengt, ueberschreibt alles seit der Sicherung)
     drobo merker | protokoll | tempoverlauf | drobos
     drobo drobo-hinzufuegen UUID NAME [timemachine]
     drobo helfer freigeben|zurueckgeben [--uuid U]      (Diagnose: ruft den Hilfsdienst direkt)
@@ -65,6 +67,16 @@ do {
     case "tempo":
         let r = try kern.tempoTesten(schreiben: flag("--schreiben"))
         print(String(format: "%@: %.1f MB/s (%d Dateien, %llu Byte)", r.art, r.mbProSekunde, r.dateien, r.bytes))
+    case "sicherungen": kern.sicherungen().forEach { print($0) }
+    case "zurueckspielen":
+        guard let n = args.first else { hilfe() }
+        if flag("--ausfuehren") {
+            let r = try kern.zurueckspielen(sicherung: n)
+            print("zurueckgespielt; Pruefung danach: " + (r.ok ? "in Ordnung" : "AUFFAELLIG: " + r.probleme.joined(separator: "; ")))
+        } else {
+            let p = try kern.zurueckspielenProbe(sicherung: n)
+            print(p.text); print("Probelauf, nichts geschrieben. Zum Schreiben: --ausfuehren (alles seit der Sicherung Geschriebene geht verloren)")
+        }
     case "merker":
         let m = kern.ablage.merker(kern.uuid)
         print(String(decoding: try JSONEncoder().encode(m), as: UTF8.self))

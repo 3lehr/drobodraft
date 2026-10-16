@@ -41,22 +41,7 @@ final class HFSLeser {
                 inline: (0..<8).map { Ext(start: be32(b, o + 16 + 8 * $0), anzahl: be32(b, o + 20 + 8 * $0)) }.filter { $0.anzahl > 0 })
     }
 
-    /// Rohgeraete verlangen ausgerichtete Lesezugriffe: auf 4096 erweitern, zurueckschneiden. Kuerzere Rueckgabe = Dateiende.
-    func lies(_ off: UInt64, _ n: Int) throws -> [UInt8] {
-        let start = off - off % 4096
-        let end = (off + UInt64(n) + 4095) / 4096 * 4096
-        var buf = [UInt8](repeating: 0, count: Int(end - start)); var got = 0
-        while got < buf.count {
-            let rest = buf.count - got, fd = self.fd, pos = off_t(start) + off_t(got)
-            let r = buf.withUnsafeMutableBytes { pread(fd, $0.baseAddress! + got, rest, pos) }
-            if r < 0 { throw AppFehler.sicherung("Lesefehler bei \(off): \(String(cString: strerror(errno)))") }
-            if r == 0 { break }
-            got += r
-        }
-        let a = Int(off - start)
-        guard got > a else { return [] }
-        return Array(buf[a..<min(got, a + n)])
-    }
+    func lies(_ off: UInt64, _ n: Int) throws -> [UInt8] { try rohLies(fd, off, n) }
 
     func mapExtents(_ ext: [Ext], _ fileOff: UInt64, _ size: UInt64) -> UInt64? {
         var blk = fileOff / blockSize
@@ -144,4 +129,21 @@ final class HFSLeser {
         }
         throw AppFehler.sicherung("Alternate-VH fehlt (kein H+/HX bei Ende-1024) -- Volumeende nicht bestimmbar")
     }
+}
+
+/// Rohgeraete verlangen ausgerichtete Lesezugriffe: auf 4096 erweitern, zurueckschneiden. Kuerzere Rueckgabe = Dateiende.
+func rohLies(_ fd: Int32, _ off: UInt64, _ n: Int) throws -> [UInt8] {
+    let start = off - off % 4096
+    let end = (off + UInt64(n) + 4095) / 4096 * 4096
+    var buf = [UInt8](repeating: 0, count: Int(end - start)); var got = 0
+    while got < buf.count {
+        let rest = buf.count - got, pos = off_t(start) + off_t(got)
+        let r = buf.withUnsafeMutableBytes { pread(fd, $0.baseAddress! + got, rest, pos) }
+        if r < 0 { throw AppFehler.sicherung("Lesefehler bei \(off): \(String(cString: strerror(errno)))") }
+        if r == 0 { break }
+        got += r
+    }
+    let a = Int(off - start)
+    guard got > a else { return [] }
+    return Array(buf[a..<min(got, a + n)])
 }

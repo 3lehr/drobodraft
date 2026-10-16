@@ -234,4 +234,45 @@ public struct Kern {
         let r = try tempoLesen(ort: e.ort, uuid: uuid, ablage: ablage)
         ablage.protokoll(String(format: "Tempotest lesen: %.1f MB/s", r.mbProSekunde)); return r
     }
+
+    // MARK: Sicherung zurueckspielen (nur ausgehaengt)
+
+    /// Eigene Sicherungen dieser Drobo, neueste zuerst (Ordnernamen).
+    public func sicherungen() -> [String] { eigeneSicherungen(ort: ablage.einstellungen().sicherungOrt, uuid: uuid).reversed() }
+
+    private func restoreZiel(_ name: String) throws -> (Medium, String) {
+        guard let m = finden(uuid: uuid) else { throw Fehler.nichtGefunden(uuid) }
+        if einhaengungen()[m.geraet] != nil { throw AppFehler.sicherung("Das Laufwerk ist eingehaengt. Zuerst aushaengen.") }
+        guard sicherungen().contains(name) else { throw AppFehler.sicherung("Unbekannte Sicherung \(name)") }
+        return (m, ablage.einstellungen().sicherungOrt + "/" + name)
+    }
+
+    /// Probelauf: schreibt nie.
+    public func zurueckspielenProbe(sicherung name: String) throws -> RestoreProbe {
+        let (m, d) = try restoreZiel(name)
+        if let h = helfer("freigeben", uuid) { meldung("Hilfsdienst: \(h)") }
+        defer { _ = helfer("zurueckgeben", uuid) }
+        let p = try DroboKern.zurueckspielenProbe(geraet: m.rohgeraet, sicherung: d, uuid: uuid)
+        ablage.protokoll("Probelauf Zurueckspielen \(name): \(p.gesamt) abweichende Bloecke")
+        return p
+    }
+
+    /// Schreibt die Sicherung zurueck. Aufrufer holt vorher die ausdrueckliche zweite Bestaetigung.
+    @discardableResult
+    public func zurueckspielen(sicherung name: String, schreibgroesse: Int = standardSchreiben) throws -> PruefErgebnis {
+        let (m, d) = try restoreZiel(name)
+        if let h = helfer("freigeben", uuid) { meldung("Hilfsdienst: \(h)") }
+        defer { _ = helfer("zurueckgeben", uuid) }
+        ablage.protokoll("Zurueckspielen \(name) beginnt")
+        let fehler = try DroboKern.zurueckspielenAusfuehren(geraet: m.rohgeraet, sicherung: d, uuid: uuid, schreibgroesse: schreibgroesse, erzwinge: true)
+        if !fehler.isEmpty {
+            ablage.merkerAendern(uuid) { $0.offenePruefung = "Zurueckspielen nicht sauber: " + fehler.joined(separator: "; ") }
+            ablage.protokoll("Zurueckspielen \(name): FEHLER " + fehler.joined(separator: "; "))
+            throw AppFehler.sicherung("Nach dem Zurueckschreiben weichen Bereiche ab: " + fehler.joined(separator: "; "))
+        }
+        let r = try nachpruefung(pfad: m.rohgeraet, partitionsgroesse: m.groesse)
+        ablage.merkerAendern(uuid) { $0.rwAktiv = false; $0.letztePruefung = r; $0.offenePruefung = r.ok ? nil : "Pruefung nach dem Zurueckspielen nicht bestanden" }
+        ablage.protokoll("Zurueckgespielt \(name); Pruefung: " + (r.ok ? "in Ordnung" : "NICHT in Ordnung: " + r.probleme.joined(separator: "; ")))
+        return r
+    }
 }
