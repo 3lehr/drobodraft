@@ -5,7 +5,7 @@ set -u
 S=$(date "+%Y-%m-%d %H:%M:%S")
 echo "warte auf Dext-Start nach $S"
 for i in $(seq 1 300); do
-  /usr/bin/log show --start "$S" --info --debug --predicate 'eventMessage CONTAINS "MaxWriteProbe: 3b Timer gesetzt"' --style compact 2>/dev/null | grep -q "Timer gesetzt" && break; sleep 1
+  /usr/bin/log show --start "$S" --info --debug --predicate 'process == "kernel" AND eventMessage CONTAINS "MaxWriteProbe: 3b Timer gesetzt"' --style compact 2>/dev/null | grep -q "Timer gesetzt" && break; sleep 1
 done
 T0=$(date +%s); echo "Dext gestartet (T0=$T0)"
 ( for i in $(seq 1 120); do echo "$(date +%T) $(mount | grep -E 'disk6s[23]' | awk '{print $3}' | tr '\n' ' ')"; sleep 1; done ) > /tmp/mount_samples_3b.txt &
@@ -17,6 +17,6 @@ sleep 90
 echo "mount nach Messung:"; mount | grep disk6
 diskutil list disk6
 echo ---LOG---
-/usr/bin/log show --start "$S" --info --debug --predicate 'eventMessage CONTAINS "MaxWriteProbe"' --style compact | grep -v "log\["
+/usr/bin/log show --start "$S" --info --debug --predicate 'process == "kernel" AND eventMessage CONTAINS "MaxWriteProbe"' --style compact 
 echo ---MOUNT-SAMPLES (Wechsel)---
 uniq -f1 /tmp/mount_samples_3b.txt
