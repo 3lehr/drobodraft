@@ -18,6 +18,7 @@ func hilfe() -> Never {
     drobo speed [--size GB] [--cycles N] [--write]   read speed (large existing files); with --write a write+read cycle in .drobodraft_speedtest, only when mounted writable with a backup and 2x free space
     drobo hardware                             bays, capacity and status as reported by the Drobo (needs the optional status driver)
     drobo access                               check without effect whether the helper may reach the device
+    drobo iscsi-probe [--write-test]           check a real iSCSI target (DroboPro): host from DROBO_ISCSI_HOST; reads only; --write-test writes one sector on LUN 1 only if LUN 1 is empty
     drobo state | log | speed-history | drives
     drobo detect                               list connected Drobos (SCSI vendor "Drobo") that are not set up yet
     drobo add-drive UUID NAME [timemachine]
@@ -46,7 +47,7 @@ func meldung(_ s: String) { FileHandle.standardError.write(Data(s.utf8)) }
 do {
     var kern = Kern()
     if let u = opt("--uuid") { kern.uuid = u.uppercased() }
-    let ohneDrobo: Set<String> = ["detect", "add-drive", "drives", "uninstall", "backup-location", "log", "speed-history"]
+    let ohneDrobo: Set<String> = ["detect", "add-drive", "drives", "uninstall", "backup-location", "log", "speed-history", "iscsi-probe"]
     if kern.uuid.isEmpty && !ohneDrobo.contains(cmd) { throw Fehler.eingabe("No Drobo set up. Run 'drobo detect', then 'drobo add-drive UUID NAME' (or pass --uuid / set DROBO_UUID).") }
     switch cmd {
     case "status":
@@ -131,6 +132,9 @@ do {
         guard let a = args.first, a == "grant" || a == "release" else { hilfe() }
         if let f = helferAufruf(a == "grant" ? "freigeben" : "zurueckgeben", uuid: kern.uuid) { throw Fehler.helfer(f) }
         print("\(a) ok")
+    case "iscsi-probe":
+        guard let h = ProcessInfo.processInfo.environment["DROBO_ISCSI_HOST"], !h.isEmpty else { throw Fehler.eingabe("set DROBO_ISCSI_HOST to the target's address") }
+        print(try iscsiSonde(host: h, schreibtest: flag("--write-test")))
     case "uninstall":
         print("""
         To remove DroboDraft run: bash fskit_probe/tools/uninstall.sh   (add --data to delete settings, log and the module's permission list)
