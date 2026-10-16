@@ -1,4 +1,3 @@
-import DiskArbitration
 import Foundation
 import IOKit
 
@@ -129,12 +128,11 @@ public func decodiereDroboStatus(_ d: [String: Any]) -> DroboStatus? {
                        firmwareBuild: build, protokoll: protokoll, schaechte: schaechte, kapazitaet: kap, statusBits: bits, relayout: relayout, meldungen: meld, schwere: schwere, unbelegt: unb)
 }
 
-/// Liest "DroboStatus" des Dext-Dienstes, der zum Medium (Volume-UUID) gehoert: IORegistry (Service-Ebene) vom Medium aufwaerts. nil = kein Dext/keine Daten.
-public func liesDroboStatus(uuid: String) -> DroboStatus? {
-    guard let m = finden(uuid: uuid), let sess = DASessionCreate(kCFAllocatorDefault), let disk = DADiskCreateFromBSDName(kCFAllocatorDefault, sess, m.bsd) else { return nil }
-    let media = DADiskCopyIOMedia(disk)
-    guard media != IO_OBJECT_NULL else { return nil }
-    var cur = media
+/// Liest "DroboStatus" des Dext-Dienstes oberhalb des Blockgeraets `bsd` (z. B. "disk6s2"): IORegistry (Service-Ebene) vom Medium aufwaerts.
+/// Nur IOKit, kein DiskArbitration: das sandboxed FSKit-Modul nutzt denselben Weg. nil = kein Dext/keine Daten.
+public func liesDroboStatus(bsd: String) -> DroboStatus? {
+    var cur = IOServiceGetMatchingService(kIOMainPortDefault, IOBSDNameMatching(kIOMainPortDefault, 0, bsd))
+    guard cur != IO_OBJECT_NULL else { return nil }
     defer { IOObjectRelease(cur) }
     for _ in 0..<12 {
         if let p = IORegistryEntryCreateCFProperty(cur, "DroboStatus" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? [String: Any] { return decodiereDroboStatus(p) }

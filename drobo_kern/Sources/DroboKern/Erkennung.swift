@@ -30,3 +30,6 @@ public func erkenneDrobos(vendor: String = "Drobo") -> [ErkannteDrobo] {
     }
     return out
 }
+
+/// Status der Drobo zum Volume (Volume-UUID), siehe liesDroboStatus(bsd:).
+public func liesDroboStatus(uuid: String) -> DroboStatus? { finden(uuid: uuid).flatMap { liesDroboStatus(bsd: $0.bsd) } }
