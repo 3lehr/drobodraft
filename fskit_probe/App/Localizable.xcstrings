@@ -161,6 +161,22 @@
         }
       }
     },
+    "%lld GB": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld GB"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld GB"
+          }
+        }
+      }
+    },
     "%lld MB pro Sekunde.": {
       "localizations": {
         "de": {
@@ -173,6 +189,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld MB per second."
+          }
+        }
+      }
+    },
+    "%lld Megabyte pro Sekunde": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld Megabyte pro Sekunde"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld megabytes per second"
+          }
+        }
+      }
+    },
+    "%lld fps": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld fps"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld fps"
           }
         }
       }
@@ -465,6 +513,22 @@
         }
       }
     },
+    "Auflösung": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auflösung"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resolution"
+          }
+        }
+      }
+    },
     "Aushängen": {
       "localizations": {
         "de": {
@@ -545,6 +609,38 @@
         }
       }
     },
+    "Bilder pro Sekunde": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bilder pro Sekunde"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "frames per second"
+          }
+        }
+      }
+    },
+    "Bildrate": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bildrate"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frame rate"
+          }
+        }
+      }
+    },
     "Das Laufwerk ist ausgehängt. Die Prüfung nach dem Schreiben hat Auffälligkeiten gefunden: ": {
       "localizations": {
         "de": {
@@ -557,6 +653,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "The drive is unmounted. The check after writing found issues: "
+          }
+        }
+      }
+    },
+    "Datenraten laut %@. Zielwerte; echte Dateien weichen etwas ab (variable Bitrate). Andere Formate (Blackmagic RAW, H.264, H.265) fehlen, weil es dafür keine belegbare Herstellertabelle gibt.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Datenraten laut %@. Zielwerte; echte Dateien weichen etwas ab (variable Bitrate). Andere Formate (Blackmagic RAW, H.264, H.265) fehlen, weil es dafür keine belegbare Herstellertabelle gibt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Data rates from %@. Target values; real files differ slightly (variable bit rate). Other formats (Blackmagic RAW, H.264, H.265) are missing because there is no citable manufacturer table for them."
           }
         }
       }
@@ -1009,6 +1121,22 @@
         }
       }
     },
+    "Durchläufe: %lld": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durchläufe: %lld"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Runs: %lld"
+          }
+        }
+      }
+    },
     "Eingehängt, nur lesen": {
       "localizations": {
         "de": {
@@ -1265,6 +1393,22 @@
         }
       }
     },
+    "Formattabelle": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Formattabelle"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Format table"
+          }
+        }
+      }
+    },
     "Freigabe": {
       "localizations": {
         "de": {
@@ -1389,6 +1533,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "There is nothing to configure here for a Time Machine destination."
+          }
+        }
+      }
+    },
+    "Gemessen mit": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gemessen mit"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Measured by"
+          }
+        }
+      }
+    },
+    "Grundlage: %lld MB/s (%@)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grundlage: %lld MB/s (%@)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Basis: %lld MB/s (%@)"
           }
         }
       }
@@ -1633,6 +1809,22 @@
         }
       }
     },
+    "Laufwerk": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laufwerk"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drive"
+          }
+        }
+      }
+    },
     "Laufwerke": {
       "localizations": {
         "de": {
@@ -1645,6 +1837,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Drives"
+          }
+        }
+      }
+    },
+    "Lesen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lesen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read"
           }
         }
       }
@@ -1697,6 +1905,22 @@
         }
       }
     },
+    "Liest …": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liest …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reading …"
+          }
+        }
+      }
+    },
     "Läuft ...": {
       "localizations": {
         "de": {
@@ -1709,6 +1933,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "Running ..."
+          }
+        }
+      }
+    },
+    "Messung": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Messung"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Measurement"
+          }
+        }
+      }
+    },
+    "Messung starten": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Messung starten"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start measuring"
           }
         }
       }
@@ -1873,6 +2129,38 @@
         }
       }
     },
+    "Noch keine Messung dieser Art. Erst messen, dann zeigt die Tabelle, welche Videoformate die Drobo trägt.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch keine Messung dieser Art. Erst messen, dann zeigt die Tabelle, welche Videoformate die Drobo trägt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No measurement of this kind yet. Measure first; then the table shows which video formats the Drobo can sustain."
+          }
+        }
+      }
+    },
+    "Noch keine Messung.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch keine Messung."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No measurement yet."
+          }
+        }
+      }
+    },
     "Noch keine Sicherung.": {
       "localizations": {
         "de": {
@@ -1917,6 +2205,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Read-only."
+          }
+        }
+      }
+    },
+    "Nur lesen: gemessen wird das Lesen großer vorhandener Dateien auf der Drobo. Es wird nichts geschrieben. Für Schreibtempo zum Schreiben einhängen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur lesen: gemessen wird das Lesen großer vorhandener Dateien auf der Drobo. Es wird nichts geschrieben. Für Schreibtempo zum Schreiben einhängen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read only: the test reads large existing files on the Drobo. Nothing is written. To measure write speed, mount for writing."
           }
         }
       }
@@ -2033,6 +2337,38 @@
         }
       }
     },
+    "Reicht die Drobo für Video?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reicht die Drobo für Video?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Is the Drobo fast enough for video?"
+          }
+        }
+      }
+    },
+    "Reicht es?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reicht es?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Is it enough?"
+          }
+        }
+      }
+    },
     "Rolle von %@": {
       "localizations": {
         "de": {
@@ -2109,6 +2445,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "Writing is locked until a backup location is chosen: a folder on a drive other than the startup volume and the Drobo, with a few GB free."
+          }
+        }
+      }
+    },
+    "Schreiben: eine Testdatei im Ordner .drobodraft_speedtest wird geschrieben, wieder gelesen und danach gelöscht. Freier Platz von mindestens der doppelten Testgröße ist nötig; die Metadaten-Sicherung muss vorliegen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schreiben: eine Testdatei im Ordner .drobodraft_speedtest wird geschrieben, wieder gelesen und danach gelöscht. Freier Platz von mindestens der doppelten Testgröße ist nötig; die Metadaten-Sicherung muss vorliegen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Writing: a test file in the folder .drobodraft_speedtest is written, read back and then deleted. Free space of at least twice the test size is required; the metadata backup must exist."
+          }
+        }
+      }
+    },
+    "Schreibt …": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schreibt …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Writing …"
           }
         }
       }
@@ -2497,6 +2865,22 @@
         }
       }
     },
+    "Stopp": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stopp"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop"
+          }
+        }
+      }
+    },
     "Systemeinstellungen öffnen": {
       "localizations": {
         "de": {
@@ -2557,6 +2941,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Speed test"
+          }
+        }
+      }
+    },
+    "Testgröße": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Testgröße"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Test size"
           }
         }
       }
@@ -2653,6 +3053,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hidden (only via \"Open in Finder\")"
+          }
+        }
+      }
+    },
+    "Verlauf": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verlauf"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "History"
           }
         }
       }
@@ -2817,6 +3233,22 @@
         }
       }
     },
+    "Wie schnell?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wie schnell?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How fast?"
+          }
+        }
+      }
+    },
     "Wählen": {
       "localizations": {
         "de": {
@@ -2909,6 +3341,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Open the app to mount."
+          }
+        }
+      }
+    },
+    "Zum Messen die Drobo einhängen (Ansicht Übersicht).": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zum Messen die Drobo einhängen (Ansicht Übersicht)."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mount the Drobo to measure (Overview view)."
           }
         }
       }
@@ -3121,6 +3569,22 @@
         }
       }
     },
+    "ja": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ja"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "yes"
+          }
+        }
+      }
+    },
     "lesen": {
       "localizations": {
         "de": {
@@ -3133,6 +3597,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "read"
+          }
+        }
+      }
+    },
+    "nein": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nein"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "no"
           }
         }
       }
@@ -3233,6 +3713,22 @@
         }
       }
     },
+    "noch nicht gemessen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "noch nicht gemessen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "not measured yet"
+          }
+        }
+      }
+    },
     "noch nicht gewählt": {
       "localizations": {
         "de": {
@@ -3261,6 +3757,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "read-only"
+          }
+        }
+      }
+    },
+    "reicht": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "reicht"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "enough"
+          }
+        }
+      }
+    },
+    "reicht nicht": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "reicht nicht"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "not enough"
           }
         }
       }

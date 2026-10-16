@@ -3,9 +3,9 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 enum Abschnitt: String, CaseIterable, Identifiable {
-    case uebersicht = "Übersicht", volume = "Volume", protokoll = "Protokoll", laufwerke = "Laufwerke"
+    case uebersicht = "Übersicht", volume = "Volume", tempo = "Tempo", protokoll = "Protokoll", laufwerke = "Laufwerke"
     var id: String { rawValue }
-    var symbol: String { switch self { case .uebersicht: return "gauge.with.dots.needle.33percent"; case .volume: return "externaldrive"; case .protokoll: return "list.bullet.rectangle"; case .laufwerke: return "internaldrive" } }
+    var symbol: String { switch self { case .uebersicht: return "gauge.with.dots.needle.33percent"; case .volume: return "externaldrive"; case .tempo: return "speedometer"; case .protokoll: return "list.bullet.rectangle"; case .laufwerke: return "internaldrive" } }
 }
 
 struct HauptAnsicht: View {
@@ -54,6 +54,7 @@ struct HauptAnsicht: View {
                 switch abschnitt ?? .uebersicht {
                 case .uebersicht: UebersichtAnsicht(rwFrage: $rwFrage, anleitung: $anleitung)
                 case .volume: VolumeAnsicht(rwFrage: $rwFrage)
+                case .tempo: TempoAnsicht()
                 case .protokoll: ProtokollAnsicht()
                 case .laufwerke: LaufwerkeAnsicht()
                 }
@@ -224,21 +225,6 @@ struct VolumeAnsicht: View {
                         Button { m.wegsichern(quelle: quelle, ziel: ziel) } label: { Label("Wegsichern", systemImage: "arrow.down.doc") }
                             .disabled(quelle.isEmpty || ziel.isEmpty || !a.eingehaengt || m.arbeit != nil)
                         if !m.wegsichernBericht.isEmpty { Text(m.wegsichernBericht).font(.callout).textSelection(.enabled) }
-                    }
-                    Karte(titel: "Tempo") {
-                        HStack {
-                            Button { m.tempoTesten(schreiben: false) } label: { Label("Lesetempo messen", systemImage: "speedometer") }.disabled(!a.eingehaengt || m.arbeit != nil).keyboardShortcut("t", modifiers: .command)
-                            Button { m.tempoTesten(schreiben: true) } label: { Label("Schreibtempo messen", systemImage: "speedometer") }.disabled(a.nurlesen || !a.eingehaengt || m.arbeit != nil)
-                        }
-                        Text("Lesen: große Dateien auf der Drobo, nur lesend. Schreiben: nur im eigenen Testordner, nur beim Einhängen zum Schreiben mit vorhandener Sicherung.").font(.callout).foregroundStyle(.secondary)
-                        ForEach(Array(m.tempo.filter { $0.uuid == a.eintrag.uuid }.suffix(8).reversed().enumerated()), id: \.offset) { _, t in
-                            HStack {
-                                Text(zeitLesbar(t.zeit)).font(.caption.monospacedDigit())
-                                Text(t.art == "lesen" ? "lesen" : "schreiben").font(.caption)
-                                ProgressView(value: min(t.mbProSekunde, 250), total: 250).accessibilityHidden(true)
-                                Text(String(format: "%.0f MB/s", t.mbProSekunde)).font(.callout.monospacedDigit())
-                            }.accessibilityElement(children: .combine)
-                        }
                     }
                 }.padding(20)
                 .onAppear { if m.restoreAuswahl.isEmpty || !a.sicherungen.contains(m.restoreAuswahl) { m.restoreAuswahl = a.sicherungen.first ?? "" } }

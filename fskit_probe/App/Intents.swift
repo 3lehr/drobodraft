@@ -58,7 +58,8 @@ struct DroboTempoIntent: AppIntent {
     static var title: LocalizedStringResource = "DroboDraft: Lesetempo messen"
     static var description = IntentDescription("Misst die Lesegeschwindigkeit an der eingehängten Drobo. Nur lesend.")
     func perform() async throws -> some IntentResult & ReturnsValue<Double> & ProvidesDialog {
-        let k = try kurzKern(); let r = try kurz { try k.tempoTesten() }
+        let k = try kurzKern(); let z = try kurz { try k.tempoLauf(schreiben: false, groesse: 1_000_000_000) }
+        guard let r = z.first?.lesen else { throw KurzbefehlFehler.fehler("Nichts gemessen.") }
         return .result(value: r.mbProSekunde, dialog: "\(Int(r.mbProSekunde)) MB pro Sekunde.")
     }
 }

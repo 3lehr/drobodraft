@@ -11,7 +11,7 @@ import Foundation
 // NICHT enthalten, weil nicht belegbar: Blackmagic RAW (Blackmagic veroeffentlicht die Raten nur als Bild/Rechner auf der Produktseite,
 //   Stand 2026-10-16; Foren-/Blogwerte widersprechen sich), H.264/H.265 (Rate haengt vom Encoder ab, keine Herstellertabelle).
 
-public let proResQuelle = "Apple ProRes White Paper, April 2022 (028-00500-A), Anhang Target Data Rates"
+public let proResQuelle = "Apple ProRes White Paper, April 2022 (028-00500-A), appendix Target Data Rates"
 
 /// Spaltenreihenfolge der Zahlen in `ProResAufloesung.raten`.
 public let proResCodecs = ["ProRes 422 Proxy", "ProRes 422 LT", "ProRes 422", "ProRes 422 HQ", "ProRes 4444", "ProRes 4444 XQ"]

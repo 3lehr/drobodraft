@@ -41,6 +41,14 @@ func zeitLesbar(_ iso: String) -> String {
     return d.formatted(date: .abbreviated, time: .shortened)
 }
 
+/// Abbruchzeichen zwischen Oberfläche und Messfaden.
+final class StoppZeichen: @unchecked Sendable {
+    private let sperre = NSLock(); private var wert = false
+    var gesetzt: Bool { sperre.lock(); defer { sperre.unlock() }; return wert }
+    func setzen() { sperre.lock(); wert = true; sperre.unlock() }
+    func zuruecksetzen() { sperre.lock(); wert = false; sperre.unlock() }
+}
+
 struct Meldung: Identifiable { let id = UUID(); var titel: String; var text: String }
 
 @MainActor
@@ -56,6 +64,17 @@ final class DroboModell: ObservableObject {
     @Published var modul = ModulStatus(installiert: false, freigeschaltet: false)
     @Published var arbeit: String?
     @Published var meldung: Meldung?
+    @Published var tempoUUID = ""
+    @Published var tempoGB = 1
+    @Published var tempoLaeuft = false
+    @Published var tempoPhase = ""              // "" | schreiben | lesen
+    @Published var tempoAnteil = 0.0
+    @Published var tempoZyklen = 0
+    @Published var tempoFehler: String?
+    @Published var tempoSchreibenLive: Double?
+    @Published var tempoLesenLive: Double?
+    @Published var tempoSpitze = 0.0
+    let tempoStopp = StoppZeichen()
     @Published var wegsichernBericht = ""
     @Published var restoreAuswahl = ""
     @Published var restoreProbeText = ""
@@ -238,12 +257,55 @@ final class DroboModell: ObservableObject {
         }
     }
 
-    func tempoTesten(schreiben: Bool) {
-        let k = kern(auswahl)
-        ausfuehren(schreiben ? "Schreibtempo messen" : "Lesetempo messen") {
-            let r = try k.tempoTesten(schreiben: schreiben)
-            return String(format: "%.0f MB/s", r.mbProSekunde)
+    // MARK: Tempo (Zyklen bis Stopp)
+
+    /// Laufwerk der Tempo-Ansicht: gewählte, sonst die in der Seitenleiste gewählte Drobo.
+    var tempoZiel: DroboAnsicht? { drobos[tempoUUID] ?? aktuell }
+    var tempoStartbar: Bool { arbeit == nil && tempoZiel.map { $0.eingehaengt && $0.eintrag.rolle == .arbeitsvolume } == true }
+    func tempoZielWaehlen() { if drobos[tempoUUID] == nil || tempoUUID.isEmpty { tempoUUID = auswahl } }
+
+    func tempoStoppen() { tempoStopp.setzen() }
+
+    func tempoStarten() {
+        guard tempoStartbar, let z = tempoZiel else { return }
+        let k = kern(z.eintrag.uuid); let schreiben = !z.nurlesen
+        let groesse = UInt64(tempoGB) * 1_000_000_000; let stopp = tempoStopp
+        stopp.zuruecksetzen()
+        tempoFehler = nil; tempoLaeuft = true; tempoZyklen = 0; tempoPhase = ""; tempoAnteil = 0
+        tempoSchreibenLive = nil; tempoLesenLive = nil; tempoSpitze = 0; arbeit = "Tempotest"
+        Task.detached {
+            var fehler: String?
+            do {
+                try k.tempoLauf(schreiben: schreiben, groesse: groesse, zyklen: nil, fortschritt: { f in
+                    Task { @MainActor in self.tempoFortschritt(f) }
+                }, zyklus: { z in
+                    Task { @MainActor in
+                        self.tempoZyklen += 1
+                        if let w = z.schreiben { self.tempoSchreibenLive = w.mbProSekunde }
+                        if let r = z.lesen { self.tempoLesenLive = r.mbProSekunde }
+                        self.tempo = self.ablage.tempoVerlauf()
+                    }
+                }, abbrechen: { stopp.gesetzt })
+            } catch { fehler = Self.fehlerText(error) }
+            await MainActor.run {
+                self.tempoLaeuft = false; self.tempoPhase = ""; self.arbeit = nil; self.tempoFehler = fehler
+                if let f = fehler { self.ablage.protokoll("Tempotest: \(f)") }
+                self.tempo = self.ablage.tempoVerlauf(); self.aktualisieren()
+            }
         }
+    }
+
+    private func tempoFortschritt(_ f: TempoFortschritt) {
+        guard tempoLaeuft else { return }
+        tempoPhase = f.art; tempoAnteil = f.von > 0 ? Double(f.bytes) / Double(f.von) : 0
+        if f.art == "schreiben" { tempoSchreibenLive = f.mbProSekunde } else { tempoLesenLive = f.mbProSekunde }
+        tempoSpitze = max(tempoSpitze, f.mbProSekunde, tempo.filter { $0.uuid == tempoUUID }.map { $0.mbProSekunde }.max() ?? 0)
+    }
+
+    /// Skala der Rundinstrumente: nächste "runde" Zahl über der Spitze, wächst nur.
+    var tempoSkala: Double {
+        let h = max(tempoSpitze, tempoSchreibenLive ?? 0, tempoLesenLive ?? 0, tempo.filter { $0.uuid == tempoZiel?.eintrag.uuid }.map { $0.mbProSekunde }.max() ?? 0)
+        return [100.0, 200, 300, 400, 500, 750, 1000, 1500, 2000, 3000, 5000].first { $0 >= h } ?? (h * 1.1).rounded(.up)
     }
 
     func pruefen() {
