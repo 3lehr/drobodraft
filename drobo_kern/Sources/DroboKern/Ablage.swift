@@ -48,7 +48,14 @@ public struct PruefErgebnis: Codable, Equatable {
 }
 
 /// Dauerhafter Zustand je Volume: ueberlebt Neustart der App (sicheres Abziehen).
+public struct Belegung: Codable, Equatable {
+    public var gesamt: UInt64; public var belegt: UInt64; public var zeit: String
+    public init(gesamt: UInt64, belegt: UInt64, zeit: String) { self.gesamt = gesamt; self.belegt = belegt; self.zeit = zeit }
+}
+
 public struct Merker: Codable, Equatable {
+    /// Aus dem Volume-Header gelesen (auch ohne Mount); Stand = zeit.
+    public var belegung: Belegung?
     public var rwAktiv = false
     public var bsd = ""
     public var ort = ""

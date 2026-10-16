@@ -187,3 +187,22 @@ extension HelferTests {
         XCTAssertTrue(FileManager.default.fileExists(atPath: home + "/Volumes/Drobo"))
     }
 }
+
+extension HelferTests {
+    func testZugriffPruefenWirkungslosAmBisherigenEigentuemer() throws {
+        try liste(gut)
+        var l = logik()
+        l.datei = { _ in (501, 5) }
+        l.eigner = { p, u, g in self.calls.append("chown \(p) \(u):\(g)"); return 0 }
+        try l.zugriffPruefen(U, uid: 501)
+        XCTAssertEqual(calls, ["chown /dev/disk9s2 501:5", "chown /dev/rdisk9s2 501:5"], "nur identischer Eigentuemer, nie ein anderer")
+        // chown verweigert (Festplattenvollzugriff fehlt) -> Fehler
+        l.eigner = { _, _, _ in errno = EPERM; return -1 }
+        XCTAssertThrowsError(try l.zugriffPruefen(U, uid: 501)) { XCTAssertTrue("\($0)".contains("chown"), "\($0)") }
+        // fremde UUID / kein Knoten: abgelehnt, ohne chown
+        calls = []; l.eigner = { p, u, g in self.calls.append("chown"); return 0 }
+        XCTAssertThrowsError(try l.zugriffPruefen("22222222-2222-2222-2222-222222222222", uid: 501))
+        XCTAssertThrowsError(try logik(bsd: nil).zugriffPruefen(U, uid: 501))
+        l.datei = { _ in nil }; XCTAssertThrowsError(try l.zugriffPruefen(U, uid: 501)); XCTAssertEqual(calls, [])
+    }
+}

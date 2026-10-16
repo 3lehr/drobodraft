@@ -47,3 +47,9 @@ public func helferOrdnerEntfernen(uuid: String) -> String? {
     let r = helferRPC { p, k in p.ordnerEntfernen(uuid, reply: { k([$0]) }) }
     return r.fehler ?? r.antwort.first ?? nil
 }
+
+/// nil = der Dienst darf zugreifen (wirkungslose Probe), sonst Fehlertext.
+public func helferZugriffPruefen(uuid: String) -> String? {
+    let r = helferRPC { p, k in p.zugriffPruefen(uuid, reply: { k([$0]) }) }
+    return r.fehler ?? r.antwort.first ?? nil
+}

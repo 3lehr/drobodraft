@@ -319,3 +319,18 @@ extension KernTests {
         XCTAssertNil(einhaengungen()["/dev/" + dev.dropFirst(5)])
     }
 }
+
+extension KernTests {
+    func testBelegungAusHeaderGleichDiskutil() throws {
+        let f = try abbild("b", journal: false, marker: false)
+        let b = try belegungAusHeader(pfad: f)
+        // Orakel: statfs des Kernel-Mounts (unabhaengig vom Kern)
+        let dev = try anhaengen(f); let mp = "\(dir)/bm"; try FileManager.default.createDirectory(atPath: mp, withIntermediateDirectories: true)
+        XCTAssertEqual(ausfuehren("/sbin/mount", ["-t", "hfs", "-r", dev, mp]).0, 0); orte.append(mp)
+        var st = statfs(); XCTAssertEqual(statfs(mp, &st), 0)
+        XCTAssertEqual(b.gesamt, UInt64(st.f_blocks) * UInt64(st.f_bsize), "gesamt")
+        XCTAssertEqual(b.gesamt - b.belegt, UInt64(st.f_bfree) * UInt64(st.f_bsize), "frei")
+        XCTAssertGreaterThan(b.belegt, 0); XCTAssertLessThan(b.belegt, b.gesamt)
+        XCTAssertThrowsError(try belegungAusHeader(pfad: "\(dir)/leer-nicht-da"))
+    }
+}

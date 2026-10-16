@@ -64,3 +64,10 @@ public func nachpruefung(pfad: String, partitionsgroesse: UInt64? = nil, tief: B
     r.ok = r.probleme.isEmpty
     return r
 }
+
+/// Gesamt/Belegt aus dem primaeren Volume-Header (nur lesend).
+public func belegungAusHeader(pfad: String) throws -> Belegung {
+    let v = try HFSLeser(pfad: pfad)
+    let gesamt = UInt64(v.totalBlocks) * v.blockSize
+    return Belegung(gesamt: gesamt, belegt: gesamt - UInt64(v.freeBlocks) * v.blockSize, zeit: jetztText())
+}

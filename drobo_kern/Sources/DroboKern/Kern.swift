@@ -80,6 +80,7 @@ public struct Kern {
     public var home: [String]
     public var ablage: Datenablage = Datenablage()
     /// Einhaengeort "/Volumes" = Ordner /Volumes/<Volumename> legt der Hilfsdienst an (Finder-Seitenleiste) und entfernt ihn beim Aushaengen.
+    public var zugriffPruefenRPC: (String) -> String? = { helferZugriffPruefen(uuid: $0) }
     public var ordnerAnlegen: (String) throws -> String = { try helferOrdnerAnlegen(uuid: $0) }
     public var ordnerEntfernen: (String) -> String? = { helferOrdnerEntfernen(uuid: $0) }
     /// Messung/Test: Partitionsgroesse fuer die Volumeende-Bestimmung bei Geraeten kommt aus DiskArbitration.
@@ -233,6 +234,20 @@ public struct Kern {
         }
         let r = try tempoLesen(ort: e.ort, uuid: uuid, ablage: ablage)
         ablage.protokoll(String(format: "Tempotest lesen: %.1f MB/s", r.mbProSekunde)); return r
+    }
+
+    /// Festplattenzugriff des Hilfsdienstes (wirkungslose Probe). nil = in Ordnung.
+    public func zugriffPruefen() -> String? { zugriffPruefenRPC(uuid) }
+
+    /// Belegung aus dem Volume-Header (nur lesend, Volume darf ausgehaengt sein; Geraetezugang ueber den Dienst). Wird im Merker abgelegt.
+    @discardableResult
+    public func belegungLesen() throws -> Belegung {
+        guard let m = finden(uuid: uuid) else { throw Fehler.nichtGefunden(uuid) }
+        if let h = helfer("freigeben", uuid) { meldung("Hilfsdienst: \(h)") }
+        defer { _ = helfer("zurueckgeben", uuid) }
+        let r = try belegungAusHeader(pfad: m.rohgeraet)
+        ablage.merkerAendern(uuid) { $0.belegung = r }
+        return r
     }
 
     // MARK: Sicherung zurueckspielen (nur ausgehaengt)

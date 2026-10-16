@@ -19,6 +19,8 @@ public let helferAnforderung = "anchor apple generic and certificate leaf[subjec
     func ordnerAnlegen(_ volumeUUID: String, reply: @escaping (String?, String?) -> Void)
     /// Entfernt genau diesen Ordner wieder (nur leer, nur Ordner des Aufrufers, nie ein Einhaengepunkt).
     func ordnerEntfernen(_ volumeUUID: String, reply: @escaping (String?) -> Void)
+    /// Prueft ohne Wirkung, ob der Dienst die Geraeteknoten dieser UUID aendern duerfte (chown auf den bisherigen Eigentuemer). nil = ja, sonst Fehlertext.
+    func zugriffPruefen(_ volumeUUID: String, reply: @escaping (String?) -> Void)
 }
 
 public struct HelferFehler: Error, CustomStringConvertible, Equatable {
@@ -120,6 +122,15 @@ public struct HelferLogik {
         guard let s = lstatDatei(p) else { return }
         guard s.st_mode & S_IFMT == S_IFDIR, s.st_uid == uid, let b = lstatDatei(volumesBasis), s.st_dev == b.st_dev else { throw HelferFehler("\(p) ist kein eigener Ordner oder ein Einhaengepunkt -- nicht entfernt") }
         if rmdir(p) != 0 { throw HelferFehler("rmdir \(p): \(String(cString: strerror(errno)))") }
+    }
+
+    /// Wirkungslose Probe: chown mit dem bisherigen Eigentuemer und der bisherigen Gruppe. Scheitert das (z. B. fehlender Festplattenvollzugriff), scheitert auch freigeben.
+    public func zugriffPruefen(_ uuid: String, uid: uid_t) throws {
+        let m = try pruefen(uuid, uid: uid)
+        for k in [m.geraet, m.rohgeraet] {
+            guard let (u, g) = datei(k) else { throw HelferFehler("\(k) nicht lesbar") }
+            if eigner(k, u, g) != 0 { throw HelferFehler("chown \(k): \(String(cString: strerror(errno)))") }
+        }
     }
 
     public func zurueckgeben(_ uuid: String, uid: uid_t) throws {
