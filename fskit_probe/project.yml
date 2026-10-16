@@ -2,6 +2,7 @@
 name: DroboFSProbe
 options:
   bundleIdPrefix: de.begod
+  developmentLanguage: de
   deploymentTarget:
     macOS: "15.4"
 settings:
@@ -11,6 +12,9 @@ settings:
     SWIFT_VERSION: "5.0"
     CURRENT_PROJECT_VERSION: "2"
     MARKETING_VERSION: "2.0"
+packages:
+  DroboKern:
+    path: ../drobo_kern
 targets:
   DroboFSProbe:
     type: application
@@ -18,10 +22,12 @@ targets:
     info:
       path: App/Info.plist
       properties:
-        NSRemovableVolumesUsageDescription: "Die Drobo-App braucht Zugriff auf das Laufwerk, um es nur lesend einzuhaengen."
+        CFBundleName: Drobo
+        CFBundleDisplayName: Drobo
+        CFBundleLocalizations: [de]
+        NSRemovableVolumesUsageDescription: "Die Drobo-App braucht Zugriff auf das Laufwerk, um es einzuhängen."
     sources:
       - App
-      - ../drobo_kern/Sources/DroboKern/Medium.swift
       - path: Helper/de.begod.drobohelper.plist
         buildPhase:
           copyFiles:
@@ -30,9 +36,15 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: de.begod.drobofsprobe
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        INFOPLIST_KEY_CFBundleName: Drobo
+        INFOPLIST_KEY_CFBundleDisplayName: Drobo
+        SWIFT_EMIT_LOC_STRINGS: YES
         GENERATE_INFOPLIST_FILE: YES
         ENABLE_HARDENED_RUNTIME: YES
     dependencies:
+      - package: DroboKern
+        product: DroboKern
       - sdk: DiskArbitration.framework
       - target: DroboFSProbeModule
         embed: true

@@ -1,0 +1,1266 @@
+{
+  "sourceLanguage": "de",
+  "strings": {
+    "%@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@"
+          }
+        }
+      }
+    },
+    "%@ entfernen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ entfernen"
+          }
+        }
+      }
+    },
+    "%@ von %@ belegt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ von %@ belegt"
+          }
+        }
+      }
+    },
+    "%@ …": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ …"
+          }
+        }
+      }
+    },
+    "%@, %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, %@"
+          }
+        }
+      }
+    },
+    "%@: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: %@"
+          }
+        }
+      }
+    },
+    "%lld MB pro Sekunde.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld MB pro Sekunde."
+          }
+        }
+      }
+    },
+    "1. Systemeinstellungen öffnen, Siri & Spotlight, Spotlight-Datenschutz.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1. Systemeinstellungen öffnen, Siri & Spotlight, Spotlight-Datenschutz."
+          }
+        }
+      }
+    },
+    "2. Mit dem Plus-Knopf den Einhängeort der Drobo hinzufügen (Standard: /private/tmp/drobo_mnt, im Finder über Gehe zu Ordner).": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "2. Mit dem Plus-Knopf den Einhängeort der Drobo hinzufügen (Standard: /private/tmp/drobo_mnt, im Finder über Gehe zu Ordner)."
+          }
+        }
+      }
+    },
+    "3. Für Time Machine: Systemeinstellungen, Allgemein, Time Machine, Optionen, die Drobo zur Liste der ausgeschlossenen Objekte hinzufügen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3. Für Time Machine: Systemeinstellungen, Allgemein, Time Machine, Optionen, die Drobo zur Liste der ausgeschlossenen Objekte hinzufügen."
+          }
+        }
+      }
+    },
+    "Abbrechen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abbrechen"
+          }
+        }
+      }
+    },
+    "Aktualisieren": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktualisieren"
+          }
+        }
+      }
+    },
+    "Anleitung": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anleitung"
+          }
+        }
+      }
+    },
+    "Anleitung …": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anleitung …"
+          }
+        }
+      }
+    },
+    "Ansicht": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ansicht"
+          }
+        }
+      }
+    },
+    "Arbeitsvolume": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arbeitsvolume"
+          }
+        }
+      }
+    },
+    "Art": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Art"
+          }
+        }
+      }
+    },
+    "Aufbewahrte Sicherungen: %lld": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aufbewahrte Sicherungen: %lld"
+          }
+        }
+      }
+    },
+    "Auffälligkeiten": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auffälligkeiten"
+          }
+        }
+      }
+    },
+    "Aushängen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aushängen"
+          }
+        }
+      }
+    },
+    "Beim Schreiben legt Spotlight eigene Dateien auf der Drobo an und liest sie dauernd. Das bremst und verändert das Laufwerk. Der Ausschluss ist freiwillig; die App ändert dazu nichts an den Systemeinstellungen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beim Schreiben legt Spotlight eigene Dateien auf der Drobo an und liest sie dauernd. Das bremst und verändert das Laufwerk. Der Ausschluss ist freiwillig; die App ändert dazu nichts an den Systemeinstellungen."
+          }
+        }
+      }
+    },
+    "Belegt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Belegt"
+          }
+        }
+      }
+    },
+    "Belegung": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Belegung"
+          }
+        }
+      }
+    },
+    "Der Hilfsdienst gibt nur den Gerätezugang genau dieser Drobo frei. Er benötigt einmalig Ihre Freigabe unter Anmeldeobjekte und den Festplattenvollzugriff.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Hilfsdienst gibt nur den Gerätezugang genau dieser Drobo frei. Er benötigt einmalig Ihre Freigabe unter Anmeldeobjekte und den Festplattenvollzugriff."
+          }
+        }
+      }
+    },
+    "Der Ort darf nicht in Ihrem Benutzerordner liegen, sonst indexiert Spotlight das Laufwerk.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Ort darf nicht in Ihrem Benutzerordner liegen, sonst indexiert Spotlight das Laufwerk."
+          }
+        }
+      }
+    },
+    "Die Belegung ist nach dem Einhängen sichtbar.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Belegung ist nach dem Einhängen sichtbar."
+          }
+        }
+      }
+    },
+    "Dieses Laufwerk ist als Time-Machine-Ziel eingetragen. Die App zeigt nur den Anschluss; macOS verwaltet das Laufwerk und die App hängt es nie selbst ein.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Laufwerk ist als Time-Machine-Ziel eingetragen. Die App zeigt nur den Anschluss; macOS verwaltet das Laufwerk und die App hängt es nie selbst ein."
+          }
+        }
+      }
+    },
+    "Drobo": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drobo"
+          }
+        }
+      }
+    },
+    "Drobo ausgehängt, aber die Prüfung hat Auffälligkeiten gefunden. Details im Protokoll.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drobo ausgehängt, aber die Prüfung hat Auffälligkeiten gefunden. Details im Protokoll."
+          }
+        }
+      }
+    },
+    "Drobo ausgehängt.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drobo ausgehängt."
+          }
+        }
+      }
+    },
+    "Drobo aushängen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drobo aushängen"
+          }
+        }
+      }
+    },
+    "Drobo beenden": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drobo beenden"
+          }
+        }
+      }
+    },
+    "Drobo eingehängt (%@).": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drobo eingehängt (%@)."
+          }
+        }
+      }
+    },
+    "Drobo einhängen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drobo einhängen"
+          }
+        }
+      }
+    },
+    "Drobo-Lesetempo messen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drobo-Lesetempo messen"
+          }
+        }
+      }
+    },
+    "Drobo-Status": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drobo-Status"
+          }
+        }
+      }
+    },
+    "Drobos": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drobos"
+          }
+        }
+      }
+    },
+    "Einhängeart": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einhängeart"
+          }
+        }
+      }
+    },
+    "Einhängen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einhängen"
+          }
+        }
+      }
+    },
+    "Einhängen (nur lesen)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einhängen (nur lesen)"
+          }
+        }
+      }
+    },
+    "Einhängeort": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einhängeort"
+          }
+        }
+      }
+    },
+    "Einhängung": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einhängung"
+          }
+        }
+      }
+    },
+    "Einrichten": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einrichten"
+          }
+        }
+      }
+    },
+    "Einstellungen …": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einstellungen …"
+          }
+        }
+      }
+    },
+    "Fenster schließen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fenster schließen"
+          }
+        }
+      }
+    },
+    "Fenster öffnen …": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fenster öffnen …"
+          }
+        }
+      }
+    },
+    "Festplattenzugriff": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Festplattenzugriff"
+          }
+        }
+      }
+    },
+    "Festplattenzugriff prüfen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Festplattenzugriff prüfen"
+          }
+        }
+      }
+    },
+    "Folgt: Schächte, Schutzstufe, Warnungen und der echte Füllstand der Drobo. Dafür muss zuerst der Weg für Statusabfragen gemessen werden.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folgt: Schächte, Schutzstufe, Warnungen und der echte Füllstand der Drobo. Dafür muss zuerst der Weg für Statusabfragen gemessen werden."
+          }
+        }
+      }
+    },
+    "Freigabe": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Freigabe"
+          }
+        }
+      }
+    },
+    "Freiwillig. Solange das aus ist, weist die App beim Schreiben darauf hin.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Freiwillig. Solange das aus ist, weist die App beim Schreiben darauf hin."
+          }
+        }
+      }
+    },
+    "Für ein Time-Machine-Ziel gibt es hier nichts einzustellen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Für ein Time-Machine-Ziel gibt es hier nichts einzustellen."
+          }
+        }
+      }
+    },
+    "Hilfsdienst": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hilfsdienst"
+          }
+        }
+      }
+    },
+    "Hinzufügen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hinzufügen"
+          }
+        }
+      }
+    },
+    "Hängt die Drobo nur lesend oder zum Schreiben ein. Zum Schreiben wird vorher die Verwaltungsdaten-Sicherung angelegt.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hängt die Drobo nur lesend oder zum Schreiben ein. Zum Schreiben wird vorher die Verwaltungsdaten-Sicherung angelegt."
+          }
+        }
+      }
+    },
+    "Ich habe die Drobo bei Spotlight und Time Machine ausgeschlossen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ich habe die Drobo bei Spotlight und Time Machine ausgeschlossen"
+          }
+        }
+      }
+    },
+    "Im Finder öffnen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Im Finder öffnen"
+          }
+        }
+      }
+    },
+    "In Ordnung": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In Ordnung"
+          }
+        }
+      }
+    },
+    "Jetzt prüfen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jetzt prüfen"
+          }
+        }
+      }
+    },
+    "Keine Drobo eingetragen. Einstellungen öffnen mit ⌘,.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Drobo eingetragen. Einstellungen öffnen mit ⌘,."
+          }
+        }
+      }
+    },
+    "Kopiert einen Ordner von der Drobo auf ein anderes Laufwerk. Nur lesend an der Drobo; bereits gesicherte, unveränderte Dateien werden übersprungen, jede Kopie wird per SHA-256 gegen das Original geprüft.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kopiert einen Ordner von der Drobo auf ein anderes Laufwerk. Nur lesend an der Drobo; bereits gesicherte, unveränderte Dateien werden übersprungen, jede Kopie wird per SHA-256 gegen das Original geprüft."
+          }
+        }
+      }
+    },
+    "Laufwerke": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laufwerke"
+          }
+        }
+      }
+    },
+    "Lesen: große Dateien auf der Drobo, nur lesend. Schreiben: nur im eigenen Testordner, nur beim Einhängen zum Schreiben mit vorhandener Sicherung.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lesen: große Dateien auf der Drobo, nur lesend. Schreiben: nur im eigenen Testordner, nur beim Einhängen zum Schreiben mit vorhandener Sicherung."
+          }
+        }
+      }
+    },
+    "Lesetempo messen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lesetempo messen"
+          }
+        }
+      }
+    },
+    "Letzte Prüfung": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letzte Prüfung"
+          }
+        }
+      }
+    },
+    "Misst die Lesegeschwindigkeit an der eingehängten Drobo. Nur lesend.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Misst die Lesegeschwindigkeit an der eingehängten Drobo. Nur lesend."
+          }
+        }
+      }
+    },
+    "Mitteilungen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mitteilungen"
+          }
+        }
+      }
+    },
+    "Mitteilungen bei Anschluss, Trennung und Warnungen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mitteilungen bei Anschluss, Trennung und Warnungen"
+          }
+        }
+      }
+    },
+    "Name": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name"
+          }
+        }
+      }
+    },
+    "Name und eine gültige Volume-Kennung eingeben.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name und eine gültige Volume-Kennung eingeben."
+          }
+        }
+      }
+    },
+    "Nicht auf dem Startvolume und nicht auf der Drobo selbst. Ältere Sicherungen werden erst gelöscht, wenn die neue gelungen und geprüft ist.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht auf dem Startvolume und nicht auf der Drobo selbst. Ältere Sicherungen werden erst gelöscht, wenn die neue gelungen und geprüft ist."
+          }
+        }
+      }
+    },
+    "Nicht eingehängt.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht eingehängt."
+          }
+        }
+      }
+    },
+    "Noch keine Einträge.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch keine Einträge."
+          }
+        }
+      }
+    },
+    "Noch keine Sicherung.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch keine Sicherung."
+          }
+        }
+      }
+    },
+    "Nur lesen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur lesen"
+          }
+        }
+      }
+    },
+    "OK": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        }
+      }
+    },
+    "Ordner wegsichern": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ordner wegsichern"
+          }
+        }
+      }
+    },
+    "Ort": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ort"
+          }
+        }
+      }
+    },
+    "Protokoll": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protokoll"
+          }
+        }
+      }
+    },
+    "Quelle:": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quelle:"
+          }
+        }
+      }
+    },
+    "Quellordner auf der Drobo": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quellordner auf der Drobo"
+          }
+        }
+      }
+    },
+    "Rolle von %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rolle von %@"
+          }
+        }
+      }
+    },
+    "Schließen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schließen"
+          }
+        }
+      }
+    },
+    "Schreiben": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schreiben"
+          }
+        }
+      }
+    },
+    "Schreiben erlaubt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schreiben erlaubt"
+          }
+        }
+      }
+    },
+    "Schreibtempo messen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schreibtempo messen"
+          }
+        }
+      }
+    },
+    "Sicherung der Verwaltungsdaten": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sicherung der Verwaltungsdaten"
+          }
+        }
+      }
+    },
+    "Sicherungen der Verwaltungsdaten": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sicherungen der Verwaltungsdaten"
+          }
+        }
+      }
+    },
+    "Sicherungsort": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sicherungsort"
+          }
+        }
+      }
+    },
+    "Spotlight ist für die Drobo nicht ausgeschlossen. Beim Schreiben bremst das und verändert das Laufwerk. Der Ausschluss ist freiwillig.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotlight ist für die Drobo nicht ausgeschlossen. Beim Schreiben bremst das und verändert das Laufwerk. Der Ausschluss ist freiwillig."
+          }
+        }
+      }
+    },
+    "Spotlight und Time Machine": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotlight und Time Machine"
+          }
+        }
+      }
+    },
+    "Spotlight und Time Machine für die Drobo ausschließen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spotlight und Time Machine für die Drobo ausschließen"
+          }
+        }
+      }
+    },
+    "Status": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Status"
+          }
+        }
+      }
+    },
+    "Statusleiste": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Statusleiste"
+          }
+        }
+      }
+    },
+    "Systemeinstellungen öffnen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Systemeinstellungen öffnen"
+          }
+        }
+      }
+    },
+    "Tempo": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tempo"
+          }
+        }
+      }
+    },
+    "Tempo zuletzt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tempo zuletzt"
+          }
+        }
+      }
+    },
+    "Tempotest": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tempotest"
+          }
+        }
+      }
+    },
+    "Time Machine (nur anzeigen)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Time Machine (nur anzeigen)"
+          }
+        }
+      }
+    },
+    "Treiber": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Treiber"
+          }
+        }
+      }
+    },
+    "Treibermodul": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Treibermodul"
+          }
+        }
+      }
+    },
+    "Volume": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volume"
+          }
+        }
+      }
+    },
+    "Volume-Kennung": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volume-Kennung"
+          }
+        }
+      }
+    },
+    "Vor dem nächsten Einhängen wird geprüft: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vor dem nächsten Einhängen wird geprüft: %@"
+          }
+        }
+      }
+    },
+    "Vor jedem Einhängen zum Schreiben wird automatisch gesichert. Aufbewahrt werden %lld Sicherungen in %@.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vor jedem Einhängen zum Schreiben wird automatisch gesichert. Aufbewahrt werden %lld Sicherungen in %@."
+          }
+        }
+      }
+    },
+    "Vorgabe beim Einhängen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorgabe beim Einhängen"
+          }
+        }
+      }
+    },
+    "Wegsichern": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wegsichern"
+          }
+        }
+      }
+    },
+    "Wenn beides erledigt ist, in den Einstellungen den Hinweis ausschalten.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wenn beides erledigt ist, in den Einstellungen den Hinweis ausschalten."
+          }
+        }
+      }
+    },
+    "Wählen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wählen"
+          }
+        }
+      }
+    },
+    "Wählen …": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wählen …"
+          }
+        }
+      }
+    },
+    "Ziel:": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ziel:"
+          }
+        }
+      }
+    },
+    "Zielordner auf einem anderen Laufwerk": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zielordner auf einem anderen Laufwerk"
+          }
+        }
+      }
+    },
+    "Zugriff": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zugriff"
+          }
+        }
+      }
+    },
+    "Zum Schreiben": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zum Schreiben"
+          }
+        }
+      }
+    },
+    "Zum Schreiben einhängen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zum Schreiben einhängen"
+          }
+        }
+      }
+    },
+    "Zum Schreiben einhängen?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zum Schreiben einhängen?"
+          }
+        }
+      }
+    },
+    "Zum Schreiben neu": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zum Schreiben neu"
+          }
+        }
+      }
+    },
+    "Zum Schreiben neu …": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zum Schreiben neu …"
+          }
+        }
+      }
+    },
+    "bereit": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bereit"
+          }
+        }
+      }
+    },
+    "lesen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "lesen"
+          }
+        }
+      }
+    },
+    "nicht freigeschaltet": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nicht freigeschaltet"
+          }
+        }
+      }
+    },
+    "nicht gewählt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nicht gewählt"
+          }
+        }
+      }
+    },
+    "nicht installiert": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nicht installiert"
+          }
+        }
+      }
+    },
+    "noch nicht eingerichtet": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "noch nicht eingerichtet"
+          }
+        }
+      }
+    },
+    "nur lesen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nur lesen"
+          }
+        }
+      }
+    },
+    "schreiben": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "schreiben"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

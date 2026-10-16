@@ -4,7 +4,7 @@ public let vorgabeUUID = "C2E343A1-0D4C-3B35-B5DC-0325C1E1E1B1"
 public let modulKennung = "de.begod.drobofsprobe.fsmodule"
 public let vorgabeOrt = "/private/tmp/drobo_mnt"
 
-public struct ModulStatus: Equatable { public var installiert: Bool; public var freigeschaltet: Bool }
+public struct ModulStatus: Equatable { public var installiert: Bool; public var freigeschaltet: Bool; public init(installiert: Bool, freigeschaltet: Bool) { self.installiert = installiert; self.freigeschaltet = freigeschaltet } }
 
 /// `pluginkit -m -i <Kennung>`: Zeile mit Praefix "+" = freigeschaltet, "-" = installiert aber nicht gewaehlt, leer = unbekannt.
 public func modulStatus() -> ModulStatus {
@@ -99,8 +99,8 @@ public struct Kern {
         self.modul = modul; self.home = home
     }
 
-    public func zustand() throws -> Zustand {
-        let fr = try listeLesen(uuid)
+    public func zustand(mitFreigabe: Bool = true) throws -> Zustand {
+        let fr = mitFreigabe ? try listeLesen(uuid) : nil
         let v: Zustand.Verbindung
         if let m = finden(uuid: uuid) {
             if let e = einhaengungen()[m.geraet] { v = .eingehaengt(m, e) } else { v = .angeschlossen(m) }

@@ -4,14 +4,20 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Drobo</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>de</string>
+	</array>
 	<key>CFBundleName</key>
-	<string>$(PRODUCT_NAME)</string>
+	<string>Drobo</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -19,6 +25,6 @@
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>NSRemovableVolumesUsageDescription</key>
-	<string>Die Drobo-App braucht Zugriff auf das Laufwerk, um es nur lesend einzuhaengen.</string>
+	<string>Die Drobo-App braucht Zugriff auf das Laufwerk, um es einzuhängen.</string>
 </dict>
 </plist>
