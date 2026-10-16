@@ -254,7 +254,7 @@ extension KernTests {
         var e = k.ablage.einstellungen(); e.drobos.append(DroboEintrag(uuid: u, name: "Drobo 8", rolle: .timemachine)); k.ablage.einstellungenSetzen(e)
         XCTAssertThrowsError(try k.einhaengen(ort: ort())) { XCTAssertEqual(($0 as? AppFehler)?.code, 34) }
         XCTAssertNil(einhaengungen()["/dev/" + String(dev.dropFirst(5))])
-        XCTAssertEqual(Einstellungen().drobos.first?.uuid, vorgabeUUID); XCTAssertFalse(Einstellungen().spotlightAusgeschlossen)
+        XCTAssertEqual(Einstellungen().drobos, [], "keine Vorgabe-Drobo"); XCTAssertFalse(Einstellungen().spotlightAusgeschlossen)
     }
 
     // MARK: Wegsichern
@@ -355,5 +355,16 @@ extension KernTests {
         e.sicherungOrt = "/gespeichert/irgendwo"; k.ablage.einstellungenSetzen(e)
         XCTAssertEqual(Datenablage(ordner: k.ablage.ordner).einstellungen().sicherungOrt, "/gespeichert/irgendwo")
         XCTAssertThrowsError(try metadatenSichern(quelle: "/dev/null", ort: "", uuid: u, anzahl: 1)) { XCTAssertTrue("\($0)".contains("Kein Sicherungsort")) }
+    }
+}
+
+extension KernTests {
+    /// Erkennung per SCSI-Hersteller: am Abbild ("Apple"/"Disk Image") gefunden, mit "Drobo" nicht; EFI/Nicht-HFS ausgeschlossen.
+    func testErkenneDrobosNachHersteller() throws {
+        let dev = try anhaengen(try abbild("e", journal: false, marker: false)); let u = try uuid(dev)
+        XCTAssertTrue(erkenneDrobos(vendor: "Apple").contains { $0.uuid == u }, "Abbild muss ueber den Hersteller gefunden werden")
+        XCTAssertFalse(erkenneDrobos(vendor: "Drobo").contains { $0.uuid == u })
+        XCTAssertEqual(erkenneDrobos(vendor: ""), [], "leerer Hersteller findet nichts")
+        XCTAssertFalse(erkenneDrobos(vendor: "Apple").contains { $0.name == "EFI" })
     }
 }

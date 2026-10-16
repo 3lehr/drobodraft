@@ -3,7 +3,7 @@ import XCTest
 
 /// Dienstlogik ohne Root und ohne Geraet: Suche, Knoten und chown sind Attrappen; Freigabelisten liegen in einem Temp-Home.
 final class HelferTests: XCTestCase {
-    let U = "C2E343A1-0D4C-3B35-B5DC-0325C1E1E1B1"
+    let U = "11111111-2222-3333-4444-555555555555"   // kuenstliche Test-UUID
     var home = ""
     var calls: [String] = []
 
@@ -18,7 +18,7 @@ final class HelferTests: XCTestCase {
         let p = home + "/Library/Containers/\(modulKennung)/Data/freigabe.json"
         if let i = inhalt { try i.write(toFile: p, atomically: true, encoding: .utf8) }
     }
-    let gut = #"[{"volume_uuid":"C2E343A1-0D4C-3B35-B5DC-0325C1E1E1B1","modus":"nurlesen","max_bytes":1}]"#
+    let gut = #"[{"volume_uuid":"11111111-2222-3333-4444-555555555555","modus":"nurlesen","max_bytes":1}]"#
 
     func logik(bsd: String? = "disk9s2", art: mode_t = S_IFBLK, chownRC: Int32 = 0) -> HelferLogik {
         var l = HelferLogik()

@@ -1153,6 +1153,22 @@
         }
       }
     },
+    "Erkannt: %@ %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Erkannt: %1$@ %2$@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detected: %@ %@"
+          }
+        }
+      }
+    },
     "Fenster schließen": {
       "localizations": {
         "de": {
@@ -1537,6 +1553,38 @@
         }
       }
     },
+    "Keine Drobo eingerichtet": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Drobo eingerichtet"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Drobo set up"
+          }
+        }
+      }
+    },
+    "Keine Drobo eingerichtet. Eine angeschlossene Drobo erscheint links zum Hinzufügen; weitere Drobos über die Einstellungen (⌘,).": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Drobo eingerichtet. Eine angeschlossene Drobo erscheint links zum Hinzufügen; weitere Drobos über die Einstellungen (⌘,)."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Drobo set up. A connected Drobo appears on the left to be added; add more Drobos in Settings (⌘,)."
+          }
+        }
+      }
+    },
     "Keine Drobo eingetragen. Einstellungen öffnen mit ⌘,.": {
       "localizations": {
         "de": {
@@ -1549,6 +1597,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "No Drobo registered. Open Settings with ⌘,."
+          }
+        }
+      }
+    },
+    "Keine Drobo erkannt. Drobo anschließen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Drobo erkannt. Drobo anschließen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Drobo detected. Connect a Drobo."
           }
         }
       }

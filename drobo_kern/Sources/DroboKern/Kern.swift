@@ -1,6 +1,5 @@
 import Foundation
 
-public let vorgabeUUID = "C2E343A1-0D4C-3B35-B5DC-0325C1E1E1B1"
 public let vorgabeOrt = "/private/tmp/drobo_mnt"
 /// Einhaengeort-Kennung: /Volumes/<Volumename> (der Hilfsdienst legt den Ordner an).
 public let vorgabeVolumes = "/Volumes"
@@ -89,11 +88,12 @@ public struct Kern {
 
     public static func umgebung(_ k: String) -> String? { ProcessInfo.processInfo.environment[k].flatMap { $0.isEmpty ? nil : $0 } }
 
-    public init(uuid: String = Kern.umgebung("DROBO_UUID") ?? vorgabeUUID,
+    /// Volume: Argument, sonst Umgebung DROBO_UUID, sonst die erste eingerichtete Drobo der Einstellungen, sonst leer (= keine eingerichtet).
+    public init(uuid: String? = nil,
                 freigabePfad: String? = Kern.umgebung("DROBO_FREIGABE"),
                 modul: @escaping () -> ModulStatus = modulStatus,
                 home: [String] = [NSHomeDirectory(), ProcessInfo.processInfo.environment["HOME"] ?? NSHomeDirectory()]) {
-        self.uuid = uuid.uppercased()
+        self.uuid = (uuid ?? Kern.umgebung("DROBO_UUID") ?? Datenablage().einstellungen().drobos.first?.uuid ?? "").uppercased()
         if let p = freigabePfad {
             listeLesen = { try Freigabe.lesen(uuid: $0, pfad: p) }
             listeSetzen = { $1 == "entfernen" ? try Freigabe.entfernen(uuid: $0, pfad: p) : try Freigabe.setzen(uuid: $0, modus: Modus(rawValue: $1)!, maxBytes: $2, pfad: p) }

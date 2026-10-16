@@ -25,7 +25,7 @@ enum Gate {
     struct Zulassung { let modus: Modus; let grund: String }
 
     /// Freigabeliste im Container des Moduls (die Sandbox darf ihn lesen): ~/Library/Containers/<Praefix>.drobofsprobe.fsmodule/Data/freigabe.json.
-    /// Format: [{"volume_uuid":"C2E343A1-...","modus":"nurlesen","max_bytes":70368744177664}] oder {"eintraege":[...]}. Unlesbar/ungueltig = leer (nichts freigegeben).
+    /// Format: [{"volume_uuid":"<Volume-UUID>","modus":"nurlesen","max_bytes":70368744177664}] oder {"eintraege":[...]}. Unlesbar/ungueltig = leer (nichts freigegeben).
     static var freigabePfad: String { NSHomeDirectory() + "/freigabe.json" }
     static func freigaben() -> [Freigabe] {
         guard let d = try? Data(contentsOf: URL(fileURLWithPath: freigabePfad)), let j = try? JSONSerialization.jsonObject(with: d) else { return [] }

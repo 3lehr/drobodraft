@@ -18,6 +18,7 @@ func hilfe() -> Never {
     drobo speed [--write]                      read speed; write speed only when mounted writable with a backup
     drobo access                               check without effect whether the helper may reach the device
     drobo state | log | speed-history | drives
+    drobo detect                               list connected Drobos (SCSI vendor "Drobo") that are not set up yet
     drobo add-drive UUID NAME [timemachine]
     drobo helper grant|release [--uuid U]      diagnostics: call the helper directly (aliases: helfer freigeben|zurueckgeben)
     drobo uninstall                            print how to remove DroboDraft (tools/uninstall.sh)
@@ -44,6 +45,8 @@ func meldung(_ s: String) { FileHandle.standardError.write(Data(s.utf8)) }
 do {
     var kern = Kern()
     if let u = opt("--uuid") { kern.uuid = u.uppercased() }
+    let ohneDrobo: Set<String> = ["detect", "add-drive", "drives", "uninstall", "backup-location", "log", "speed-history"]
+    if kern.uuid.isEmpty && !ohneDrobo.contains(cmd) { throw Fehler.eingabe("No Drobo set up. Run 'drobo detect', then 'drobo add-drive UUID NAME' (or pass --uuid / set DROBO_UUID).") }
     switch cmd {
     case "status":
         let z = try kern.zustand()
@@ -103,6 +106,11 @@ do {
     case "log": kern.ablage.protokollLesen().forEach { print("\($0.zeit)  \($0.text)") }
     case "speed-history": kern.ablage.tempoVerlauf().forEach { print("\($0.zeit)  \($0.art)  \(String(format: "%.1f", $0.mbProSekunde)) MB/s") }
     case "drives": kern.ablage.einstellungen().drobos.forEach { print("\($0.uuid)  \($0.name)  \($0.rolle.rawValue)") }
+    case "detect":
+        let bekannt = Set(kern.ablage.einstellungen().drobos.map { $0.uuid })
+        let neu = erkenneDrobos().filter { !bekannt.contains($0.uuid) }
+        if neu.isEmpty { print("No new Drobo found.") }
+        neu.forEach { print("\($0.uuid)  \($0.name)  \($0.modell)  \($0.bsd)   -> drobo add-drive \($0.uuid) \"\($0.name.isEmpty ? "Drobo" : $0.name)\"") }
     case "add-drive":
         guard args.count >= 2 else { hilfe() }
         var e = kern.ablage.einstellungen(); e.drobos.removeAll { $0.uuid == args[0].uppercased() }

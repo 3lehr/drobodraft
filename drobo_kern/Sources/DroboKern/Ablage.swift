@@ -12,7 +12,8 @@ public struct DroboEintrag: Codable, Equatable {
 
 
 public struct Einstellungen: Codable, Equatable {
-    public var drobos: [DroboEintrag] = [DroboEintrag(uuid: vorgabeUUID, name: "Drobo 5C")]
+    /// Keine Vorgabe-Drobo: eingerichtet wird, was angeschlossen und erkannt (erkenneDrobos) und vom Nutzer hinzugefuegt wurde.
+    public var drobos: [DroboEintrag] = []
     /// Vorgabe /Volumes (Ordner /Volumes/<Name> legt der Hilfsdienst an, Finder-Seitenleiste); Messung 2026-10-16: Spotlight laeuft dort nicht hinein.
     public var einhaengeort = vorgabeVolumes
     public var vorgabeSchreiben = false

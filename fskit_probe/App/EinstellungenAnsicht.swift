@@ -62,6 +62,9 @@ struct EinstellungenAnsicht: View {
                         }
                     }
                 }
+                ForEach(m.erkannte, id: \.uuid) { e in
+                    HStack { Text("Erkannt: \(e.name.isEmpty ? "Drobo" : e.name) \(e.modell)"); Spacer(); Button("Hinzufügen") { m.hinzufuegen(e) } }.accessibilityElement(children: .combine)
+                }
                 HStack {
                     TextField("Name", text: $neuName)
                     TextField("Volume-Kennung", text: $neuKennung)

@@ -10,7 +10,7 @@
 # Aufruf: bash drobo_schreibtest.sh   (Geraete muessen dem Nutzer gehoeren: sudo chown $USER /dev/diskNsM /dev/rdiskNsM)
 set -u
 cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
-TOOLS=$(cd ../../../tools && pwd); UUID=${DROBO_UUID:-C2E343A1-0D4C-3B35-B5DC-0325C1E1E1B1}
+TOOLS=$(cd ../../../tools && pwd); UUID=${DROBO_UUID:?DROBO_UUID: Volume-UUID der Drobo setzen (drobo detect)}
 MNT=/private/tmp/drobo_schreib_mnt; SICH=${SICH:?SICH: Ordner fuer die Sicherung auf einem anderen Laufwerk setzen}
 SRC=${SRC:-$DROBO_BUILD/work/schreibtest_quelle}; TEST=_fskit_schreibtest
 FG="$HOME/Library/Containers/$DROBO_MODULE_ID/Data/freigabe.json"; FGORIG="$FG.vor_schreibtest"

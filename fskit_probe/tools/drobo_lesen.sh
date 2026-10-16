@@ -10,7 +10,7 @@
 #   DECMPFS != aus, dann VOR dem Modul-Mount: Kernel-ro-Mount (diskutil mount readOnly), SHA-256 der ausgewaehlten komprimierten Dateien, aushaengen;
 #   NACH dem Modul-Mount dieselben Dateien hashen und vergleichen -> "Decmpfs: N gleich, M abweichend/Fehler" (EIO zaehlt als Fehler), bei M > 0 Code 11.
 set -u
-UUID=${DROBO_UUID:-C2E343A1-0D4C-3B35-B5DC-0325C1E1E1B1}
+UUID=${DROBO_UUID:?DROBO_UUID: Volume-UUID der Drobo setzen (drobo detect)}
 LISTE=${LISTE:-$HOME/Desktop/drobo_leseliste.json}
 MNT=${MNT:-/private/tmp/drobo_lesen_mnt}  # NICHT unter $HOME: Spotlight indexiert den Benutzerordner und laeuft in den Mount (766k Eintraege/90 s, 2026-10-15)
 FREIGABE="$HOME/Library/Containers/$DROBO_MODULE_ID/Data/freigabe.json"

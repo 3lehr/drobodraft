@@ -18,6 +18,14 @@ struct HauptAnsicht: View {
         NavigationSplitView {
             List {
                 Section("Drobo") {
+                    if m.liste.isEmpty {
+                        Text("Keine Drobo eingerichtet").foregroundStyle(.secondary)
+                        if m.erkannte.isEmpty { Text("Keine Drobo erkannt. Drobo anschließen.").font(.callout).foregroundStyle(.secondary) }
+                        ForEach(m.erkannte, id: \.uuid) { e in
+                            HStack { Text(e.name.isEmpty ? "Drobo" : e.name); Spacer(); Button("Hinzufügen") { m.hinzufuegen(e) } }
+                                .accessibilityElement(children: .combine)
+                        }
+                    }
                     ForEach(m.liste, id: \.eintrag.uuid) { d in
                         Button { m.auswahl = d.eintrag.uuid } label: {
                             HStack { ZustandPunkt(stufe: d.stufe); Text(d.eintrag.name); Spacer(); if m.auswahl == d.eintrag.uuid { Image(systemName: "checkmark").accessibilityHidden(true) } }
@@ -140,7 +148,7 @@ struct UebersichtAnsicht: View {
                         }
                     }
                 }.padding(20)
-            } else { Text("Keine Drobo eingetragen. Einstellungen öffnen mit ⌘,.").padding(20) }
+            } else { Text("Keine Drobo eingerichtet. Eine angeschlossene Drobo erscheint links zum Hinzufügen; weitere Drobos über die Einstellungen (⌘,).").padding(20) }
         }
     }
 }

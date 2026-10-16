@@ -36,7 +36,7 @@ func kopfOpt(_ n: String) -> String? { let a = CommandLine.arguments; if let i =
 func kopflauf() -> Bool {
     let a = CommandLine.arguments
     let ablage = Datenablage()
-    let u = kopfOpt("--uuid") ?? ablage.einstellungen().drobos.first?.uuid ?? vorgabeUUID
+    let u = kopfOpt("--uuid") ?? ablage.einstellungen().drobos.first?.uuid ?? ""
     if a.contains("--zugriff-anfragen") || a.contains("--zugriff-status") {
         if a.contains("--zugriff-anfragen") { print("macOS fragt jetzt ggf. nach Zugriff auf Wechseldatentraeger -> Erlauben") }
         print(zugriffOeffnen(u)); return true

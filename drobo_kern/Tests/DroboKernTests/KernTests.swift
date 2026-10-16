@@ -25,7 +25,6 @@ final class KernTests: XCTestCase {
         try? FileManager.default.removeItem(atPath: dir)
         if erlaubt, let v = vorher { try? v.write(to: URL(fileURLWithPath: Self.betreiberListe)) }   // Test hat sie absichtlich veraendert: zurueckstellen, danach belegen
         XCTAssertEqual(FileManager.default.contents(atPath: Self.betreiberListe), vorher, "Betreiber-Freigabeliste nicht unveraendert")
-        if let v = vorher { XCTAssertTrue(String(decoding: v, as: UTF8.self).contains("C2E343A1-0D4C-3B35-B5DC-0325C1E1E1B1")) }
     }
 
     // MARK: Hilfen
@@ -303,7 +302,7 @@ final class KernTests: XCTestCase {
         let k = Kern(uuid: u, freigabePfad: Self.betreiberListe)
         XCTAssertThrowsError(try k.einhaengen(ort: ort())) { XCTAssertEqual(($0 as? Fehler)?.code, 12) }   // noch kein Eintrag
         try k.freigabeSetzen(.nurlesen)
-        XCTAssertEqual(try Freigabe.lesen(uuid: vorgabeUUID, pfad: Self.betreiberListe), .nurlesen, "Betreiber-Eintrag muss drin bleiben")
+        XCTAssertEqual(try Freigabe.lesen(uuid: u, pfad: Self.betreiberListe), .nurlesen)
         let o = ort()
         let e = try k.einhaengen(ort: o)
         XCTAssertTrue(e.nurlesen); XCTAssertEqual(e.treiber, .hfsdrobo)

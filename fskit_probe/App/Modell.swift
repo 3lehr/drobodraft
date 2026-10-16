@@ -61,6 +61,8 @@ final class DroboModell: ObservableObject {
     @Published var restoreProbeText = ""
     @Published var restoreProbeFuer = ""      // Name der Sicherung, fuer die der Probelauf lief
     @Published var anmeldeStart = false
+    /// Angeschlossene Drobos (SCSI-Hersteller "Drobo"), die noch nicht eingerichtet sind.
+    @Published var erkannte: [ErkannteDrobo] = []
     private var waechter: [AbziehWaechter] = []
     private var timer: Timer?
     private var vorher: [String: DroboAnsicht.Stufe] = [:]
@@ -68,7 +70,7 @@ final class DroboModell: ObservableObject {
     init() {
         let e = ablage.einstellungen()
         einstellungen = e
-        auswahl = e.drobos.first?.uuid ?? vorgabeUUID
+        auswahl = e.drobos.first?.uuid ?? ""
     }
 
     var aktuell: DroboAnsicht? { drobos[auswahl] }
@@ -132,10 +134,13 @@ final class DroboModell: ObservableObject {
                 a.sicherungen = eigeneSicherungen(ort: ablage.einstellungen().sicherungOrt, uuid: d.uuid).reversed()
                 neu[d.uuid] = a
             }
+            let bekannt = Set(ds.map { $0.uuid })
+            let erk = erkenneDrobos().filter { !bekannt.contains($0.uuid) }
             let m = modulStatus()
             let hd = Self.dienstText()
             await MainActor.run { [neu, zugriff] in
                 if let z = zugriff { self.festplattenzugriff = z ? String(localized: "in Ordnung") : String(localized: "fehlt") }
+                self.erkannte = erk
                 self.uebernehmen(neu, modul: m, dienst: hd)
             }
         }
@@ -308,6 +313,14 @@ final class DroboModell: ObservableObject {
         let p = NSOpenPanel(); p.canChooseDirectories = true; p.canChooseFiles = false; p.canCreateDirectories = true
         p.prompt = String(localized: "Wählen"); p.message = String(localized: "Sicherungsort: nicht das Startvolume und nicht die Drobo")
         if p.runModal() == .OK, let u = p.url { einstellungen.sicherungOrt = u.path; einstellungenSpeichern() }
+    }
+
+    /// Erkannte Drobo einrichten (Rolle Arbeitsvolume; Time-Machine-Rolle in den Einstellungen).
+    func hinzufuegen(_ e: ErkannteDrobo) {
+        einstellungen.drobos.removeAll { $0.uuid == e.uuid }
+        einstellungen.drobos.append(DroboEintrag(uuid: e.uuid, name: e.name.isEmpty ? "Drobo" : e.name))
+        if auswahl.isEmpty { auswahl = e.uuid }
+        einstellungenSpeichern()
     }
 
     func einstellungenSpeichern() { ablage.einstellungenSetzen(einstellungen); waechterNeu(); aktualisieren() }
