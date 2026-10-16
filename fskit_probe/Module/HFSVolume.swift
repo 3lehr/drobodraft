@@ -76,7 +76,7 @@ private let fehlerBau = 0
 #endif
 
 final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperations, FSVolume.XattrOperations {
-    let dev: FSBlockDeviceResource
+    let dev: Geraet
     let backend: DeviceBackend
     let rootItem: HItem
     private(set) var mountedName: String
@@ -96,7 +96,7 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
     private static let lageMax = 1024
     private func rofail() throws -> Never { roBlocked += 1; throw posixError(EROFS) }
 
-    init(dev: FSBlockDeviceResource, backend: DeviceBackend, containerUUID: UUID, nurlesen: Bool = false) throws {
+    init(dev: Geraet, backend: DeviceBackend, containerUUID: UUID, nurlesen: Bool = false) throws {
         let fd = backend.vfd
         let ro = !dev.isWritable || nurlesen
         if nurlesen {                                                        // Journal nicht leer: Mount ABLEHNEN (Replay wuerde schreiben)

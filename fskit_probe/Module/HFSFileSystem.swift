@@ -38,11 +38,19 @@ final class HFSFileSystem: FSUnaryFileSystem, FSUnaryFileSystemOperations, FSMan
     }
 
     func loadResource(resource: FSResource, options: FSTaskOptions, replyHandler: @escaping (FSVolume?, (any Error)?) -> Void) {
-        if #available(macOS 26, *), let u = resource as? FSGenericURLResource {   // Machbarkeit: Ankunft belegen, dann bewusst ablehnen
+        var quelle: Geraet? = resource as? FSBlockDeviceResource
+        if #available(macOS 26, *), let u = resource as? FSGenericURLResource {
             hfsLog.notice("URL-LOAD scheme=\(u.url.scheme ?? "-", privacy: .public) host=\(u.url.host() != nil ? 1 : 0) opts=\(options.taskOptions, privacy: .public)")
-            return replyHandler(nil, posixError(ENOTSUP))
+            #if ISCSI_MODUL
+            do { quelle = try IscsiGeraet.oeffnen(url: u.url) } catch {     // Netz-/Protokollfehler: kein Mount, kein Raten
+                hfsLog.error("load: iSCSI nicht oeffenbar -> abgelehnt (\(String(describing: error), privacy: .public))")
+                return replyHandler(nil, posixError(EIO))
+            }
+            #else
+            return replyHandler(nil, posixError(ENOTSUP))      // Block-Modul: URLs bleiben unbedient
+            #endif
         }
-        guard let dev = resource as? FSBlockDeviceResource, let head = try? Gate.readHead(dev, 4096), Gate.isHFSPlus(head) else {
+        guard let dev = quelle, let head = try? Gate.readHead(dev, 4096), Gate.isHFSPlus(head) else {
             hfsLog.error("load: kein HFS+ / nicht lesbar -> abgelehnt")
             return replyHandler(nil, posixError(EINVAL))
         }

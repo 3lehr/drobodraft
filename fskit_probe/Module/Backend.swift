@@ -5,11 +5,11 @@ import os
 
 private let log = Logger(subsystem: modulLogSubsystem, category: "dev")
 
-/// Verbindet Apples I/O-Aufrufe (pread/pwrite/ioctl, umgeleitet auf lifs_devio.c) mit FSBlockDeviceResource.
+/// Verbindet Apples I/O-Aufrufe (pread/pwrite/ioctl, umgeleitet auf lifs_devio.c) mit dem Geraet (FSBlockDeviceResource oder iSCSI-Partition, siehe Geraet.swift).
 /// Alle Schreibzugriffe kommen ueber lifs_dev_pwrite und sind damit auf 524288 B gekappt; hier gilt zusaetzlich: nie unter Offset 1024
 /// (Marker/Boot-Bytes), nie ueber das Geraeteende, nie > 524288 B je dev.write.
 final class DeviceBackend {
-    let dev: FSBlockDeviceResource
+    let dev: Geraet
     let phys: Int
     let bytes: UInt64
     private let bounce: UnsafeMutableRawPointer
@@ -105,7 +105,7 @@ final class DeviceBackend {
     /// Zweite Sperre (Modus nurlesen): dev.write wird NIE erreicht, jeder Versuch zaehlt und scheitert mit EROFS.
     let forcedReadOnly: Bool
 
-    init(dev: FSBlockDeviceResource, forcedReadOnly: Bool = false) {
+    init(dev: Geraet, forcedReadOnly: Bool = false) {
         self.dev = dev
         self.forcedReadOnly = forcedReadOnly
         self.phys = Int(max(512, dev.physicalBlockSize))

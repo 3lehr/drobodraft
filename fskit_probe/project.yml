@@ -112,6 +112,9 @@ targets:
     sources:
       - Module
       - ../drobo_kern/Sources/DroboKern/DroboStatus.swift
+      - ../drobo_kern/Sources/DroboKern/ISCSI.swift
+      - ../drobo_kern/Sources/DroboKern/ISCSIBefehle.swift
+      - ../drobo_kern/Sources/DroboKern/GPT.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(DROBO_BUNDLE_PREFIX).drobofsprobe.iscsi
@@ -121,5 +124,6 @@ targets:
         INFOPLIST_FILE: ModuleISCSI/Info.plist
         GENERATE_INFOPLIST_FILE: NO
         SWIFT_OBJC_BRIDGING_HEADER: Module/Bridge.h
+        OTHER_SWIFT_FLAGS: ["-DISCSI_MODUL"]
         HEADER_SEARCH_PATHS: ["$(SRCROOT)/../livefiles_shim"]
         OTHER_LDFLAGS: ["$(SRCROOT)/../build/liblivefiles_hfs.a", "-framework", "CoreFoundation", "-framework", "IOKit"]

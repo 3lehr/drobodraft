@@ -9,9 +9,9 @@ enum Gate {
     static let marker = Array("DROBOFSPROBE".utf8)
     static let maxBytes: UInt64 = 24 << 30
 
-    static func deviceBytes(_ dev: FSBlockDeviceResource) -> UInt64 { dev.blockCount * dev.blockSize }
+    static func deviceBytes(_ dev: Geraet) -> UInt64 { dev.blockCount * dev.blockSize }
 
-    static func readHead(_ dev: FSBlockDeviceResource, _ n: Int = 4096) throws -> [UInt8] {
+    static func readHead(_ dev: Geraet, _ n: Int = 4096) throws -> [UInt8] {
         let len = max(n, Int(dev.physicalBlockSize))
         let buf = UnsafeMutableRawPointer.allocate(byteCount: len, alignment: 4096)
         defer { buf.deallocate() }
@@ -51,7 +51,7 @@ enum Gate {
     }
 
     /// Entscheidung. Marker-Abbild (wie bisher: <= 24 GiB + Marker) ODER Freigabeeintrag mit passender Volume-UUID und Geraet <= max_bytes.
-    static func decide(_ dev: FSBlockDeviceResource, head: [UInt8]) -> (Zulassung?, String) {
+    static func decide(_ dev: Geraet, head: [UInt8]) -> (Zulassung?, String) {
         let hasMarker = head.count >= marker.count && Array(head[0..<marker.count]) == marker
         if hasMarker {
             if deviceBytes(dev) > maxBytes { return (nil, "Marker, aber Groesse \(deviceBytes(dev)) > \(maxBytes)") }
