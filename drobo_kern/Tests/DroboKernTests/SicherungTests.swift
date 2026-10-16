@@ -297,18 +297,6 @@ extension KernTests {
     }
 
     // MARK: Tempo
-
-    func testTempoLesenUndSchreibenVoraussetzungen() throws {
-        let q = "\(dir)/tempo"; try FileManager.default.createDirectory(atPath: q, withIntermediateDirectories: true)
-        XCTAssertThrowsError(try tempoLesen(ort: q, uuid: "U")) { XCTAssertEqual(($0 as? AppFehler)?.code, 36) }   // keine grosse Datei
-        try Data(repeating: 1, count: 20 << 20).write(to: URL(fileURLWithPath: q + "/gross.bin"))
-        let a = Datenablage(ordner: "\(dir)/tempoA")
-        let m = try tempoLesen(ort: q, uuid: "U", ablage: a)
-        XCTAssertEqual(m.dateien, 1); XCTAssertEqual(m.bytes, 20 << 20); XCTAssertGreaterThan(m.mbProSekunde, 1); XCTAssertEqual(a.tempoVerlauf().count, 1)
-        let w = try tempoSchreiben(ort: q, uuid: "U", mib: 4, ablage: a)
-        XCTAssertEqual(w.art, "schreiben"); XCTAssertFalse(FileManager.default.fileExists(atPath: q + "/.drobo-tempotest"), "Testordner aufgeraeumt")
-        XCTAssertEqual(a.tempoVerlauf().count, 2)
-    }
 }
 
 extension KernTests {

@@ -280,12 +280,12 @@ final class KernTests: XCTestCase {
         XCTAssertEqual(try k.zustand().kurz, "eingehaengt rw durch hfsdrobo")
         XCTAssertThrowsError(try k.einhaengen(modus: .schreiben, ort: o)) { XCTAssertEqual(($0 as? Fehler)?.code, 11) }
         // Schreib-Tempotest: nur rw + Sicherung; fehlt die Sicherung, wird abgelehnt
-        let ok = try k.tempoTesten(schreiben: true, mib: 4); XCTAssertEqual(ok.art, "schreiben")
+        let ok = try XCTUnwrap(k.tempoLauf(schreiben: true, groesse: 4_000_000).first); XCTAssertEqual(ok.schreiben?.art, "schreiben"); XCTAssertEqual(ok.lesen?.art, "lesen")
         let sich = k.ablage.merker(u).letzteSicherung
         k.ablage.merkerAendern(u) { $0.letzteSicherung = nil }
-        XCTAssertThrowsError(try k.tempoTesten(schreiben: true)) { XCTAssertTrue("\($0)".contains("Metadaten-Sicherung"), "\($0)") }
+        XCTAssertThrowsError(try k.tempoLauf(schreiben: true, groesse: 4_000_000)) { XCTAssertTrue("\($0)".contains("Metadaten-Sicherung"), "\($0)") }
         k.ablage.merkerAendern(u) { $0.letzteSicherung = sich; $0.rwAktiv = false }
-        XCTAssertThrowsError(try k.tempoTesten(schreiben: true)) { XCTAssertTrue("\($0)".contains("Einhaengen zum Schreiben"), "\($0)") }
+        XCTAssertThrowsError(try k.tempoLauf(schreiben: true, groesse: 4_000_000)) { XCTAssertTrue("\($0)".contains("Einhaengen zum Schreiben"), "\($0)") }
         k.ablage.merkerAendern(u) { $0.rwAktiv = true }
         let pr = try k.aushaengen()
         XCTAssertEqual(try k.zustand().kurz, "angeschlossen, nicht eingehaengt")

@@ -223,17 +223,30 @@ public struct Kern {
         return b
     }
 
-    public func tempoTesten(schreiben: Bool = false, mib: Int = 64) throws -> TempoMessung {
+    /// Tempo-Messung in Zyklen (`zyklen` nil = bis `abbrechen`). Schreiben nur bei rw-Einhaengung mit Metadaten-Sicherung (tempoSchreibenErlaubt),
+    /// sonst nur Lesen vorhandener grosser Dateien. `groesse` in Bytes je Phase.
+    @discardableResult
+    public func tempoLauf(schreiben: Bool, groesse: UInt64, zyklen: Int? = 1, fortschritt: ((TempoFortschritt) -> Void)? = nil,
+                          zyklus: ((TempoZyklus) -> Void)? = nil, abbrechen: () -> Bool = { false }) throws -> [TempoZyklus] {
         guard let m = finden(uuid: uuid), let e = einhaengungen()[m.geraet] else { throw Fehler.nichtEingehaengt(uuid) }
-        if schreiben {
-            let mk = ablage.merker(uuid)
-            guard !e.nurlesen, mk.rwAktiv else { throw AppFehler.tempotest("Schreib-Tempotest nur bei Einhaengen zum Schreiben") }
-            guard let s = mk.letzteSicherung, FileManager.default.fileExists(atPath: s + "/" + markerName) else { throw AppFehler.tempotest("Schreib-Tempotest nur mit vorhandener Metadaten-Sicherung") }
-            let r = try tempoSchreiben(ort: e.ort, uuid: uuid, mib: mib, ablage: ablage)
-            ablage.protokoll(String(format: "Tempotest schreiben: %.1f MB/s", r.mbProSekunde)); return r
+        let mk = ablage.merker(uuid)
+        if schreiben { try tempoSchreibenErlaubt(nurlesen: e.nurlesen, rwAktiv: mk.rwAktiv, sicherung: mk.letzteSicherung) }
+        var ergebnis: [TempoZyklus] = []; var kand: [(String, UInt64)]? = nil
+        while !abbrechen(), zyklen.map({ ergebnis.count < $0 }) ?? true {
+            var z: TempoZyklus
+            if schreiben {
+                z = try tempoSchreibenUndLesen(ort: e.ort, uuid: uuid, groesse: groesse, ablage: ablage, fortschritt: fortschritt, abbrechen: abbrechen)
+            } else {
+                if kand == nil { kand = try tempoLeseKandidaten(ort: e.ort, abbrechen: abbrechen) }
+                z = TempoZyklus()
+                do { z.lesen = try tempoLesen(ort: e.ort, uuid: uuid, maxBytesJeDatei: groesse, zielBytes: groesse, kandidaten: kand, ablage: ablage, fortschritt: fortschritt, abbrechen: abbrechen) }
+                catch AppFehler.tempotest("abgebrochen") { break }
+            }
+            if z.schreiben == nil && z.lesen == nil { break }
+            ergebnis.append(z); zyklus?(z)
+            ablage.protokoll("Tempotest" + (z.schreiben.map { String(format: " schreiben %.1f MB/s", $0.mbProSekunde) } ?? "") + (z.lesen.map { String(format: " lesen %.1f MB/s", $0.mbProSekunde) } ?? ""))
         }
-        let r = try tempoLesen(ort: e.ort, uuid: uuid, ablage: ablage)
-        ablage.protokoll(String(format: "Tempotest lesen: %.1f MB/s", r.mbProSekunde)); return r
+        return ergebnis
     }
 
     /// Festplattenzugriff des Hilfsdienstes (wirkungslose Probe). nil = in Ordnung.

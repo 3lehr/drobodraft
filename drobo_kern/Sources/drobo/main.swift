@@ -15,7 +15,7 @@ func hilfe() -> Never {
     drobo check [--no-catalog]                 check the unmounted volume, read-only
     drobo restore NAME [--execute]             dry run; with --execute write it back (unmounted only, loses everything written since the backup)
     drobo copy-folder SOURCE TARGET            copy a folder from the mounted Drobo to another disk (incremental, SHA-256 verified)
-    drobo speed [--write]                      read speed; write speed only when mounted writable with a backup
+    drobo speed [--size GB] [--cycles N] [--write]   read speed (large existing files); with --write a write+read cycle in .drobodraft_speedtest, only when mounted writable with a backup and 2x free space
     drobo access                               check without effect whether the helper may reach the device
     drobo state | log | speed-history | drives
     drobo detect                               list connected Drobos (SCSI vendor "Drobo") that are not set up yet
@@ -86,8 +86,12 @@ do {
         let b = try kern.wegsichern(quelle: args[0], ziel: args[1])
         print(b.text); if !b.ok { exit(35) }
     case "speed":
-        let r = try kern.tempoTesten(schreiben: flag("--write"))
-        print(String(format: "%@: %.1f MB/s (%d files, %llu bytes)", r.art, r.mbProSekunde, r.dateien, r.bytes))
+        guard let gb = opt("--size").map({ Double($0) ?? 0 }) ?? Optional(1.0), gb > 0 else { throw Fehler.eingabe("--size GB must be a number > 0") }
+        let n = opt("--cycles").flatMap(Int.init) ?? 1
+        let z = try kern.tempoLauf(schreiben: flag("--write"), groesse: UInt64(gb * 1e9), zyklen: n, zyklus: { z in
+            for r in [z.schreiben, z.lesen].compactMap({ $0 }) { print(String(format: "%@: %.1f MB/s (%d files, %llu bytes)", r.art, r.mbProSekunde, r.dateien, r.bytes)) }
+        })
+        if z.isEmpty { throw AppFehler.tempotest("nothing measured") }
     case "access":
         if let f = kern.zugriffPruefen() { throw Fehler.helfer(f) }; print("access ok (no-effect probe)")
     case "backups": kern.sicherungen().forEach { print($0) }
