@@ -42,6 +42,27 @@ extension KernTests {
         XCTAssertEqual((try FileManager.default.contentsOfDirectory(atPath: sicherOrt)).count, 0, "verfaelschte Sicherung darf nicht stehen bleiben")
     }
 
+    /// Drobo-Geometrie: 64-KiB-Bloecke, Volumegroesse kein Vielfaches der Blockgroesse (Rest 24576 B hinter dem letzten Block).
+    func testSicherungVolumeEndeNichtBlockausgerichtGleichPython() throws {
+        let f = "\(dir)/schief.img"
+        XCTAssertEqual(ausfuehren("/usr/bin/truncate", ["-s", String(64 * 1024 * 1024 + 24576), f]).0, 0)
+        let dev = try anhaengen(f)
+        XCTAssertEqual(ausfuehren("/sbin/newfs_hfs", ["-b", "65536", "-v", "SCHIEF", "/dev/r" + dev.dropFirst(5)]).0, 0)
+        ausfuehren("/usr/bin/hdiutil", ["detach", dev]); geraete.removeAll { $0 == dev }
+        let size = UInt64(lies(f).count); XCTAssertEqual(size % 65536, 24576)
+        let r = try metadatenSichern(quelle: f, ort: sicherOrt, uuid: "AAAAAAAA-0000-0000-0000-000000000001", anzahl: 2)
+        XCTAssertEqual(lies(r.ordner + "/ende_1MiB.bin"), lies(f).suffix(1 << 20))
+        let meta = try JSONSerialization.jsonObject(with: lies(r.ordner + "/extents.json")) as! [String: Any]
+        XCTAssertEqual(((meta["ende"] as! [String: Any])["volumeOffset"] as! NSNumber).uint64Value, size - (1 << 20))
+        XCTAssertTrue(sicherungPruefen(ordner: r.ordner).isEmpty)
+        let py = "\(dir)/py"
+        let (rc, out) = ausfuehren("/opt/homebrew/bin/python3", ["-I", "/Volumes/daten/Begod2026/drobo-nas/apps/drobo-nas/tools/hfs_attr_diagnose.py", f, "--sichern", py])
+        try XCTSkipIf(rc != 0 && !FileManager.default.fileExists(atPath: py + "/SHA256SUMS"), "Python-Orakel nicht lauffaehig: \(out.suffix(200))")
+        var a = summen(r.ordner), b = summen(py); a["extents.json"] = nil; b["extents.json"] = nil
+        XCTAssertEqual(a, b)
+        XCTAssertEqual(a["ende_1MiB.bin"], b["ende_1MiB.bin"])
+    }
+
     func testSicherungVerfaelschtWirdErkannt() throws {
         let f = try abbild("s", journal: false, marker: false)
         let r = try metadatenSichern(quelle: f, ort: sicherOrt, uuid: "AAAAAAAA-0000-0000-0000-000000000001", anzahl: 2)

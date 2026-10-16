@@ -122,6 +122,17 @@ final class HFSLeser {
         }
     }
 
+    /// Beliebiger Byte-Bereich (nicht an Bloecke gebunden), in <= 4 MiB-Stuecken.
+    func stromeRoh(offset: UInt64, laenge: UInt64, _ stueck: ([UInt8]) throws -> Void) throws {
+        var done: UInt64 = 0
+        while done < laenge {
+            let n = Int(min(4 * MiB, laenge - done))
+            let b = try lies(offset + done, n)
+            guard b.count == n else { throw AppFehler.sicherung("Lesefehler: Offset \(offset + done), \(b.count) statt \(n) Byte") }
+            try stueck(b); done += UInt64(n)
+        }
+    }
+
     /// Volumeende (fuer Alternate-VH bei Ende-1024): Abbilddatei = Dateigroesse, sonst totalBlocks*Blockgroesse; muss dort H+/HX tragen.
     func volumeEnde(partitionsgroesse: UInt64? = nil) throws -> UInt64 {
         var st = stat(); fstat(fd, &st)

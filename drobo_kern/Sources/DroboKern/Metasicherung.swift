@@ -105,11 +105,9 @@ public func metadatenSichern(quelle: String, ort: String, uuid: String, anzahl: 
             fullsync(h.fileDescriptor); try h.close()
             summen.append((s.finalize().map { String(format: "%02x", $0) }.joined(), datei))
         }
-        try schreibe("kopf_1MiB.bin") { w in try v.strome([Ext(start: 0, anzahl: UInt32(MiB / v.blockSize))], logical: MiB, w) }
-        try schreibe("ende_1MiB.bin") { w in
-            guard let o = Optional(ende - MiB), o % v.blockSize == 0 else { throw AppFehler.sicherung("Volumeende nicht blockausgerichtet") }
-            try v.strome([Ext(start: UInt32(o / v.blockSize), anzahl: UInt32(MiB / v.blockSize))], logical: MiB, w)
-        }
+        try schreibe("kopf_1MiB.bin") { w in try v.stromeRoh(offset: 0, laenge: MiB, w) }
+        // Ende-1-MiB ab volumeEnde-1MiB, unabhaengig von der Blockausrichtung (Volumeende liegt oft nicht auf einer Blockgrenze, Rest hinter dem letzten Block)
+        try schreibe("ende_1MiB.bin") { w in try v.stromeRoh(offset: ende - MiB, laenge: MiB, w) }
         var forksJSON: [String: Any] = [:]
         for p in plan {
             forksJSON[p.name] = ["datei": p.name + ".bin", "fileID": p.id, "logicalSize": p.fork.logical, "totalBlocks": p.fork.blocks,
