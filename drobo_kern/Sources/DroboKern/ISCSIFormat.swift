@@ -29,14 +29,20 @@ public func iscsiFormat(host: String, port: UInt16 = 3260, ziel: String? = nil, 
     meldung("plan: " + plan.text)
     guard zuschreiben else { meldung("dry run, nothing written. Add --execute to write."); return }
 
+    var st = statfs()
+    guard statfs(arbeitsordner, &st) == 0 else { throw ISCSIFehler.verboten("work folder \(arbeitsordner) not accessible") }
+    let frei = UInt64(st.f_bavail) * UInt64(st.f_bsize)
+    guard frei >= 20 << 30 else { throw ISCSIFehler.verboten("work folder has only \(frei >> 20) MiB free, need at least 20 GiB; nothing created") }
     let dir = arbeitsordner + "/iscsi-format-" + UUID().uuidString
     try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(atPath: dir) }
-    let img = dir + "/part.img", pbytes = plan.partition.bloecke * 512
-    guard FileManager.default.createFile(atPath: img, contents: nil), truncate(img, off_t(pbytes)) == 0 else { throw ISCSIFehler.protokoll("cannot create \(pbytes)-byte image") }
-    try newfsAufAbbild(img, name: name, meldung: meldung)
-
-    let fd = open(img, O_RDONLY); guard fd >= 0 else { throw ISCSIFehler.protokoll("cannot open image") }
+    let pbytes = plan.partition.bloecke * 512
+    // Sparsebundle (Einheit b = 512-B-Sektoren): Baender wachsen nur beim Schreiben (die Arbeitsplatte ist HFS+ und kennt keine Sparse-Dateien). Gelesen wird ueber das angehaengte Geraet.
+    let (rc, out) = ausfuehren("/usr/bin/hdiutil", ["create", "-type", "SPARSEBUNDLE", "-size", "\(plan.partition.bloecke)b", "-layout", "NONE", dir + "/part"])
+    guard rc == 0 else { throw ISCSIFehler.protokoll("hdiutil create failed: \(out)") }
+    let dev = try anhaengenUndNewfs(dir + "/part.sparsebundle", name: name, meldung: meldung)
+    defer { ausfuehren("/usr/bin/hdiutil", ["detach", dev, "-force"]) }
+    let fd = open("/dev/r" + dev.dropFirst(5), O_RDONLY); guard fd >= 0 else { throw ISCSIFehler.protokoll("cannot open \(dev): \(String(cString: strerror(errno)))") }
     defer { close(fd) }
     let laeufe = try belegteBereiche(fd: fd, partitionsBytes: pbytes)
     let summe = laeufe.reduce(UInt64(0)) { $0 + ($1.1 - $1.0) }
@@ -71,11 +77,12 @@ public func iscsiFormat(host: String, port: UInt16 = 3260, ziel: String? = nil, 
     meldung("verified: \(geprueft) bytes of HFS+ metadata and both GPTs read back equal; partition \(plan.partition.ersterLBA)...\(plan.partition.letzterLBA)")
 }
 
-/// newfs_hfs (ohne -J) auf eine Abbilddatei: nur ueber hdiutil angehaengte Disk-Image-Geraete, sonst Abbruch.
-func newfsAufAbbild(_ img: String, name: String, meldung: (String) -> Void) throws {
-    let (rc, out) = ausfuehren("/usr/bin/hdiutil", ["attach", "-imagekey", "diskimage-class=CRawDiskImage", "-nomount", img])
+/// Haengt das Abbild an und formatiert mit newfs_hfs (ohne -J): nur Disk-Image-Geraete, sonst Abbruch (detach). Gibt das Geraet (/dev/diskN) angehaengt zurueck.
+func anhaengenUndNewfs(_ img: String, name: String, meldung: (String) -> Void) throws -> String {
+    let (rc, out) = ausfuehren("/usr/bin/hdiutil", ["attach", "-nomount", img])
     guard rc == 0, let dev = out.split(separator: "\n").first?.split(separator: " ").first.map(String.init), dev.hasPrefix("/dev/disk") else { throw ISCSIFehler.protokoll("hdiutil attach failed: \(out)") }
-    defer { ausfuehren("/usr/bin/hdiutil", ["detach", dev, "-force"]) }
+    var ok = false
+    defer { if !ok { ausfuehren("/usr/bin/hdiutil", ["detach", dev, "-force"]) } }
     let (_, info) = ausfuehren("/usr/sbin/diskutil", ["info", dev])
     guard info.range(of: #"Virtual: +Yes"#, options: .regularExpression) != nil, info.range(of: #"Protocol: +Disk Image"#, options: .regularExpression) != nil else {
         throw ISCSIFehler.verboten("\(dev) is not a disk-image device, refusing newfs_hfs")
@@ -83,11 +90,19 @@ func newfsAufAbbild(_ img: String, name: String, meldung: (String) -> Void) thro
     let (r2, o2) = ausfuehren("/sbin/newfs_hfs", ["-v", name, "/dev/r" + dev.dropFirst(5)])
     guard r2 == 0 else { throw ISCSIFehler.protokoll("newfs_hfs failed: \(o2)") }
     meldung("newfs_hfs ok on the local image (\(dev))")
+    ok = true
+    return dev
 }
 
 /// Belegte Bereiche (Byte von, bis; relativ zur Partition, aufsteigend, verschmolzen) laut Allocation-Bitmap, dazu Boot-/Header-Bytes und Ersatz-Header.
 func belegteBereiche(fd: Int32, partitionsBytes: UInt64) throws -> [(UInt64, UInt64)] {
-    func lies(_ von: UInt64, _ n: Int) -> [UInt8] { var b = [UInt8](repeating: 0, count: n); _ = pread(fd, &b, n, off_t(von)); return b }
+    // Roh-Geraet: nur sektorgenaue Lesungen (512 B), sonst EINVAL -> hier auf Sektoren erweitert, zu kurze/fehlgeschlagene Lesung bricht ab (nie stille Nullen).
+    func lies(_ von: UInt64, _ n: Int) -> [UInt8] {
+        let a = von / 512 * 512, l = Int((von + UInt64(n) + 511) / 512 * 512 - a)
+        var b = [UInt8](repeating: 0, count: l); let got = pread(fd, &b, l, off_t(a))
+        precondition(got == l, "read of the local HFS+ image failed (\(got), errno \(errno))")
+        return Array(b[Int(von - a)..<Int(von - a) + n])
+    }
     let vh = lies(1024, 512)
     guard vh[0] == 0x48, vh[1] == 0x2B || vh[1] == 0x58 else { throw ISCSIFehler.protokoll("image has no HFS+ volume header") }
     let bs = UInt64(be32(vh, 40)), total = UInt64(be32(vh, 44))
