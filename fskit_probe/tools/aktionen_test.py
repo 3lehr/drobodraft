@@ -22,7 +22,7 @@ def frei_port():
 def start(demo="beide", daten=None, extra=None):
     daten = daten or tempfile.mkdtemp(prefix="drobo_aktionen_", dir=os.environ.get("TMPDIR", "/private/tmp"))
     port = frei_port()
-    env = dict(os.environ, DROBO_DEMO=demo, DROBO_DATEN=daten, DROBO_STEUERUNG=str(port), **(extra or {}))
+    env = dict(os.environ, DROBO_DEMO_HINTEN="1", DROBO_DEMO=demo, DROBO_DATEN=daten, DROBO_STEUERUNG=str(port), **(extra or {}))
     p = subprocess.Popen([APP], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     for _ in range(60):
         try:
@@ -69,7 +69,7 @@ def blatt_test():
         post("/aktion?id=sicherungsortWaehlen&arg=/private/tmp/drobo_aktionen_ziel")
         post("/aktion?id=einhaengenSchreiben"); z = get("/zustand")
         pruefe(z["blatt_art"] == "voll:nichtErprobt" and len(z["bestaetigt"]) == 1, f"Kabel: nicht erprobt = volles Blatt trotz frueherer Bestaetigung ({z['blatt_art']})")
-        post("/uhr?versatz=16"); r = post("/bestaetigen"); pruefe(not r["ok"], f"ohne Sicherungs-Kaestchen abgelehnt: {r['fehler']}")
+        post("/uhr?versatz=16"); z2 = get("/zustand"); r = post("/bestaetigen"); pruefe(not r["ok"], f"ohne Sicherungs-Kaestchen abgelehnt: {r['fehler']} (vorher: art={z2['blatt_art']} gesichert={z2['gesichert']} blatt={z2['blatt']} auswahl={z2['auswahl']})")
         post("/gesichert?an=1"); pruefe(post("/bestaetigen")["ok"], "mit Kaestchen nach der Sperre bestaetigt")
     finally: beenden(p)
 

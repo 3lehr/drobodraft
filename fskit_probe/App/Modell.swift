@@ -179,6 +179,7 @@ final class DroboModell: ObservableObject {
     func starten() {
         #if DEBUG
         Steuerung.startenWennGewuenscht(self)
+        if ProcessInfo.processInfo.environment["DROBO_DEMO_HINTEN"] != nil { DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { NSApp.windows.forEach { $0.orderOut(nil) } } }
         if let b = DemoDaten.blatt { DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.blatt = b } }
         #endif
         anmeldeStart = SMAppService.mainApp.status == .enabled

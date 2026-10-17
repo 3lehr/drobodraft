@@ -7,6 +7,10 @@ struct DroboApp: App {
 
     init() {
         if kopflauf() { exit(0) }
+        #if DEBUG
+        // Testlaeufe ohne sichtbares Fenster: kein Dock-Symbol, Fenster werden in Modell.starten() ausgeblendet (Steuerung per Text braucht keins)
+        if ProcessInfo.processInfo.environment["DROBO_DEMO_HINTEN"] != nil { NSApplication.shared.setActivationPolicy(.accessory) }
+        #endif
     }
 
     var body: some Scene {

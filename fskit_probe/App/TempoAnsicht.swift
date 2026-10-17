@@ -36,8 +36,8 @@ struct Rundinstrument: View {
                     Text("MB/s").font(.callout).foregroundStyle(.secondary)
                 }
             }
-            .frame(minWidth: instrument, minHeight: instrument)
-            HStack { Text("0"); Spacer(); Text(String(format: "%.0f", skala)) }.font(.caption.monospacedDigit()).foregroundStyle(.secondary).frame(minWidth: Mass.instrumentSkala)
+            .frame(width: instrument, height: instrument)
+            HStack { Text("0"); Spacer(); Text(String(format: "%.0f", skala)) }.font(.caption.monospacedDigit()).foregroundStyle(.secondary).frame(width: Mass.instrumentSkala)
             Text(titel).font(.headline)
             if let s = stand { Text("Gemessen: \(zeitLesbar(s))").font(.caption).foregroundStyle(.secondary) }
         }

@@ -128,3 +128,20 @@ Formatieren zeigt zusätzlich Volume-Nummer, bisherigen Namen, Größe und Parti
 - Zustand wiederherstellen: gewählter Bereich und Drobo in `ansicht.json` im Datenordner.
 - Steuerung per Text: nur Debug-Bau, `DROBO_STEUERUNG=<port>` (127.0.0.1): `/aktionen`, `/menue` (echte Menüleiste), `/zustand`, `/aktion`, `/undo`, `/redo`, `/bild`. Test `fskit_probe/tools/aktionen_test.py`.
 - Grenze: Zeilen-Aktionen (je LUN einhängen, Hinzufügen je Fund) stehen im Menü nur für die Haupt-LUN bzw. den ersten Fund; die Zeilenknöpfe bleiben als Beschleuniger.
+
+### Gerätebild DroboPro (Lage „nebeneinander“): Füllstand-LEDs rechts, darunter Betriebslampe (2026-10-17T10:40:00+0200)
+Betreiber (nach Foto vom Originalgerät): blaue Punkte rechts senkrecht, darunter die Power-LED. 5C (gestapelt) bleibt waagerechte Reihe unten.
+```
+┌──────────────────────────────────────────────────────┐
+│  1    2    3    4    5    6    7    8        ·  10   │   LEDs: 10 Stück, klein (Token),
+│ ┌─┐  ┌─┐  ┌─┐  ┌─┐  ┌─┐  ┌┄┐  ┌┄┐  ┌┄┐       ·  9   │   füllen von UNTEN nach oben
+│ │8│  │3│  │3│  │3│  │3│  │L│  │L│  │L│       ●  …   │   (Annahme, am Gerät UNGEEICHT)
+│ │T│  │T│  │T│  │T│  │T│  │e│  │e│  │e│       ●  2   │
+│ │B│  │B│  │B│  │B│  │B│  │e│  │e│  │e│       ●  1   │
+│ └─┘  └─┘  └─┘  └─┘  └─┘  └┄┘  └┄┘  └┄┘                │
+│  ✓    ✓    ✓    ✓    ✓    ○    ○    ○        ⏻       │   Betriebslampe darunter: Symbol + Text
+│ Grün Grün Grün Grün Grün Leer Leer Leer      Ein     │   Ein (grün) | Aus oder nicht erreichbar (grau)
+└──────────────────────────────────────────────────────┘                  | Reagiert nicht (rot, Hänger)
+```
+Betriebslampe: Farbe NICHT vom Gerät gelesen (keine Statusseite bekannt, 0x36 wird nicht abgefragt: unbekannte Seiten hängen die DroboPro). Abgeleitet aus Sitzung/Status: Ein = erreichbar und Status gelesen, Aus = nicht erreichbar, Reagiert nicht = Bremse „reagiert nicht“. VoiceOver: „Betrieb: Ein“. Füllstand weiter als ein Element „Physisch belegt: N %“.
+Korrektur in derselben Änderung: Beim Umstellen auf Token waren Rundinstrument, Aufteilungsbalken und LEDs von fester Größe auf `minWidth/minHeight` gerutscht und dehnten sich (greedy Formen); sie bekommen wieder feste Größe über Token/`@ScaledMetric`.

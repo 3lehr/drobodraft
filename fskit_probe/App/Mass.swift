@@ -55,6 +55,10 @@ enum Mass {
     static let lampe: CGFloat = 22
     static let lampeWortHoehe: CGFloat = 28
     static let ledPunkt: CGFloat = 12
+    /// Senkrechte Fuellstands-LEDs (DroboPro): kleiner, zehn Stueck uebereinander.
+    static let ledPunktSenkrecht: CGFloat = 8
+    static let ledLuecke: CGFloat = 4
+    static let ledSpalte: CGFloat = 72
     static let aufteilungHoehe: CGFloat = 12
     /// Rundinstrument (Tempo).
     static let instrument: CGFloat = 190

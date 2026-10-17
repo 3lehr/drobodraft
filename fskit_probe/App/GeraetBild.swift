@@ -20,6 +20,7 @@ struct DroboGeraet: View {
     let h: DroboStatus
     let g: Gesamtzustand
     var mitFehler = true
+    var betrieb: Betrieb = .aus
     @State private var offen: Int?
 
     /// 5 Schaechte (Drobo 5C) oder 8 (DroboPro); die Statusseite nennt die Zahl, sonst das Modell.
@@ -34,16 +35,20 @@ struct DroboGeraet: View {
                     SchachtFeld(nr: n, s: h.schaechte.first { $0.nr == n }, mitFehler: mitFehler, lage: lage, offen: $offen)
                 }
             } else {
-                HStack(alignment: .top, spacing: Abstand.s) {   // Reihenfolge = Schachtnummer, auch fuer VoiceOver
+                HStack(alignment: .top, spacing: Mass.schachtLuecke) {   // Reihenfolge = Schachtnummer, auch fuer VoiceOver
                     ForEach(1...anzahl, id: \.self) { n in
                         SchachtFeld(nr: n, s: h.schaechte.first { $0.nr == n }, mitFehler: mitFehler, lage: lage, offen: $offen)
                     }
+                    VStack(spacing: Abstand.m) {   // rechts: Fuellstand senkrecht, darunter die Betriebslampe
+                        FuellLeiste(g: g, senkrecht: true).padding(.top, Abstand.l)
+                        BetriebsLampe(b: betrieb)
+                    }.frame(width: Mass.ledSpalte)
                 }
             }
-            FuellLeiste(g: g).padding(.top, Abstand.xs)
+            if lage == .gestapelt { FuellLeiste(g: g).padding(.top, Abstand.xs) }
         }
         .padding(Abstand.m)
-        .frame(width: lage == .gestapelt ? Mass.geraetStapelBreite : CGFloat(anzahl) * Mass.schachtBreite + Mass.schachtLuecke * CGFloat(anzahl - 1) + Mass.geraetRand)
+        .frame(width: lage == .gestapelt ? Mass.geraetStapelBreite : CGFloat(anzahl) * (Mass.schachtBreite + Mass.schachtLuecke) + Mass.ledSpalte + Mass.geraetRand)
         .background(RoundedRectangle(cornerRadius: Radius.geraet).fill(Farbe.geraetGehaeuse))
         .overlay(RoundedRectangle(cornerRadius: Radius.geraet).stroke(Color.white.opacity(0.3), lineWidth: 1))
         .environment(\.colorScheme, .dark)   // Geraet bleibt dunkel, auch im hellen Modus; Systemfarben passen sich an
@@ -82,8 +87,8 @@ struct SchachtFeld: View {
         Button { offen = nr } label: {
             if lage == .gestapelt {
                 HStack(spacing: Abstand.s) {
-                    Text("\(nr)").font(.callout.bold().monospacedDigit()).foregroundStyle(.white).frame(minWidth: Mass.schachtNummerBreite)
-                    platte.frame(minHeight: Mass.plateStapelHoehe)
+                    Text("\(nr)").font(.callout.bold().monospacedDigit()).foregroundStyle(.white).frame(width: Mass.schachtNummerBreite)
+                    platte.frame(height: Mass.plateStapelHoehe)
                     HStack(spacing: Abstand.xs) {
                         Lampe(f: farbe)
                         Text(farbe.wortText).font(.caption).foregroundStyle(.white).fixedSize(horizontal: false, vertical: true)
@@ -93,11 +98,11 @@ struct SchachtFeld: View {
             } else {
                 VStack(spacing: Abstand.xs) {
                     Text("\(nr)").font(.callout.bold().monospacedDigit()).foregroundStyle(.white)
-                    platte.frame(minWidth: Mass.plateSenkrechtBreite, minHeight: Mass.plateSenkrechtHoehe).overlay(Text(kapText).font(.callout).monospacedDigit().foregroundStyle(.white).fixedSize().rotationEffect(.degrees(-90)))
+                    platte.frame(width: Mass.plateSenkrechtBreite, height: Mass.plateSenkrechtHoehe).overlay(Text(kapText).font(.callout).monospacedDigit().foregroundStyle(.white).fixedSize().rotationEffect(.degrees(-90)))
                     Lampe(f: farbe)   // Spalte = Einschub = Lampe = Wort: alle auf derselben Mittelachse
-                    Text(farbe.wortText).font(.caption2).foregroundStyle(.white).multilineTextAlignment(.center).frame(minWidth: Mass.schachtBreite, minHeight: Mass.lampeWortHoehe, alignment: .top)
+                    Text(farbe.wortText).font(.caption2).foregroundStyle(.white).multilineTextAlignment(.center).frame(width: Mass.schachtBreite, height: Mass.lampeWortHoehe, alignment: .top)
                 }
-                .frame(minWidth: Mass.schachtBreite)
+                .frame(width: Mass.schachtBreite)
                 .contentShape(Rectangle())
             }
         }
@@ -157,20 +162,52 @@ struct Lampe: View {
                 }
             } else { Image(systemName: f.symbol).foregroundStyle(f.farbe == .secondary ? Color.white.opacity(0.75) : f.farbe) }
         }
-        .imageScale(.large).frame(minWidth: Mass.lampe, minHeight: Mass.lampe).accessibilityHidden(true)
+        .imageScale(.large).frame(width: Mass.lampe, height: Mass.lampe).accessibilityHidden(true)
+    }
+}
+
+/// Betriebslampe (nur DroboPro-Bild): Farbe NICHT vom Geraet gelesen (keine Statusseite bekannt; unbekannte Seiten wie 0x36 werden nicht abgefragt, sie haengen die DroboPro).
+/// Abgeleitet aus Sitzung und Status: Ein = erreichbar und Status gelesen, Aus = nicht erreichbar, Reagiert nicht = Bremse "reagiert nicht".
+enum Betrieb {
+    case ein, aus, haengt
+    var wort: String { switch self { case .ein: return String(localized: "Ein"); case .aus: return String(localized: "Aus oder nicht erreichbar"); case .haengt: return String(localized: "Reagiert nicht") } }
+    var symbol: String { switch self { case .ein: return "power.circle.fill"; case .aus: return "power.circle"; case .haengt: return "exclamationmark.octagon.fill" } }
+    var farbe: Color { switch self { case .ein: return .green; case .aus: return .secondary; case .haengt: return .red } }
+}
+
+struct BetriebsLampe: View {
+    let b: Betrieb
+    var body: some View {
+        VStack(spacing: Abstand.xs) {
+            Image(systemName: b.symbol).foregroundStyle(b.farbe).font(.title2).accessibilityHidden(true)
+            Text(b.wort).font(.caption2).foregroundStyle(.white).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(width: Mass.ledSpalte)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(String(localized: "Betrieb: \(b.wort)"))
     }
 }
 
 /// Blaue Fuellstands-LEDs wie am Geraet: zehn runde Punkte, je 10 % einer, ab > 0 % mindestens einer (Kern: `ledAnzahl`). VoiceOver: "Physisch belegt: N %".
+/// Waagerechte Reihe (5C) oder senkrechte Spalte (DroboPro, rechts neben den Schaechten, fuellt von UNTEN nach OBEN: Annahme, am Geraet UNGEEICHT).
 struct FuellLeiste: View {
     let g: Gesamtzustand
+    var senkrecht = false
+    @ScaledMetric(relativeTo: .caption) private var punkt = Mass.ledPunkt
+    @ScaledMetric(relativeTo: .caption) private var punktSenkrecht = Mass.ledPunktSenkrecht
+
+    func led(_ i: Int, _ d: CGFloat) -> some View {
+        Circle().fill(i < g.ledAnzahl ? Farbe.fuellLed : Color.white.opacity(0.18)).frame(width: d, height: d)
+    }
+
     var body: some View {
-        HStack(spacing: Abstand.s) {
-            ForEach(0..<10, id: \.self) { i in
-                Circle().fill(i < g.ledAnzahl ? Farbe.fuellLed : Color.white.opacity(0.18)).frame(minWidth: Mass.ledPunkt, minHeight: Mass.ledPunkt)
+        Group {
+            if senkrecht {
+                VStack(spacing: Mass.ledLuecke) { ForEach((0..<10).reversed(), id: \.self) { led($0, punktSenkrecht) } }   // oberste LED = Nummer 10
+            } else {
+                HStack(spacing: Abstand.s) { ForEach(0..<10, id: \.self) { led($0, punkt) } }.frame(maxWidth: .infinity)
             }
         }
-        .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(g.belegtProzent.map { String(localized: "Physisch belegt: \($0) %") } ?? String(localized: "Füllstand unbekannt"))
     }

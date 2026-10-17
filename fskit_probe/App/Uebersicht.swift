@@ -34,7 +34,7 @@ struct UebersichtAnsicht: View {
                     }
                     if let h = a.hw, let g = a.hwZustand {
                         let geraet = VStack(spacing: Abstand.s) {
-                            DroboGeraet(h: h, g: g, mitFehler: a.eintrag.netz == nil)
+                            DroboGeraet(h: h, g: g, mitFehler: a.eintrag.netz == nil, betrieb: a.bremse == .reagiertNicht ? .haengt : (a.verbunden && h.ok && a.netzFehler == nil ? .ein : .aus))
                             if let p = g.belegtProzent { Text("Physisch belegt: \(p) %").font(.callout).foregroundStyle(.secondary) }
                             #if DEBUG
                             // Demo: Popover laesst sich ohne Klick nicht fotografieren -> Einzelheiten des Schachts DROBO_DEMO_SCHACHT stehen darunter
@@ -125,7 +125,7 @@ struct Aufteilung: View {
                     Rectangle().fill(Color.gray.opacity(0.55)).frame(width: p.size.width * Double(g.frei) / summe)
                     Rectangle().fill(Color.orange.opacity(0.7)).frame(width: p.size.width * Double(g.reserviert) / summe)
                 }.clipShape(RoundedRectangle(cornerRadius: Radius.rechteck))
-            }.frame(minHeight: Mass.aufteilungHoehe).accessibilityHidden(true)
+            }.frame(height: Mass.aufteilungHoehe).accessibilityHidden(true)
             zeile("Belegt", g.belegt, Color.blue, "square.fill")
             zeile("Frei", g.frei, Color.gray, "square")
             if g.reserviert > 0 { zeile("Für Schutz reserviert", g.reserviert, Color.orange, "square.lefthalf.filled") }
