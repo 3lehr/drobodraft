@@ -26,6 +26,20 @@ MODESENSE = {  # gemessen an einer DroboPro (Seite 08 ist synthetisch: das Origi
     0x30: "7a300900555f00000000000000",
 }
 EXAKT = {0x01: 28, 0x02: 36, 0x03: 581, 0x04: 157, 0x05: 42, 0x06: 6, 0x07: 157, 0x08: 314, 0x09: 16, 0x30: 13}   # Kopflaenge + 4, gemessen
+# EA-10-Systembefehle im Dashboard-Format (docs/PLAN_LUN_UND_TIMEMACHINE_2026-10-17.md); alles andere = Neustart der DroboPro (Messung 2026-10-17)
+EA_LEN = {0x06: 4, 0x0F: 4, 0x12: 12, 0x13: 4, 0x20: 2}
+EA_LESEND = {0x20}
+def ea_grund(cdb, daten):
+    if len(cdb) < 10 or cdb[0] != 0xEA or cdb[1] != 0x10: return "kein EA 10"
+    op = cdb[3]; n = (cdb[7] << 8) | cdb[8]
+    if op not in EA_LEN: return "op %02x unbekannt" % op
+    if cdb[2] != (0x80 if op in EA_LESEND else 0): return "byte2 %02x" % cdb[2]
+    if cdb[5] != 0 or cdb[6] != 0x21 or cdb[9] != 0: return "byte5/6/9 %02x %02x %02x" % (cdb[5], cdb[6], cdb[9])
+    if n != EA_LEN[op]: return "len %d != %d" % (n, EA_LEN[op])
+    if len(daten) != (0 if op in EA_LESEND else n): return "daten %d" % len(daten)
+    return ""
+if len(sys.argv) == 3 and sys.argv[1] == "--ea-check":
+    c, d = sys.argv[2].split(":"); print(ea_grund(bytes.fromhex(c), bytes.fromhex(d))); sys.exit(0)
 a = argparse.ArgumentParser()
 a.add_argument("--image", action="append", required=True)
 a.add_argument("--log", required=True)
@@ -174,10 +188,13 @@ def scsi(v, h, imm):
         body = bytes([0, 0, 5, 2, 31, 0, 0, 0]) + b"DROBO   " + b"DroboPro        " + b"1.00"
         v.datain(itt, lun, body[:cdb[4]], exp)
     elif op == 0x00: v.antwort(itt, 0)
-    elif op == 0xEA and cdb[1] == 0x10 and cdb[3] == 0x0F:     # LUN-Groesse setzen (Nachbildung): Daten MUESSEN im Command-PDU stehen, sonst startet die DroboPro neu
-        if len(imm) != 4:
-            import time; time.sleep(1); log(ereignis="ABSTURZ ea-ohne-immediate", daten=len(imm)); raise Zu()
-        log(ereignis="lunsize", tib=int.from_bytes(imm, "big"), cdb=cdb.hex()); v.antwort(itt, 0)
+    elif op == 0xEA:     # Systembefehl: nur Dashboard-Format + Daten im Command-PDU, sonst Neustart-Nachbildung
+        g = ea_grund(cdb[:10], imm)
+        if g: import time; time.sleep(1); log(ereignis="ABSTURZ ea-format", grund=g, cdb=cdb.hex()); raise Zu()
+        if cdb[3] == 0x0F: log(ereignis="lunsize", tib=int.from_bytes(imm, "big"), cdb=cdb.hex())
+        log(ereignis="sysop", op=cdb[3], daten=imm.hex())
+        if cdb[3] == 0x20: return v.datain(itt, lun, struct.pack(">H", 2), exp)
+        v.antwort(itt, 0)
     elif op == 0x9E and cdb[1] & 0x1F == 0x10:
         v.datain(itt, lun, struct.pack(">QI", size - 1, 512) + bytes(20), exp)
     elif op == 0x5A and cdb[2] == 0x3A:
