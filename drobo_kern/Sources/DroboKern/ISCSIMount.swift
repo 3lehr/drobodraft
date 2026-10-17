@@ -13,6 +13,22 @@ public func hfsVolumeUUID(vh: [UInt8]) -> String? {
     return UUID(uuid: (md[0], md[1], md[2], md[3], md[4], md[5], md[6], md[7], md[8], md[9], md[10], md[11], md[12], md[13], md[14], md[15])).uuidString
 }
 
+/// Volumename aus dem HFS+-Katalog: der Wurzelordner steht unter dem Schluessel (parentID 1, Volumename) und ist der ERSTE Satz des ersten Blatts. `lies` liest ab Partitionsanfang
+/// (sektorweise ausgerichtet). Liest nur den Kopf, die Kopf-Knoten- und die erste Blattseite des Katalogs im ersten Extent; nil = nicht lesbar (nie raten).
+public func hfsVolumeName(lies: (UInt64, Int) throws -> [UInt8]) -> String? {
+    guard let vh = try? lies(1024, 512), vh.count == 512, vh[0] == 0x48, vh[1] == 0x2B || vh[1] == 0x58 else { return nil }
+    let bs = UInt64(be32(vh, 40)), start = UInt64(be32(vh, 288)), n = UInt64(be32(vh, 292))      // Katalog-Fork (VH+272): Extent 0 bei +16
+    guard bs >= 512, n > 0, let kopf = try? lies(start * bs, 512), kopf.count == 512 else { return nil }
+    let erstes = UInt64(be32(kopf, 24)), knoten = UInt64(kopf[32]) << 8 | UInt64(kopf[33])     // BTHeaderRec: firstLeafNode (+10), nodeSize (+18), je +14 Knotenkopf
+    guard knoten >= 512, knoten <= 32768, knoten % 512 == 0, (erstes + 1) * knoten <= n * bs, let b = try? lies(start * bs + erstes * knoten, Int(knoten)), b.count == Int(knoten), b[8] == 0xFF else { return nil }
+    let satz = Int(b[Int(knoten) - 2]) << 8 | Int(b[Int(knoten) - 1])
+    guard Int(b[10]) << 8 | Int(b[11]) > 0, satz + 8 <= b.count, be32(b, satz + 2) == 1 else { return nil }
+    let len = Int(b[satz + 6]) << 8 | Int(b[satz + 7])
+    guard len > 0, satz + 8 + 2 * len <= b.count else { return nil }
+    let u = (0..<len).map { UInt16(b[satz + 8 + 2 * $0]) << 8 | UInt16(b[satz + 9 + 2 * $0]) }
+    return String(decoding: u, as: UTF16.self)
+}
+
 public let iscsiVorgabeOrt = "/private/tmp/drobo_iscsi_mnt"
 
 /// Einhaengeort einer iSCSI-LUN laut Einstellung: wie beim 5C-Weg die Vorgabe /Volumes (-> der Dienst legt /Volumes/<Volumename> an, Finder-Seitenleiste),
@@ -43,6 +59,7 @@ public func iscsiEinhaengen(host: String, lun: Int, schreiben: Bool, ziel: Strin
     let teil = try GPT.ersteHFS { try s.lesen(lun: lun, lba: $0, bloecke: $1) }
     guard let p = teil else { s.abmelden(); throw ISCSIFehler.protokoll("LUN \(lun) has no HFS+ partition") }
     let vh = try s.lesen(lun: lun, lba: p.ersterLBA + 2, bloecke: 1)       // Offset 1024 der Partition
+    let hfsName = hfsVolumeName(lies: partitionLeser(s, lun: lun, partition: p))      // so heisst das Volume im Finder; der Ordner unter /Volumes soll genauso heissen
     var gesichert: String?
     if schreiben, let si = sicherung, let u = hfsVolumeUUID(vh: vh) {
         do { gesichert = try netzSicherung(sitzung: s, lun: lun, partition: p, uuid: u, ort: si.ort, anzahl: si.anzahl).ordner } catch { s.abmelden(); throw error }
@@ -50,10 +67,11 @@ public func iscsiEinhaengen(host: String, lun: Int, schreiben: Bool, ziel: Strin
     } else if schreiben && !ohneSicherung { s.abmelden(); throw AppFehler.sicherungOrt("Schreiben ohne Metadaten-Sicherung wird nicht eingehaengt: Sicherungsort fehlt (CLI: drobo backup-location PFAD, oder --no-backup)") }
     s.abmelden()                                                            // vor dem Mount: eine Sitzung zur Zeit (die DroboPro bedient nur eine)
     guard let uuid = hfsVolumeUUID(vh: vh) else { throw ISCSIFehler.protokoll("partition has no HFS+ volume header with a volume ID") }
+    let ordnerName = iscsiOrdnerName(hfs: hfsName, gespeichert: volumenName, lun: lun)
     let modus = schreiben ? "schreiben" : "nurlesen"
     try helferISCSIFreigabeSetzen(uuid: uuid, modus: modus, maxBytes: p.bloecke * 512)
     meldung("permission \(uuid): \(modus), max_bytes \(p.bloecke * 512)")
-    if ueberDienst { ort = try ordner.anlegen(uuid, volumenName ?? "Volume \(lun + 1)") } else { try FileManager.default.createDirectory(atPath: ort, withIntermediateDirectories: true) }
+    if ueberDienst { ort = try ordner.anlegen(uuid, ordnerName) } else { try FileManager.default.createDirectory(atPath: ort, withIntermediateDirectories: true) }
     let url = "iscsi://127.0.0.1:\(port)/\(iqn)/\(lun)"
     var (rc, out) = ausfuehren("/sbin/mount", ["-F", "-t", "hfsdropro", url, ort])
     if rc != 0 { Thread.sleep(forTimeInterval: 3); (rc, out) = ausfuehren("/sbin/mount", ["-F", "-t", "hfsdropro", url, ort]) }

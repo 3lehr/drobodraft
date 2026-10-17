@@ -48,12 +48,13 @@ public func lunSeite04(_ b: [UInt8]) -> [LunSeite04]? {
 }
 
 public struct LunEintrag: Equatable {
-    public init(lun: Int, groesse: UInt64, schema: String, partitionBytes: UInt64?, uuid: String?) { self.lun = lun; self.groesse = groesse; self.schema = schema; self.partitionBytes = partitionBytes; self.uuid = uuid }
+    public init(lun: Int, groesse: UInt64, schema: String, partitionBytes: UInt64?, uuid: String?, volumeName: String? = nil) { self.lun = lun; self.groesse = groesse; self.schema = schema; self.partitionBytes = partitionBytes; self.uuid = uuid; self.volumeName = volumeName }
     public var lun: Int
     public var groesse: UInt64          // READ CAPACITY, Bytes
     public var schema: String           // "GPT" / "-"
     public var partitionBytes: UInt64?  // erste HFS+-Partition
     public var uuid: String?            // Volume-UUID der HFS+-Partition
+    public var volumeName: String?      // Volumename aus dem HFS+-Katalog (das, was der Finder zeigt); nil = nicht lesbar
     public var hatDateisystem: Bool { uuid != nil }
 }
 
@@ -65,7 +66,7 @@ public func netzLunVerzeichnis(sitzung s: ISCSISitzung) throws -> [LunEintrag] {
         let teil = try? GPT.ersteHFS(lies: { try s.lesen(lun: l, lba: $0, bloecke: $1) })
         let vh = teil.flatMap { try? s.lesen(lun: l, lba: $0.ersterLBA + 2, bloecke: 1) }
         let schema = s07.first { $0.lun == l }?.schemaText ?? (teil != nil ? "GPT" : "-")
-        return LunEintrag(lun: l, groesse: k.bloecke * 512, schema: schema, partitionBytes: teil.map { $0.bloecke * 512 }, uuid: vh.flatMap { hfsVolumeUUID(vh: $0) })
+        return LunEintrag(lun: l, groesse: k.bloecke * 512, schema: schema, partitionBytes: teil.map { $0.bloecke * 512 }, uuid: vh.flatMap { hfsVolumeUUID(vh: $0) }, volumeName: teil.flatMap { hfsVolumeName(lies: partitionLeser(s, lun: l, partition: $0)) })
     }
 }
 
@@ -83,6 +84,24 @@ public func netzLunNachFormat(host: String, lun: Int, versuche: Int = 4, pause: 
 }
 
 /// Eintrag der LUN im gespeicherten Ziel nach dem Format: neue Volume-UUID und neuer Name (die Freigabe fuer die neue UUID setzt das Einhaengen).
+/// Ordnername unter /Volumes: der HFS-Volumename (so heisst das Volume im Finder), sonst der gespeicherte LUN-Name, sonst "Volume N".
+public func iscsiOrdnerName(hfs: String?, gespeichert: String?, lun: Int) -> String {
+    if let h = hfs, !h.isEmpty { return h }
+    if let g = gespeichert, !g.isEmpty { return g }
+    return "Volume \(lun + 1)"
+}
+
+/// Gespeicherte LUN-Namen/UUIDs nach dem Einlesen angleichen: je gelesener LUN mit Dateisystem gilt UUID und (wenn lesbar) der HFS-Volumename; sonst bleibt der gespeicherte Name,
+/// fehlt er, gilt `standardName`. LUNs, die nicht gelesen wurden, bleiben unveraendert.
+public func netzLunsAbgleichen(_ nz: NetzZiel, gelesen: [LunEintrag], standardName: (Int) -> String) -> NetzZiel {
+    var n = nz
+    var m: [Int: NetzLunEintrag] = [:]
+    for l in nz.luns ?? [] { m[l.lun] = l }
+    for e in gelesen { if let u = e.uuid { m[e.lun] = NetzLunEintrag(lun: e.lun, uuid: u, name: e.volumeName ?? m[e.lun]?.name ?? standardName(e.lun)) } }
+    n.luns = m.values.sorted { $0.lun < $1.lun }
+    return n
+}
+
 public func netzZielNachFormat(_ nz: NetzZiel, lun: Int, uuid: String, name: String) -> NetzZiel {
     var n = nz
     var l = (nz.luns ?? []).filter { $0.lun != lun }; l.append(NetzLunEintrag(lun: lun, uuid: uuid, name: name)); n.luns = l.sorted { $0.lun < $1.lun }

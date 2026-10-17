@@ -12,8 +12,8 @@ extension DroboModell {
         var n = nz
         if n.iqn == nil { n.iqn = try? netzZielName(host: nz.host) }
         if !l.isEmpty {
-            let alt = Dictionary(uniqueKeysWithValues: (nz.luns ?? []).map { ($0.lun, $0) })
-            n.luns = l.compactMap { e in e.uuid.map { NetzLunEintrag(lun: e.lun, uuid: $0, name: alt[e.lun]?.name ?? String(localized: "Volume \(e.lun + 1)")) } }
+            // gespeicherte LUN-Namen/UUIDs angleichen: der HFS-Volumename (Finder) gewinnt, sonst bleibt der gespeicherte
+            n = netzLunsAbgleichen(n, gelesen: l, standardName: { String(localized: "Volume \($0 + 1)") })
         }
         return (l, n == nz ? nil : n)
     }
@@ -77,7 +77,7 @@ extension DroboModell {
             let r = try netzLunNachFormat(host: nz.host, lun: lun)
             await MainActor.run { [weak self] in
                 guard let self, let id = r.neu.uuid, let i = self.einstellungen.drobos.firstIndex(where: { $0.uuid == u }), let n = self.einstellungen.drobos[i].netz else { return }
-                self.einstellungen.drobos[i].netz = netzZielNachFormat(n, lun: lun, uuid: id, name: name); self.ablage.einstellungenSetzen(self.einstellungen)
+                self.einstellungen.drobos[i].netz = netzZielNachFormat(n, lun: lun, uuid: id, name: r.neu.volumeName ?? name); self.ablage.einstellungenSetzen(self.einstellungen)
                 self.drobos[u]?.luns = r.alle      // Ansicht sofort: sonst bliebe der alte Zustand bis zur naechsten Statusabfrage (5 min) stehen
             }
             return String(localized: "Fertig. Die virtuelle Festplatte ist neu formatiert und kann eingehängt werden.")

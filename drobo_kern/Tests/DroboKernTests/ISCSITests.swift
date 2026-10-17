@@ -506,4 +506,19 @@ extension ISCSITests {
         XCTAssertEqual(logins("Normal"), 2, "1 fuer die Rotprobe + 1 Sitzung der Weckphase (nicht je Versuch ein Login)")
         XCTAssertTrue(ereignisse("fehler").isEmpty)
     }
+
+    /// Befund N: Finder zeigt den HFS-Volumenamen, der Einhaengeordner hiess nach dem gespeicherten LUN-Namen. Der Name kommt aus dem Katalog (Wurzelordner-Satz).
+    func testHFSVolumenameAusDemKatalog() throws {
+        let port = try ziel(mib: 128)
+        var l: [String] = []; try formatiere(port, ausfuehren: true, &l)           // Name "FMTTEST"
+        let s = try sitzung(port); defer { s.abmelden() }
+        let p = try XCTUnwrap(try GPT.ersteHFS { try s.lesen(lun: 1, lba: $0, bloecke: $1) })
+        XCTAssertEqual(hfsVolumeName(lies: partitionLeser(s, lun: 1, partition: p)), "FMTTEST")
+        XCTAssertNil(hfsVolumeName(lies: { _, n in [UInt8](repeating: 0, count: n) }), "kein HFS+: nil")
+        XCTAssertNil(hfsVolumeName(lies: { _, _ in throw ISCSIFehler.zeitueberschreitung("x") }))
+        // Umlaut und Leerzeichen (UTF-16 im Katalog): zweites Format mit anderem Namen
+        try iscsiFormat(host: "127.0.0.1", port: port, lun: 1, name: "Größe Äö 2", ausfuehren: true, arbeitsordner: dir, eingehaengt: { _ in false }, meldung: { _ in })
+        let p2 = try XCTUnwrap(try GPT.ersteHFS { try s.lesen(lun: 1, lba: $0, bloecke: $1) })
+        XCTAssertEqual(hfsVolumeName(lies: partitionLeser(s, lun: 1, partition: p2)), "Größe Äö 2")
+    }
 }
