@@ -68,5 +68,7 @@
 		<key>FSSupportsServerURLs</key>
 		<false/>
 	</dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>DroboDraft verbindet sich per iSCSI mit deiner DroboPro im lokalen Netzwerk.</string>
 </dict>
 </plist>

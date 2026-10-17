@@ -32,6 +32,7 @@ targets:
         LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
         NSPrincipalClass: NSApplication
         NSRemovableVolumesUsageDescription: "Die Drobo-App braucht Zugriff auf das Laufwerk, um es einzuhängen."
+        NSLocalNetworkUsageDescription: "DroboDraft verbindet sich per iSCSI mit deiner DroboPro im lokalen Netzwerk."
     sources:
       - App
     settings:
