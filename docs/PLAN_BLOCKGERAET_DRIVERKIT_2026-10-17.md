@@ -148,3 +148,24 @@ Ursache (V, stark): Familienklasse direkt als Personality auf `IOUserResources` 
 Fix v0.2 (gebaut, `bauen.sh gruen` PASS, CFBundleVersion 2): Personality `IOClass IOUserService`/`IOUserClass BlockbrueckeWurzel` auf `IOUserResources`; Wurzel ruft `Create(this, "BlockbrueckeController", …)` mit Unterpersonality `IOUserSCSIParallelInterfaceController`/`Blockbruecke`. Logpunkte trennen die Stufen: `Wurzel init` → `Wurzel Start ret` → `Controller init` → `Start ret` → `UserInitializeController` → `UserStartController` → `Wurzel Create(Controller) ret`. `bauen.sh` meldet Build-Fehler jetzt als FAIL (vorher PASS mit alter App).
 
 Betreiber: `ditto <APP aus bauen.sh gruen> /Applications/BlockbrueckeHost.app`, App öffnen, „Treiber aktivieren“ (Ersetzen 1→2), Schalter falls verlangt. Beleg: `/usr/bin/log show --last 5m --predicate 'eventMessage BEGINSWITH "Blockbruecke:"' --style compact` und `ioreg -w0 -t | grep -iE "Blockbruecke|IOUserSCSIParallel"`. Erwartet grün: alle sieben Logzeilen, `ret=0x0`, Controller unter `IOUserResources` > `BlockbrueckeWurzel` sichtbar. Fehlt nach `Wurzel Start` die Zeile `Controller init`, scheitert `Create` im Kernel (ret-Wert steht im Log).
+
+## Hängende Deinstallation und Fix v0.3 (2026-10-17T19:28:55+0200)
+
+Befund 19:20 (Koordinator): v0.1-Prozesse 93710/93734 „terminating for uninstall but still running“, kernelmanagerd `SysExtensionWaitForUninstallTerminationError`; v0.2 „activated enabled“, nie gestartet. Gelesen (2026-10-17T19:28:55+0200): `systemextensionsctl list` zeigt 0.1 und 0.2 je „terminating for uninstall but still running“ und 0.2 „activated enabled“.
+
+Ursache v0.1-Hänger (B, Quelle + ioreg): xnu `IOUserServer.cpp:5813` beim Beenden der Dienste eines Servers: `if (!provider) { DKLOG("stale service … found, skipping termination") ; return false; }`. Die v0.1-Kernelobjekte haben keinen Provider (nicht im IOService-Plane, siehe oben) → werden nie terminiert → Dext-Prozess endet nie → sysextd wartet. Das liegt am v0.1-Matching, nicht an fehlendem Stop-Code; v0.2/0.3 hängen den Controller über `Create` an die Wurzel (Provider vorhanden).
+v0.2 startet nicht (V): sysextd/kernelmanagerd starten die neue Version derselben Bundle-ID erst nach Ende der alten.
+
+Fix v0.3 (gebaut, CFBundleVersion 3):
+- `Blockbruecke::Stop`: Log, `Stop(provider, SUPERDISPATCH)` am Ende, Rückgabe durchgereicht (Doku IOService::Stop: „Call super at the end of your implementation … Don’t use this method to release your ivars“, https://developer.apple.com/documentation/driverkit/ioservice/stop).
+- `BlockbrueckeWurzel::Stop`: per `Create` erzeugtes Kind mit `Terminate(0)` beenden, dann super; Logzeilen mit ret.
+- `IOMatchCategory` = eigene Bundle-ID, Host leitet Dext-ID aus eigener Bundle-ID ab.
+- Fallback-ID: `tools/bauen.sh gruen --id2` → `de.begod.drobo.blockbruecke2(.dext)`, eigenes Profil „DriverKit Team Provisioning Profile: de.begod.drobo.blockbruecke2.dext“ automatisch erzeugt, Entitlements wie gruen (B, codesign/security cms). Umgeht die hängenden alten Instanzen ohne Neustart.
+
+Stopp-Punkt hängende Altinstanzen (Betreiber, Kennwort): ohne Neustart nur `sudo kill 93710 93734` (V: Prozessende → IOUserServer räumt auf, sysextd schließt Deinstallation ab; Beleg `systemextensionsctl list` ohne „still running“). Sonst bleiben die Einträge bis zum nächsten Neustart, stören `…blockbruecke2` aber nicht (eigene ID, eigene IOMatchCategory).
+
+Messung ohne Neustart (mit `--id2`):
+1. `ditto <APP aus bauen.sh gruen --id2> /Applications/Blockbruecke2.app` (eigener Name, alte App bleibt), öffnen, „Treiber aktivieren“, Schalter `de.begod.drobo.blockbruecke2.dext`.
+2. Start-Beleg: `/usr/bin/log show --last 5m --predicate 'eventMessage BEGINSWITH "Blockbruecke:"' --style compact`, `ioreg -w0 -t | grep -iE "Blockbruecke|IOUserSCSIParallel"`.
+3. Stop-Beleg (grün): „Treiber deaktivieren“ → Log `Wurzel Stop`, `Wurzel Terminate(Controller) ret=0x0`, `Controller Stop ret=0x0`, `Wurzel Stop ret=0x0`; `pgrep -fl blockbruecke2` leer binnen 30 s; `systemextensionsctl list | grep blockbruecke2` ohne „still running“.
+4. Rot zum Vergleich ist v0.1 (gemessen: hängt). Eigene Rotprobe für den Stop-Pfad nur, falls 3 grün und Zweifel bleiben: Variante ohne `Terminate(Controller)` muss bei Schritt 3 hängen (kostet ggf. wieder ein `sudo kill`).

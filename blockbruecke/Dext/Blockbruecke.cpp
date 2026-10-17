@@ -19,6 +19,15 @@ kern_return_t IMPL(Blockbruecke, Start)
     return r;
 }
 
+// Doku IOService::Stop: Aktivitaet beenden, super am Ende. Kein laufender Auftrag (kein Target) -> direkt super.
+kern_return_t IMPL(Blockbruecke, Stop)
+{
+    LOG("Controller Stop");
+    kern_return_t r = Stop(provider, SUPERDISPATCH);
+    LOG("Controller Stop ret=0x%x", r);
+    return r;
+}
+
 kern_return_t IMPL(Blockbruecke, UserInitializeController) { LOG("UserInitializeController"); return kIOReturnSuccess; }
 kern_return_t IMPL(Blockbruecke, UserStartController)      { LOG("UserStartController");      return kIOReturnSuccess; }
 

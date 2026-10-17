@@ -32,9 +32,12 @@ kern_return_t IMPL(BlockbrueckeWurzel, Start)
 
 kern_return_t IMPL(BlockbrueckeWurzel, Stop)
 {
+    // Per Create() erzeugtes Kind selbst terminieren (Kernel kennt es nur als Kind der Wurzel), dann super am Ende (Doku IOService::Stop).
     LOG("Wurzel Stop");
-    if (ivars->controller) ivars->controller->Terminate(0);
+    if (ivars->controller) { kern_return_t t = ivars->controller->Terminate(0); LOG("Wurzel Terminate(Controller) ret=0x%x", t); }
     OSSafeReleaseNULL(ivars->controller);
-    return Stop(provider, SUPERDISPATCH);
+    kern_return_t r = Stop(provider, SUPERDISPATCH);
+    LOG("Wurzel Stop ret=0x%x", r);
+    return r;
 }
 

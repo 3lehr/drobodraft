@@ -3,7 +3,7 @@ import SystemExtensions
 
 // Nur Aktivierung des Blockbruecke-Dext (Plan Schritt 1). Gleicher Weg wie dext_probe/Host/App.swift.
 // Der Betreiber bestaetigt in den Systemeinstellungen. Nur aus /Applications startbar (OSSystemExtensionRequest verlangt das).
-private let dextID = "de.begod.drobo.blockbruecke.dext"
+private let dextID = (Bundle.main.bundleIdentifier ?? "de.begod.drobo.blockbruecke") + ".dext"   // folgt BB_ID (bauen.sh --id2)
 
 final class Activator: NSObject, ObservableObject, OSSystemExtensionRequestDelegate {
     @Published var status = "Nicht angefordert" { didSet { print("STATUS: \(status)"); fflush(stdout) } }
