@@ -12,8 +12,14 @@ public struct DroboEintrag: Codable, Equatable {
     public init(uuid: String, name: String, rolle: Rolle = .arbeitsvolume, netz: NetzZiel? = nil) { self.uuid = uuid.uppercased(); self.name = name; self.rolle = rolle; self.netz = netz }
 }
 
-public struct NetzZiel: Codable, Equatable { public var host: String; public var lun: Int
-    public init(host: String, lun: Int) { self.host = host; self.lun = lun } }
+/// Eine LUN (virtuelle Platte) einer Netzwerk-Drobo: Nummer, Volume-UUID der HFS+-Partition (Freigabe, Merker) und Anzeigename.
+public struct NetzLunEintrag: Codable, Equatable { public var lun: Int; public var uuid: String; public var name: String
+    public init(lun: Int, uuid: String, name: String) { self.lun = lun; self.uuid = uuid.uppercased(); self.name = name } }
+
+/// Netzwerk-Drobo: Adresse + LUN. `iqn` = feste Kennung des Ziels (aendert sich mit der IP nicht; nie in der Oberflaeche zeigen), alte Eintraege ohne IQN werden beim naechsten
+/// erfolgreichen Kontakt ergaenzt. `luns` = alle bekannten LUNs dieses Geraets (ein Eintrag je Drobo, nicht je LUN); nil = nur `lun`.
+public struct NetzZiel: Codable, Equatable { public var host: String; public var lun: Int; public var iqn: String?; public var luns: [NetzLunEintrag]?
+    public init(host: String, lun: Int, iqn: String? = nil, luns: [NetzLunEintrag]? = nil) { self.host = host; self.lun = lun; self.iqn = iqn; self.luns = luns } }
 
 
 public struct Einstellungen: Codable, Equatable {

@@ -122,3 +122,31 @@ extension ISCSITests {
         }
     }
 }
+
+/// Adresswechsel der DroboPro: Wiederfinden ueber die feste IQN.
+extension ISCSITests {
+    func testAdresseUeberIQNWiedergefunden() throws {
+        let port = try ziel(["--iqn", "iqn.2026-10.local.test:drobopro.eins"])
+        let d = try ISCSISitzung(host: "127.0.0.1", port: port, zeitgrenze: 5); let iqn = try XCTUnwrap(d.ziele().first?.name); d.abmelden()
+        func frage(_ h: String) throws -> String? { h == "127.0.0.1" ? iqn : nil }
+        XCTAssertEqual(netzAdresseSuchen(iqn: iqn, lanHosts: { _ in ["192.0.2.1", "127.0.0.1"] }, iqnFuer: frage), "127.0.0.1", "alte Adresse tot, neue Adresse traegt dieselbe IQN")
+    }
+
+    func testFalscheOderFehlendeIQNSchreibtNichtUm() throws {
+        let port = try ziel()
+        let d = try ISCSISitzung(host: "127.0.0.1", port: port, zeitgrenze: 5); let iqn = try XCTUnwrap(d.ziele().first?.name); d.abmelden()
+        func frage(_ h: String) throws -> String? { iqn }
+        XCTAssertNil(netzAdresseSuchen(iqn: "iqn.2005-06.com.datarobotics:drobopro.andere", lanHosts: { _ in ["127.0.0.1"] }, iqnFuer: frage), "anderes Geraet (andere IQN): nie uebernehmen")
+        XCTAssertNil(netzAdresseSuchen(iqn: "", lanHosts: { _ in ["127.0.0.1"] }, iqnFuer: frage), "leere IQN: nichts suchen")
+        XCTAssertNil(netzAdresseSuchen(iqn: iqn, lanHosts: { _ in throw ISCSIFehler.protokoll("scan failed") }, iqnFuer: frage), "Suche fehlgeschlagen")
+        XCTAssertNil(netzAdresseSuchen(iqn: iqn, lanHosts: { _ in ["192.0.2.7"] }, iqnFuer: { _ in nil }), "Fund ohne IQN")
+    }
+
+    func testNetzZielAlterEintragOhneIQNLaesstSichDecodieren() throws {
+        let alt = Data(#"{"host":"192.168.1.5","lun":1}"#.utf8)
+        let z = try JSONDecoder().decode(NetzZiel.self, from: alt)
+        XCTAssertEqual(z, NetzZiel(host: "192.168.1.5", lun: 1)); XCTAssertNil(z.iqn); XCTAssertNil(z.luns)
+        let neu = NetzZiel(host: "h", lun: 0, iqn: "iqn.x", luns: [NetzLunEintrag(lun: 0, uuid: "ab", name: "A")])
+        XCTAssertEqual(try JSONDecoder().decode(NetzZiel.self, from: JSONEncoder().encode(neu)), neu)
+    }
+}
