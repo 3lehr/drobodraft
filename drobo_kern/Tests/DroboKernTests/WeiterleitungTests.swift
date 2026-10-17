@@ -48,6 +48,27 @@ final class WeiterleitungTests: XCTestCase {
         XCTAssertFalse(relay.beendenErlaubt(aktiv: 0, letzte: Date()), "erst nach 30 s Ruhe")
     }
 
+    /// SIGTERM-Pfad: schliesseAlle beendet offene Weiterleitungen; die Sitzung am Ziel-Ende sieht EOF statt zu haengen, offen faellt auf 0.
+    func testSchliesseAlleBeendetOffeneWeiterleitungen() throws {
+        guard let base = Kern.umgebung("DROBO_TESTDIR") else { throw XCTSkip("DROBO_TESTDIR nicht gesetzt") }
+        let dir = "\(base)/relay-\(UUID().uuidString)"; try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: dir) }
+        FileManager.default.createFile(atPath: "\(dir)/l0.img", contents: nil); truncate("\(dir)/l0.img", 4 << 20)
+        let skript = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("iscsi_ziel.py").path
+        let p = Process(); let aus = Pipe(); p.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        p.arguments = ["python3", "-I", skript, "--image", "\(dir)/l0.img", "--log", "\(dir)/log", "--port", "3260"]
+        p.standardOutput = aus; try p.run(); defer { p.terminate(); p.waitUntilExit() }
+        var z = Data(); while !z.contains(10) { let d = aus.fileHandleForReading.availableData; if d.isEmpty { return XCTFail("Ziel startete nicht (Port 3260 belegt?)") }; z += d }
+        let relay = ISCSIWeiterleitung(testLoopbackErlaubt: true)
+        let lokal = try relay.port(host: "127.0.0.1", port: 3260)
+        let d = try ISCSISitzung(host: "127.0.0.1", port: lokal); let ziele = try d.ziele(); d.abmelden()
+        let s = try ISCSISitzung(host: "127.0.0.1", port: lokal, ziel: ziele[0].name, zeitgrenze: 3)
+        try s.testUnitReady(lun: 0); XCTAssertEqual(relay.offen, 1)
+        XCTAssertGreaterThanOrEqual(relay.schliesseAlle(), 2, "Client- und Ziel-Socket")
+        XCTAssertEqual(relay.offen, 0, "alle Pump-Threads beendet")
+        XCTAssertThrowsError(try s.testUnitReady(lun: 0), "Sitzung sieht das geordnete Ende statt zu haengen")
+    }
+
     func testISCSIFreigabeLandetImContainerDesISCSIModulsMitMaxBytes() throws {
         let home = NSTemporaryDirectory() + "helfer-\(UUID().uuidString)"; defer { try? FileManager.default.removeItem(atPath: home) }
         for m in [modulKennung, appKennung + ".iscsi"] { try FileManager.default.createDirectory(atPath: "\(home)/Library/Containers/\(m)/Data", withIntermediateDirectories: true) }

@@ -72,4 +72,9 @@ let listener = NSXPCListener(machServiceName: helferDienst)
 listener.delegate = dienst
 listener.resume()
 Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { _ in if weiterleitung.beendenErlaubt(aktiv: aktiv, letzte: letzte) { log.notice("leerlauf: beende"); exit(0) } }
+// SIGTERM (launchd-Stopp, Abmeldung, Update): Weiterleitungen geordnet schliessen, nicht mitten im Datenstrom abbrechen (sonst bleibt am Ziel eine Leichensitzung).
+signal(SIGTERM, SIG_IGN)
+let sigterm = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .main)
+sigterm.setEventHandler { let n = weiterleitung.schliesseAlle(); log.notice("SIGTERM: \(n, privacy: .public) Verbindung(en) geschlossen"); exit(0) }
+sigterm.resume()
 RunLoop.main.run()

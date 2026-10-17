@@ -165,12 +165,23 @@ public final class ISCSIWeiterleitung {
     private let lock = NSLock()
     private var listener: [String: UInt16] = [:]       // "host:port" -> lokaler Port
     private var _offen = 0
+    private var sockets = Set<Int32>()                 // offene Weiterleitungs-Sockets (Client und Ziel), fuer geordnetes Schliessen bei SIGTERM
     private let loopbackErlaubt: Bool
     /// Zahl gerade weitergeleiteter Verbindungen (Leerlauf-Ende des Dienstes wartet auf 0).
     public var offen: Int { lock.lock(); defer { lock.unlock() }; return _offen }
 
     /// Leerlauf-Ende des Dienstes: keine XPC-Verbindung, keine weitergeleitete Verbindung, seit `letzte` mehr als 30 s Ruhe.
     public func beendenErlaubt(aktiv: Int, letzte: Date, jetzt: Date = Date()) -> Bool { aktiv <= 0 && offen == 0 && jetzt.timeIntervalSince(letzte) > 30 }
+
+    /// SIGTERM des Dienstes: alle Weiterleitungen geordnet schliessen (shutdown beider Seiten, die Pump-Threads beenden sich und schliessen), dann bis `warte` s auf offen == 0.
+    /// Die Pumpe kennt kein iSCSI und sendet keinen Logout; die Clients melden sich selbst ab (Kern, Modul), das Ziel sieht hier einen sauberen TCP-Abbau statt eines Abbruchs.
+    @discardableResult public func schliesseAlle(warte: TimeInterval = 2) -> Int {
+        lock.lock(); let alle = sockets; lock.unlock()
+        for fd in alle { shutdown(fd, SHUT_RDWR) }
+        let ende = Date().addingTimeInterval(warte)
+        while offen > 0 && Date() < ende { Thread.sleep(forTimeInterval: 0.02) }
+        return alle.count
+    }
 
     public init() { loopbackErlaubt = false }
     /// Nur Tests: 127.0.0.1 als Ziel zulassen (Python-Pruefziel). Der Dienst nutzt `init()`.
@@ -221,12 +232,14 @@ public final class ISCSIWeiterleitung {
     }
 
     private func leite(_ client: Int32, host: String, port: UInt16) {
-        lock.lock(); _offen += 1; lock.unlock()
-        defer { lock.lock(); _offen -= 1; lock.unlock() }
+        lock.lock(); _offen += 1; sockets.insert(client); lock.unlock()
+        defer { lock.lock(); _offen -= 1; sockets.remove(client); lock.unlock() }
         defer { close(client) }
         let ziel = socket(AF_INET, SOCK_STREAM, 0)
         guard ziel >= 0 else { return }
         defer { close(ziel) }
+        lock.lock(); sockets.insert(ziel); lock.unlock()
+        defer { lock.lock(); sockets.remove(ziel); lock.unlock() }      // vor close(ziel): shutdown trifft nie einen wiederverwendeten Deskriptor
         var sa = sockaddr_in(); sa.sin_len = UInt8(MemoryLayout<sockaddr_in>.size); sa.sin_family = sa_family_t(AF_INET); sa.sin_port = port.bigEndian
         inet_pton(AF_INET, host, &sa.sin_addr)
         let c = withUnsafePointer(to: &sa) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { connect(ziel, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) } }
