@@ -101,7 +101,13 @@ public final class Datenablage {
     public let ordner: String
     static let sperre = NSLock()
     public init(ordner: String? = Kern.umgebung("DROBO_DATEN")) {
-        self.ordner = ordner ?? NSHomeDirectory() + "/Library/Application Support/Drobo"
+        self.ordner = ordner ?? Self.vorgabeOrdner()
+    }
+    /// Unter XCTest NIE die echte Ablage des Betreibers (Einstellungen, Protokoll, Merker): Tests schrieben sonst "Eingehaengt ... /private/tmp/drobo_kerntest_..." ins App-Protokoll.
+    /// Dort gilt $DROBO_TESTDIR/ablage, ohne den ein Temp-Ordner. Die App und die CLI sehen XCTest nie.
+    static func vorgabeOrdner() -> String {
+        if NSClassFromString("XCTestCase") != nil { return (Kern.umgebung("DROBO_TESTDIR") ?? NSTemporaryDirectory()) + "/ablage-test" }
+        return NSHomeDirectory() + "/Library/Application Support/Drobo"
     }
     func pfad(_ n: String) -> String { ordner + "/" + n }
 

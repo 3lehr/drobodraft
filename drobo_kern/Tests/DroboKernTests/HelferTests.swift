@@ -249,3 +249,18 @@ extension HelferTests {
         XCTAssertEqual(iscsiLunAusQuelle("iscsi://127.0.0.1:1/iqn/12"), 12); XCTAssertNil(iscsiLunAusQuelle("/dev/disk9s2")); XCTAssertNil(iscsiLunAusQuelle("iscsi://127.0.0.1:1/iqn/x"))
     }
 }
+
+/// Befund L 2026-10-17: Kern-Tests schrieben ins echte App-Protokoll. Rotprobe: ohne die Umlenkung in `Datenablage` ist der erste Test rot, der zweite sieht die echte Datei veraendert.
+final class EchteAblageTests: XCTestCase {
+    let echt = NSHomeDirectory() + "/Library/Application Support/Drobo"
+    func stand() -> String { let a = try? FileManager.default.attributesOfItem(atPath: echt + "/protokoll.jsonl"); return "\(a?[.size] ?? -1)/\(String(describing: a?[.modificationDate]))" }
+    func testVorgabeAblageIstNieDieEchte() {
+        XCTAssertNotEqual(Datenablage().ordner, echt); XCTAssertTrue(Datenablage().ordner.hasSuffix("/ablage-test"))
+    }
+    func testSchreibenUeberVorgabeAblageBeruehrtDieEchteDateiNicht() {
+        let vorher = stand()
+        let a = Datenablage(); a.protokoll("Test EchteAblageTests"); a.merkerAendern("11111111-2222-3333-4444-555555555555") { $0.bsd = "diskX" }
+        XCTAssertEqual(stand(), vorher, "echtes Protokoll unveraendert")
+        if a.ordner.hasSuffix("/ablage-test") { try? FileManager.default.removeItem(atPath: a.ordner) }   // nie die echte Ablage loeschen (die Rotprobe hat es einmal getan)
+    }
+}
