@@ -106,3 +106,11 @@ Wunsch Betreiber: LUN einem Rechner zuordnen und wieder freigeben, nicht über d
 - **Rettung, wenn Rechner B (z. B. defekter Laptop) die LUN hält:** (1) Fremder Mac darf jederzeit NUR LESEND einhängen (Reservierung lässt Lesen zu); Warnhinweis, falls der Besitzer zuletzt vor < 15 min aktiv war. (2) „Übernehmen“ = PR PREEMPT (bzw. Zuordnung umschreiben) nur wenn das Lebenszeichen > 15 min alt ist ODER ausdrücklich bestätigt „Rechner B ist aus/defekt“; danach zuerst nur lesend einhängen + Dateisystemprüfung, erst dann schreiben. (3) Letzter Ausweg ohne Software: DroboPro-Neustart löst alle Sitzungen; Reservierungen sind persistent und bleiben, darum ist (2) nötig.
 - **Oberfläche:** je LUN „frei / zugeordnet an <Rechner>“, Knöpfe „Diesem Mac zuordnen“, „Freigeben“, „Übernehmen“ (mit Warnung).
 - **Reihenfolge:** erst messen (nach Neustart der DroboPro), dann bauen; kein Schreibbefehl der PR-Familie ohne gemessene Antwort.
+
+## Systembefehle, Standby, Aufwecken (gemessen 2026-10-17T11:26:46+0200)
+- EA 10 00 <Op> 00 <txn> 20 00 01 <Ctl> über iSCSI (Op 0x06 Blinken, 0x03 Neustart): immer CHECK CONDITION Sense 03/0C/02, kein Blinken (Betreiber beobachtet). Variiert: Ctl 00/40/80/C0, txn 01/5A/A7 — identisch. Folge: keine Systembefehle über iSCSI. Dashboard (Ghidra all.c, DDService64d 3.6.1): DroboPro = „DAi“, Wecken = Ping + iSCSI-Login, kein WoL/kein Sonderpaket; EA mit Ctl=(session+0x90)<<6.
+- Nach Op 0x03 (10:24): Betriebslampe blinkte, ~10:48 Standby (Lampe orange), Netz (Ping, TCP 3260 SYN) weiter an; danach Firmware-Hänger: iSCSI-Login unbeantwortet, TCP-Daten unbestätigt (ETIMEDOUT, FIN_WAIT_1). WoL-Magic-Packet (10:49): Lüfter liefen an, keine Wirkung auf iSCSI. Stromlos → 11:21:52 Befehle ok.
+- Standby ohne Hänger (11:24): Login+TUR in 0,7 s beantwortet → Einhängen weckt; kein eigener Knopf nötig.
+- Offene TCP-Ports (Vollscan): 3260, 3261 (3261: kein Banner, im Dashboard nicht verwendet).
+- Lampen (Betreiber): unter den blauen LEDs zwei Statuslampen: oben grün/orange (orange = Standby laut Drobo-S-Handbuch), unten rot (Bedeutung offen).
+- Folgen für die App: kein Blinken/Neustart/Standby-Knopf für DroboPro über Netz; Optionen: USB-Weg (Dashboard sandte EA darüber, ungeprüft an der Pro), schaltbare Steckdose als Notausgang; erste Anmeldung nach Standby mit längerer Zeitgrenze; zwei Statuslampen zeichnen.
