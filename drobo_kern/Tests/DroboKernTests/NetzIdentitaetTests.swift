@@ -46,4 +46,15 @@ final class NetzIdentitaetTests: XCTestCase {
         XCTAssertEqual(r.map(\.name), ["drobo pro 2", "Volume 2", "Rest"], "gelesener HFS-Name gewinnt, unlesbar behaelt den gespeicherten, ungelesene LUN bleibt"); XCTAssertEqual(r[0].uuid, "U0N")
         XCTAssertEqual(r.map(\.lun), [0, 1, 5], "LUN ohne Dateisystem wird nicht aufgenommen")
     }
+    /// R: gespeicherter Stand der LUNs (Groesse, Partition) ueberlebt Speichern/Laden, alte Dateien ohne diese Felder bleiben lesbar.
+    func testGespeicherterLunStand() throws {
+        let nz = NetzZiel(host: "h", lun: 1, luns: [NetzLunEintrag(lun: 1, uuid: "U1", name: "Volume 2")])
+        let g = [LunEintrag(lun: 1, groesse: 16 << 40, schema: "GPT", partitionBytes: 2 << 40, uuid: "U1", volumeName: "DROPRO1")]
+        let n = netzLunsAbgleichen(nz, gelesen: g, standardName: { "Volume \($0 + 1)" })
+        let rt = try JSONDecoder().decode(NetzZiel.self, from: JSONEncoder().encode(n))
+        let l = try XCTUnwrap(rt.luns?.first?.alsLunEintrag)
+        XCTAssertEqual(l.groesse, 16 << 40); XCTAssertEqual(l.partitionBytes, 2 << 40); XCTAssertTrue(l.hatDateisystem); XCTAssertEqual(l.volumeName, "DROPRO1")
+        let alt = #"{"host":"h","lun":1,"luns":[{"lun":1,"uuid":"U1","name":"X"}]}"#
+        XCTAssertNil(try JSONDecoder().decode(NetzZiel.self, from: Data(alt.utf8)).luns?.first?.groesse, "alte Datei ohne Stand")
+    }
 }

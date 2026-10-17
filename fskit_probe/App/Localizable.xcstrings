@@ -8336,6 +8336,22 @@
           }
         }
       }
+    },
+    "Stand vom letzten Kontakt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stand vom letzten Kontakt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "State from the last contact"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -97,14 +97,14 @@ public func netzLunsAbgleichen(_ nz: NetzZiel, gelesen: [LunEintrag], standardNa
     var n = nz
     var m: [Int: NetzLunEintrag] = [:]
     for l in nz.luns ?? [] { m[l.lun] = l }
-    for e in gelesen { if let u = e.uuid { m[e.lun] = NetzLunEintrag(lun: e.lun, uuid: u, name: e.volumeName ?? m[e.lun]?.name ?? standardName(e.lun)) } }
+    for e in gelesen { if let u = e.uuid { m[e.lun] = NetzLunEintrag(lun: e.lun, uuid: u, name: e.volumeName ?? m[e.lun]?.name ?? standardName(e.lun), groesse: e.groesse, partitionBytes: e.partitionBytes) } }
     n.luns = m.values.sorted { $0.lun < $1.lun }
     return n
 }
 
-public func netzZielNachFormat(_ nz: NetzZiel, lun: Int, uuid: String, name: String) -> NetzZiel {
+public func netzZielNachFormat(_ nz: NetzZiel, lun: Int, uuid: String, name: String, groesse: UInt64? = nil, partitionBytes: UInt64? = nil) -> NetzZiel {
     var n = nz
-    var l = (nz.luns ?? []).filter { $0.lun != lun }; l.append(NetzLunEintrag(lun: lun, uuid: uuid, name: name)); n.luns = l.sorted { $0.lun < $1.lun }
+    var l = (nz.luns ?? []).filter { $0.lun != lun }; l.append(NetzLunEintrag(lun: lun, uuid: uuid, name: name, groesse: groesse, partitionBytes: partitionBytes)); n.luns = l.sorted { $0.lun < $1.lun }
     return n
 }
 

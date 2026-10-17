@@ -25,6 +25,11 @@ struct DroboAnsicht: Equatable {
     var netzFehler: String?        // Netzwerk-Drobo: warum der Status nicht gelesen werden konnte
     var bremse: StatusBremse.Zustand = .bereit   // Netzwerk-Drobo: Abfrage pausiert (reagiert nicht / von anderem Rechner belegt) bis "Erneut pruefen"
     var luns: [LunEintrag] = []    // Netzwerk-Drobo: alle LUNs (virtuelle Platten) laut letztem Kontakt
+    /// Ohne Live-Liste (Start mit eingehaengter LUN: das Geraet wird dann nicht befragt) gilt der gespeicherte Stand der Netz-Drobo.
+    mutating func lunsAusSpeicherFuellen() {
+        if luns.isEmpty, let g = eintrag.netz?.luns, !g.isEmpty { luns = g.map(\.alsLunEintrag); lunsGespeichert = true }
+    }
+    var lunsGespeichert = false    // luns stammen aus dem gespeicherten Stand (keine Live-Liste, z. B. weil eine LUN eingehaengt ist)
     var lunEingehaengt: [Int: Bool] = [:]   // eingehaengte LUNs (Wert = nur lesen)
 
     /// Gesamtzustand fuer Uebersicht und Seitenleiste (Kern); Schwellen aus Seite 30 bei der DroboPro, sonst die Vorgabe 85/95 (USB: Seite 30 noch nicht gelesen).
@@ -293,7 +298,8 @@ final class DroboModell: ObservableObject {
                 if let nz = d.netz {            // Netzwerk-Drobo: eigener Weg, kein Geraeteknoten
                     let v = alt[d.uuid]
                     (a.hw, a.netz, a.netzStand, a.netzFehler) = (v?.hw, v?.netz, v?.netzStand, v?.netzFehler)
-                    a.luns = v?.luns ?? []
+                    a.luns = v?.luns ?? []; a.lunsGespeichert = v?.lunsGespeichert ?? false
+                    a.lunsAusSpeicherFuellen()      // keine Live-Liste: gespeicherter Stand, damit die LUN-Karte steht
                     for l in Set(a.luns.map(\.lun)).union([nz.lun]) { if let e = netzEinhaengung(lun: l) { a.lunEingehaengt[l] = e.nurlesen } }
                     let br = bremsenKopie[d.uuid]
                     if let e = netzEinhaengung(lun: nz.lun) {      // eingehaengt: keine zweite Sitzung oeffnen
@@ -305,7 +311,7 @@ final class DroboModell: ObservableObject {
                         do {
                             let (st, info) = try netzStatusLesen(host: nz.host, fortschritt: weckFP(d.uuid)); (a.hw, a.netz, a.netzStand, a.netzFehler) = (st, info, Date(), nil)
                             br?.ergebnis(nil)       // Status gelesen: die Sitzung ist zu; Kontakt/LUN-Liste folgt nacheinander (nie zwei Sitzungen gleichzeitig)
-                            let k = Self.netzKontakt(nz); if !k.luns.isEmpty { a.luns = k.luns }
+                            let k = Self.netzKontakt(nz); if !k.luns.isEmpty { a.luns = k.luns; a.lunsGespeichert = false }
                             if let n = k.ziel { ziele[d.uuid] = n }
                         } catch {
                             br?.ergebnis(error)

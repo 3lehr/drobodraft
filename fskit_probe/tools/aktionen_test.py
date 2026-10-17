@@ -133,6 +133,14 @@ def start_und_aufwecken_test():
         prot = get("/protokoll"); pruefe(any("Aufwecken" in x and "gestartet" in x for x in prot) and any("Aufwecken" in x and "beendet" in x for x in prot), f"Protokoll: Start und Ende ({[x for x in prot if 'Aufwecken' in x]})")
     finally: beenden(p)
 
+def lunkarte_test():
+    """R: Start mit leerer Live-Liste (eingehaengte LUN, Geraet wird nicht befragt): die LUNs kommen aus dem gespeicherten Stand, die Karte (Symbolmenue-Zeilen je LUN) steht."""
+    p, port, daten = start("pro", extra={"DROBO_DEMO_LUNS_NUR_GESPEICHERT": "1"})
+    try:
+        z = holen(port, "/symbolmenue"); luns = [r["id"] for r in z if r["art"] == "lun"]
+        pruefe(len(luns) == 2, f"LUN-Zeilen aus gespeichertem Stand trotz leerer Live-Liste ({luns})")
+    finally: beenden(p)
+
 def symbol_test():
     """Menueleisten-Symbol (Zeilen aus dem Modell, Aktionen aus dem Katalog): alle Drobos, freier Platz, Warnungen oben mit Hilfe, Schreiben nur ueber das Blatt,
     Nur-Menueleiste mit Undo, App laeuft nach dem Schliessen aller Fenster weiter."""
@@ -250,6 +258,7 @@ def main():
     symbol_test()
     vorgang_test()
     aufwecken_test()
+    lunkarte_test()
     start_und_aufwecken_test()
     print(f"\n{'ALLES GRUEN' if not fehler else str(len(fehler)) + ' FEHLER'}")
     sys.exit(1 if fehler else 0)

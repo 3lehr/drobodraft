@@ -16,6 +16,7 @@ struct LunKarte: View {
                     .disabled(m.arbeit != nil || !a.luns.contains { $0.hatDateisystem && a.lunEingehaengt[$0.lun] == nil })
                 Button { m.alleLunsAushaengen() } label: { Label("Alle aushängen", systemImage: "eject") }.disabled(m.arbeit != nil || a.lunEingehaengt.isEmpty)
             }
+            if a.lunsGespeichert { Label("Stand vom letzten Kontakt", systemImage: "clock.arrow.circlepath").font(.caption).foregroundStyle(.secondary) }
             ForEach(a.luns, id: \.lun) { l in zeile(l) }
         }
     }

@@ -14,7 +14,11 @@ public struct DroboEintrag: Codable, Equatable {
 
 /// Eine LUN (virtuelle Platte) einer Netzwerk-Drobo: Nummer, Volume-UUID der HFS+-Partition (Freigabe, Merker) und Anzeigename.
 public struct NetzLunEintrag: Codable, Equatable { public var lun: Int; public var uuid: String; public var name: String
-    public init(lun: Int, uuid: String, name: String) { self.lun = lun; self.uuid = uuid.uppercased(); self.name = name } }
+    /// Stand vom letzten Kontakt (Groesse der virtuellen Festplatte, HFS+-Partition): damit die LUN-Karte auch ohne Abfrage steht, solange eine LUN eingehaengt ist (die Sitzung des Moduls wird nie gestoert).
+    public var groesse: UInt64?; public var partitionBytes: UInt64?
+    public init(lun: Int, uuid: String, name: String, groesse: UInt64? = nil, partitionBytes: UInt64? = nil) { self.lun = lun; self.uuid = uuid.uppercased(); self.name = name; self.groesse = groesse; self.partitionBytes = partitionBytes }
+    /// Die gespeicherte LUN als Anzeigeeintrag (hat ein Dateisystem, sonst stuende sie nicht hier).
+    public var alsLunEintrag: LunEintrag { LunEintrag(lun: lun, groesse: groesse ?? partitionBytes ?? 0, schema: "GPT", partitionBytes: partitionBytes, uuid: uuid, volumeName: name) } }
 
 /// Netzwerk-Drobo: Adresse + LUN. `iqn` = feste Kennung des Ziels (aendert sich mit der IP nicht; nie in der Oberflaeche zeigen), alte Eintraege ohne IQN werden beim naechsten
 /// erfolgreichen Kontakt ergaenzt. `luns` = alle bekannten LUNs dieses Geraets (ein Eintrag je Drobo, nicht je LUN); nil = nur `lun`.
@@ -36,7 +40,7 @@ extension Einstellungen {
             alt.iqn = alt.iqn ?? nz.iqn
             var m: [Int: NetzLunEintrag] = [:]
             for l in alt.luns ?? [] { m[l.lun] = l }
-            for l in nz.luns ?? [] { m[l.lun] = m[l.lun].map { a in NetzLunEintrag(lun: l.lun, uuid: l.uuid, name: istStandardLunName(a.name) ? l.name : a.name) } ?? l }
+            for l in nz.luns ?? [] { m[l.lun] = m[l.lun].map { a in NetzLunEintrag(lun: l.lun, uuid: l.uuid, name: istStandardLunName(a.name) ? l.name : a.name, groesse: l.groesse ?? a.groesse, partitionBytes: l.partitionBytes ?? a.partitionBytes) } ?? l }
             alt.luns = m.values.sorted { $0.lun < $1.lun }
             aus[i].netz = alt
         }
