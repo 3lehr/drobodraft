@@ -23,11 +23,11 @@ struct UebersichtAnsicht: View {
                         }
                     } else if a.eintrag.netz != nil && a.bremse == .anderemRechner {
                         VStack(alignment: .leading, spacing: Abstand.s) {
-                            Hinweis(symbol: "desktopcomputer.trianglebadge.exclamationmark", text: "Diese DroboPro wird gerade von einem anderen Rechner benutzt. Die App fragt erst wieder, wenn Sie „Erneut prüfen“ wählen.")
+                            Hinweis(symbol: "desktopcomputer.trianglebadge.exclamationmark", text: "Diese DroboPro wird gerade von einem anderen Rechner benutzt. Die App fragt erst wieder, wenn du „Erneut prüfen“ wählst.")
                             Button("Erneut prüfen") { m.erneutPruefen(a.eintrag.uuid) }
                         }
                     } else if a.eintrag.netz != nil && !a.verbunden {
-                        Hinweis(symbol: "wifi.exclamationmark", text: "Die DroboPro ist nicht erreichbar. Prüfen Sie, ob sie eingeschaltet und mit dem Netzwerk verbunden ist, und wählen Sie links „Drobos finden“.", farbe: .orange)
+                        Hinweis(symbol: "wifi.exclamationmark", text: "Die DroboPro ist nicht erreichbar. Prüfe, ob sie eingeschaltet und mit dem Netzwerk verbunden ist, und wähle links „Drobos finden“.", farbe: .orange)
                     }
                     if a.eintrag.rolle == .timemachine {
                         Hinweis(symbol: "clock.arrow.circlepath", text: "Dieses Laufwerk ist als Time-Machine-Ziel eingetragen. Die App zeigt nur den Anschluss; macOS verwaltet das Laufwerk und die App hängt es nie selbst ein.", farbe: .blue)

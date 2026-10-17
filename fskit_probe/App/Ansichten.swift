@@ -50,15 +50,15 @@ struct Statusleiste: View {
         if dienstProblem || zugriffProblem || modulProblem {
             VStack(alignment: .leading, spacing: Abstand.s) {
                 if dienstProblem {
-                    zeile(String(localized: "Der Hilfsdienst ist nicht bereit (\(m.hilfsdienst)). Er hängt die Drobo ein. Wählen Sie „Einrichten“ und bestätigen Sie in den Systemeinstellungen.")) { Button("Einrichten") { m.dienstRegistrieren() } }
+                    zeile(String(localized: "Der Hilfsdienst ist nicht bereit (\(m.hilfsdienst)). Er hängt die Drobo ein. Wähle „Einrichten“ und bestätige in den Systemeinstellungen.")) { Button("Einrichten") { m.dienstRegistrieren() } }
                 }
                 if zugriffProblem {
-                    zeile(String(localized: "Der Festplattenvollzugriff fehlt. Ohne ihn lässt sich die Drobo nicht einhängen. Erlauben Sie ihn in den Systemeinstellungen unter Datenschutz & Sicherheit.")) { Button("Anleitung …") { m.festplattenzugriffOeffnen() } }
+                    zeile(String(localized: "Der Festplattenvollzugriff fehlt. Ohne ihn lässt sich die Drobo nicht einhängen. Erlaube ihn in den Systemeinstellungen unter Datenschutz & Sicherheit.")) { Button("Anleitung …") { m.festplattenzugriffOeffnen() } }
                 }
                 if !m.modul.installiert {
                     zeile(String(localized: "Das Treibermodul ist nicht installiert. Ohne es lässt sich die Drobo nicht einhängen.")) { EmptyView() }
                 } else if !m.modul.freigeschaltet {
-                    zeile(String(localized: "Das Treibermodul ist nicht freigeschaltet. Schalten Sie es in den Systemeinstellungen unter Allgemein, Anmeldeobjekte & Erweiterungen, Dateisystem-Erweiterungen ein.")) { EmptyView() }
+                    zeile(String(localized: "Das Treibermodul ist nicht freigeschaltet. Schalte es in den Systemeinstellungen unter Allgemein, Anmeldeobjekte & Erweiterungen, Dateisystem-Erweiterungen ein.")) { EmptyView() }
                 }
             }
             .padding(.horizontal).padding(.vertical, Abstand.s).frame(maxWidth: .infinity, alignment: .leading)
@@ -202,7 +202,7 @@ struct SchreibenBestaetigung: View {
             }
             if m.spotlightHinweisNoetig { Hinweis(symbol: "magnifyingglass", text: "Spotlight ist für die Drobo noch nicht ausgeschlossen (empfohlen, siehe Anleitung in den Einstellungen).") }
             if m.physischKnapp, let k = m.aktuell?.hw?.kapazitaet {
-                Hinweis(symbol: "externaldrive.badge.exclamationmark", text: "Die Drobo ist physisch fast voll: nur noch \(groesseText(k.frei)) frei (unter 5 %). Schreiben auf eine fast volle Drobo kann scheitern oder sie verlangsamen. Schaffen Sie zuerst Platz oder setzen Sie größere Festplatten ein.", farbe: .red)
+                Hinweis(symbol: "externaldrive.badge.exclamationmark", text: "Die Drobo ist physisch fast voll: nur noch \(groesseText(k.frei)) frei (unter 5 %). Schreiben auf eine fast volle Drobo kann scheitern oder sie verlangsamen. Schaffe zuerst Platz oder setze größere Festplatten ein.", farbe: .red)
             }
             if m.einstellungen.sicherungOrt.isEmpty {
                 Hinweis(symbol: "externaldrive.badge.exclamationmark", text: "Schreiben ist gesperrt, bis ein Sicherungsort gewählt ist: ein Ordner auf einem anderen Laufwerk als dem Startvolume und der Drobo, mit einigen GB Platz.", farbe: .red)

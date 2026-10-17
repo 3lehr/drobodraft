@@ -82,7 +82,7 @@ struct EinstellungenAnsicht: View {
                     Button("Einrichten") { m.dienstRegistrieren() }
                     Button("Systemeinstellungen öffnen") { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension")!) }
                 }
-                Text("Der Hilfsdienst gibt nur den Gerätezugang genau dieser Drobo frei. Er benötigt einmalig Ihre Freigabe unter Anmeldeobjekte und den Festplattenvollzugriff.").font(.callout).foregroundStyle(.secondary)
+                Text("Der Hilfsdienst gibt nur den Gerätezugang genau dieser Drobo frei. Er benötigt einmalig deine Freigabe unter Anmeldeobjekte und den Festplattenvollzugriff.").font(.callout).foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

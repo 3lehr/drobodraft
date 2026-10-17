@@ -21,9 +21,9 @@ func abweichungsText(modell: String, build: Int?, anschluss: Anschluss, naechste
     switch (ab.contains(.firmware), ab.contains(.anschluss)) {
     case (false, true): return String(localized: "\(n.anzeige) und Firmware erprobt, der Anschluss über \(aw) noch nicht.")
     case (true, false):
-        if let b = build { return String(localized: "\(n.anzeige) erprobt, Ihre Firmware \(String(b)) nicht.") }
-        return String(localized: "\(n.anzeige) erprobt, die Firmware Ihrer Drobo ließ sich nicht lesen.")
-    default: return String(localized: "\(n.anzeige) erprobt, Ihre Firmware und der Anschluss über \(aw) nicht.")
+        if let b = build { return String(localized: "\(n.anzeige) erprobt, deine Firmware \(String(b)) nicht.") }
+        return String(localized: "\(n.anzeige) erprobt, die Firmware deiner Drobo ließ sich nicht lesen.")
+    default: return String(localized: "\(n.anzeige) erprobt, deine Firmware und der Anschluss über \(aw) nicht.")
     }
 }
 
@@ -39,7 +39,7 @@ struct ErprobtBlock: View {
         let modell = h.map { $0.modell.hasPrefix("Drobo") ? $0.modell : "Drobo \($0.modell)" } ?? String(localized: "Unbekanntes Modell")
         switch m.erprobtErgebnis(aktion) {
         case .erprobt(let x):
-            Label { Text("Ihre Drobo entspricht der erprobten: \(x.anzeige) · Firmware \(String(x.firmwareBuild)) · über \(anschlussWort(x.anschluss)).") } icon: { Image(systemName: "checkmark.seal.fill").foregroundStyle(Color.green) }
+            Label { Text("Deine Drobo entspricht der erprobten: \(x.anzeige) · Firmware \(String(x.firmwareBuild)) · über \(anschlussWort(x.anschluss)).") } icon: { Image(systemName: "checkmark.seal.fill").foregroundStyle(Color.green) }
                 .font(.callout).accessibilityElement(children: .combine)
         case .nichtErprobt(let liste, let n, let ok, let ab):
             VStack(alignment: .leading, spacing: Abstand.s) {

@@ -48,7 +48,7 @@ struct DrobosFindenAnsicht: View {
                     }
                 }
                 if nichtsGefunden && !m.sucheLaeuft {
-                    Hinweis(symbol: "questionmark.circle", text: "Noch keine neue Drobo gefunden. Prüfen Sie, ob die Drobo eingeschaltet und per USB oder im selben Netzwerk verbunden ist, und wählen Sie „Suchen“. Sie können die Adresse einer DroboPro auch unten eingeben.", farbe: .blue)
+                    Hinweis(symbol: "questionmark.circle", text: "Noch keine neue Drobo gefunden. Prüfe, ob die Drobo eingeschaltet und per USB oder im selben Netzwerk verbunden ist, und wähle „Suchen“. Du kannst die Adresse einer DroboPro auch unten eingeben.", farbe: .blue)
                 }
                 PerAdresseHinzufuegen()
             }.padding()

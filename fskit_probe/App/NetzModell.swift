@@ -68,7 +68,7 @@ extension DroboModell {
     func lunFormatieren(_ lun: Int, name: String) {
         guard let nz = aktuell?.eintrag.netz, let u = aktuell?.eintrag.uuid else { return }
         let ort = einstellungen.sicherungOrt
-        guard !ort.isEmpty else { meldung = Meldung(titel: "Formatieren nicht möglich", text: String(localized: "Wählen Sie zuerst einen Sicherungsort (anderes Laufwerk als die Drobo und das Startvolume): Beim Formatieren wird dort kurz ein Abbild der neuen Partition aufgebaut (mindestens 20 GB frei).")); return }
+        guard !ort.isEmpty else { meldung = Meldung(titel: "Formatieren nicht möglich", text: String(localized: "Wähle zuerst einen Sicherungsort (anderes Laufwerk als die Drobo und das Startvolume): Beim Formatieren wird dort kurz ein Abbild der neuen Partition aufgebaut (mindestens 20 GB frei).")); return }
         ausfuehren("Formatieren") { [ablage] in
             let port = try helferISCSIWeiterleitung(host: nz.host)
             try iscsiFormat(host: "127.0.0.1", port: port, lun: lun, name: name, ausfuehren: true, arbeitsordner: ort, meldung: { ablage.protokoll("Formatieren LUN \(lun): \($0)") })

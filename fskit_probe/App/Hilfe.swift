@@ -21,7 +21,7 @@ struct HilfeAnsicht: View {
                     Text("„Sicherung zurückspielen“ ersetzt Verwaltungsdaten und macht alles rückgängig, was seitdem geschrieben wurde. Es gibt erst einen Probelauf und dann eine zweite Bestätigung.")
                 }
                 Karte(titel: "Wenn die DroboPro nicht reagiert") {
-                    Text("Anzeichen: Die DroboPro ist im Netzwerk erreichbar, aber die App bekommt keine Antwort; meist leuchten alle Schachtlampen rot und die Platten sind still. Die App fragt dann nicht weiter nach, bis Sie „Erneut prüfen“ wählen.")
+                    Text("Anzeichen: Die DroboPro ist im Netzwerk erreichbar, aber die App bekommt keine Antwort; meist leuchten alle Schachtlampen rot und die Platten sind still. Die App fragt dann nicht weiter nach, bis du „Erneut prüfen“ wählst.")
                     Text("Abhilfe: Drobo über den Knopf ausschalten, Netzkabel ziehen, ein bis zwei Minuten warten, wieder einstecken und einschalten. Danach kann es bis zu 30 Minuten dauern, bis alle Lampen grün leuchten. In dieser Zeit keine Platten ziehen oder umstecken.")
                 }
                 Karte(titel: "Mehrere Rechner") {

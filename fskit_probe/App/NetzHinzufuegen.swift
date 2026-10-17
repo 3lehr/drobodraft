@@ -16,7 +16,7 @@ struct PerAdresseHinzufuegen: View {
 
     var body: some View {
         Karte(titel: "Per Adresse hinzufügen") {
-            Text("Geben Sie die Adresse der DroboPro im lokalen Netzwerk ein. Sie finden sie in Ihrem Router. Die App sucht dort nach eingerichteten Volumes.").foregroundStyle(.secondary)
+            Text("Gib die Adresse der DroboPro im lokalen Netzwerk ein. Du findest sie in deinem Router. Die App sucht dort nach eingerichteten Volumes.").foregroundStyle(.secondary)
             HStack {
                 TextField("Adresse der DroboPro", text: $adresse, prompt: Text("zum Beispiel 192.168.1.20")).textFieldStyle(.roundedBorder)
                     .onSubmit { pruefen() }

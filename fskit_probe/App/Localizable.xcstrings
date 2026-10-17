@@ -801,12 +801,12 @@
         }
       }
     },
-    "Der Hilfsdienst gibt nur den Gerätezugang genau dieser Drobo frei. Er benötigt einmalig Ihre Freigabe unter Anmeldeobjekte und den Festplattenvollzugriff.": {
+    "Der Hilfsdienst gibt nur den Gerätezugang genau dieser Drobo frei. Er benötigt einmalig deine Freigabe unter Anmeldeobjekte und den Festplattenvollzugriff.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Der Hilfsdienst gibt nur den Gerätezugang genau dieser Drobo frei. Er benötigt einmalig Ihre Freigabe unter Anmeldeobjekte und den Festplattenvollzugriff."
+            "value": "Der Hilfsdienst gibt nur den Gerätezugang genau dieser Drobo frei. Er benötigt einmalig deine Freigabe unter Anmeldeobjekte und den Festplattenvollzugriff."
           }
         },
         "en": {
@@ -817,12 +817,12 @@
         }
       }
     },
-    "Der Ort darf nicht in Ihrem Benutzerordner liegen, sonst indexiert Spotlight das Laufwerk.": {
+    "Der Ort darf nicht in deinem Benutzerordner liegen, sonst indexiert Spotlight das Laufwerk.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Der Ort darf nicht in Ihrem Benutzerordner liegen, sonst indexiert Spotlight das Laufwerk."
+            "value": "Der Ort darf nicht in deinem Benutzerordner liegen, sonst indexiert Spotlight das Laufwerk."
           }
         },
         "en": {
@@ -881,12 +881,12 @@
         }
       }
     },
-    "Die Drobo ist physisch fast voll: nur noch %@ frei (unter 5 %%). Schreiben auf eine fast volle Drobo kann scheitern oder sie verlangsamen. Schaffen Sie zuerst Platz oder setzen Sie größere Festplatten ein.": {
+    "Die Drobo ist physisch fast voll: nur noch %@ frei (unter 5 %%). Schreiben auf eine fast volle Drobo kann scheitern oder sie verlangsamen. Schaffe zuerst Platz oder setze größere Festplatten ein.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die Drobo ist physisch fast voll: nur noch %@ frei (unter 5 %%). Schreiben auf eine fast volle Drobo kann scheitern oder sie verlangsamen. Schaffen Sie zuerst Platz oder setzen Sie größere Festplatten ein."
+            "value": "Die Drobo ist physisch fast voll: nur noch %@ frei (unter 5 %%). Schreiben auf eine fast volle Drobo kann scheitern oder sie verlangsamen. Schaffe zuerst Platz oder setze größere Festplatten ein."
           }
         },
         "en": {
@@ -4753,12 +4753,12 @@
         }
       }
     },
-    "Die DroboPro ist nicht erreichbar. Prüfen Sie, ob sie eingeschaltet und mit dem Netzwerk verbunden ist, und wählen Sie links „Drobos suchen“.": {
+    "Die DroboPro ist nicht erreichbar. Prüfe, ob sie eingeschaltet und mit dem Netzwerk verbunden ist, und wähle links „Drobos suchen“.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die DroboPro ist nicht erreichbar. Prüfen Sie, ob sie eingeschaltet und mit dem Netzwerk verbunden ist, und wählen Sie links „Drobos suchen“."
+            "value": "Die DroboPro ist nicht erreichbar. Prüfe, ob sie eingeschaltet und mit dem Netzwerk verbunden ist, und wähle links „Drobos suchen“."
           }
         },
         "en": {
@@ -4833,12 +4833,12 @@
         }
       }
     },
-    "Geben Sie die Adresse der DroboPro im lokalen Netzwerk ein. Sie finden sie in Ihrem Router. Die App sucht dort nach eingerichteten Volumes.": {
+    "Gib die Adresse der DroboPro im lokalen Netzwerk ein. Du findest sie in deinem Router. Die App sucht dort nach eingerichteten Volumes.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Geben Sie die Adresse der DroboPro im lokalen Netzwerk ein. Sie finden sie in Ihrem Router. Die App sucht dort nach eingerichteten Volumes."
+            "value": "Gib die Adresse der DroboPro im lokalen Netzwerk ein. Du findest sie in deinem Router. Die App sucht dort nach eingerichteten Volumes."
           }
         },
         "en": {
@@ -5169,12 +5169,12 @@
         }
       }
     },
-    "Der Hilfsdienst ist nicht bereit (%@). Er hängt die Drobo ein. Wählen Sie „Einrichten“ und bestätigen Sie in den Systemeinstellungen.": {
+    "Der Hilfsdienst ist nicht bereit (%@). Er hängt die Drobo ein. Wähle „Einrichten“ und bestätige in den Systemeinstellungen.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Der Hilfsdienst ist nicht bereit (%@). Er hängt die Drobo ein. Wählen Sie „Einrichten“ und bestätigen Sie in den Systemeinstellungen."
+            "value": "Der Hilfsdienst ist nicht bereit (%@). Er hängt die Drobo ein. Wähle „Einrichten“ und bestätige in den Systemeinstellungen."
           }
         },
         "en": {
@@ -5185,12 +5185,12 @@
         }
       }
     },
-    "Der Festplattenvollzugriff fehlt. Ohne ihn lässt sich die Drobo nicht einhängen. Erlauben Sie ihn in den Systemeinstellungen unter Datenschutz & Sicherheit.": {
+    "Der Festplattenvollzugriff fehlt. Ohne ihn lässt sich die Drobo nicht einhängen. Erlaube ihn in den Systemeinstellungen unter Datenschutz & Sicherheit.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Der Festplattenvollzugriff fehlt. Ohne ihn lässt sich die Drobo nicht einhängen. Erlauben Sie ihn in den Systemeinstellungen unter Datenschutz & Sicherheit."
+            "value": "Der Festplattenvollzugriff fehlt. Ohne ihn lässt sich die Drobo nicht einhängen. Erlaube ihn in den Systemeinstellungen unter Datenschutz & Sicherheit."
           }
         },
         "en": {
@@ -5217,12 +5217,12 @@
         }
       }
     },
-    "Das Treibermodul ist nicht freigeschaltet. Schalten Sie es in den Systemeinstellungen unter Allgemein, Anmeldeobjekte & Erweiterungen, Dateisystem-Erweiterungen ein.": {
+    "Das Treibermodul ist nicht freigeschaltet. Schalte es in den Systemeinstellungen unter Allgemein, Anmeldeobjekte & Erweiterungen, Dateisystem-Erweiterungen ein.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Das Treibermodul ist nicht freigeschaltet. Schalten Sie es in den Systemeinstellungen unter Allgemein, Anmeldeobjekte & Erweiterungen, Dateisystem-Erweiterungen ein."
+            "value": "Das Treibermodul ist nicht freigeschaltet. Schalte es in den Systemeinstellungen unter Allgemein, Anmeldeobjekte & Erweiterungen, Dateisystem-Erweiterungen ein."
           }
         },
         "en": {
@@ -5377,12 +5377,12 @@
         }
       }
     },
-    "Noch keine neue Drobo gefunden. Prüfen Sie, ob die Drobo eingeschaltet und per USB oder im selben Netzwerk verbunden ist, und wählen Sie „Suchen“. Sie können die Adresse einer DroboPro auch unten eingeben.": {
+    "Noch keine neue Drobo gefunden. Prüfe, ob die Drobo eingeschaltet und per USB oder im selben Netzwerk verbunden ist, und wähle „Suchen“. Du kannst die Adresse einer DroboPro auch unten eingeben.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Noch keine neue Drobo gefunden. Prüfen Sie, ob die Drobo eingeschaltet und per USB oder im selben Netzwerk verbunden ist, und wählen Sie „Suchen“. Sie können die Adresse einer DroboPro auch unten eingeben."
+            "value": "Noch keine neue Drobo gefunden. Prüfe, ob die Drobo eingeschaltet und per USB oder im selben Netzwerk verbunden ist, und wähle „Suchen“. Du kannst die Adresse einer DroboPro auch unten eingeben."
           }
         },
         "en": {
@@ -5697,12 +5697,12 @@
         }
       }
     },
-    "Die DroboPro ist nicht erreichbar. Prüfen Sie, ob sie eingeschaltet und mit dem Netzwerk verbunden ist, und wählen Sie links „Drobos finden“.": {
+    "Die DroboPro ist nicht erreichbar. Prüfe, ob sie eingeschaltet und mit dem Netzwerk verbunden ist, und wähle links „Drobos finden“.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Die DroboPro ist nicht erreichbar. Prüfen Sie, ob sie eingeschaltet und mit dem Netzwerk verbunden ist, und wählen Sie links „Drobos finden“."
+            "value": "Die DroboPro ist nicht erreichbar. Prüfe, ob sie eingeschaltet und mit dem Netzwerk verbunden ist, und wähle links „Drobos finden“."
           }
         },
         "en": {
@@ -6657,12 +6657,12 @@
         }
       }
     },
-    "Wählen Sie zuerst einen Sicherungsort (anderes Laufwerk als die Drobo und das Startvolume): Beim Formatieren wird dort kurz ein Abbild der neuen Partition aufgebaut (mindestens 20 GB frei).": {
+    "Wähle zuerst einen Sicherungsort (anderes Laufwerk als die Drobo und das Startvolume): Beim Formatieren wird dort kurz ein Abbild der neuen Partition aufgebaut (mindestens 20 GB frei).": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wählen Sie zuerst einen Sicherungsort (anderes Laufwerk als die Drobo und das Startvolume): Beim Formatieren wird dort kurz ein Abbild der neuen Partition aufgebaut (mindestens 20 GB frei)."
+            "value": "Wähle zuerst einen Sicherungsort (anderes Laufwerk als die Drobo und das Startvolume): Beim Formatieren wird dort kurz ein Abbild der neuen Partition aufgebaut (mindestens 20 GB frei)."
           }
         },
         "en": {
@@ -6705,12 +6705,12 @@
         }
       }
     },
-    "Anzeichen: Die DroboPro ist im Netzwerk erreichbar, aber die App bekommt keine Antwort; meist leuchten alle Schachtlampen rot und die Platten sind still. Die App fragt dann nicht weiter nach, bis Sie „Erneut prüfen“ wählen.": {
+    "Anzeichen: Die DroboPro ist im Netzwerk erreichbar, aber die App bekommt keine Antwort; meist leuchten alle Schachtlampen rot und die Platten sind still. Die App fragt dann nicht weiter nach, bis du „Erneut prüfen“ wählst.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Anzeichen: Die DroboPro ist im Netzwerk erreichbar, aber die App bekommt keine Antwort; meist leuchten alle Schachtlampen rot und die Platten sind still. Die App fragt dann nicht weiter nach, bis Sie „Erneut prüfen“ wählen."
+            "value": "Anzeichen: Die DroboPro ist im Netzwerk erreichbar, aber die App bekommt keine Antwort; meist leuchten alle Schachtlampen rot und die Platten sind still. Die App fragt dann nicht weiter nach, bis du „Erneut prüfen“ wählst."
           }
         },
         "en": {
@@ -6769,12 +6769,12 @@
         }
       }
     },
-    "Diese DroboPro wird gerade von einem anderen Rechner benutzt. Die App fragt erst wieder, wenn Sie „Erneut prüfen“ wählen.": {
+    "Diese DroboPro wird gerade von einem anderen Rechner benutzt. Die App fragt erst wieder, wenn du „Erneut prüfen“ wählst.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Diese DroboPro wird gerade von einem anderen Rechner benutzt. Die App fragt erst wieder, wenn Sie „Erneut prüfen“ wählen."
+            "value": "Diese DroboPro wird gerade von einem anderen Rechner benutzt. Die App fragt erst wieder, wenn du „Erneut prüfen“ wählst."
           }
         },
         "en": {
@@ -6865,12 +6865,12 @@
         }
       }
     },
-    "%@ erprobt, Ihre Firmware und der Anschluss über %@ nicht.": {
+    "%@ erprobt, deine Firmware und der Anschluss über %@ nicht.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ erprobt, Ihre Firmware und der Anschluss über %@ nicht."
+            "value": "%@ erprobt, deine Firmware und der Anschluss über %@ nicht."
           }
         },
         "en": {
@@ -6881,12 +6881,12 @@
         }
       }
     },
-    "%@ erprobt, die Firmware Ihrer Drobo ließ sich nicht lesen.": {
+    "%@ erprobt, die Firmware deiner Drobo ließ sich nicht lesen.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ erprobt, die Firmware Ihrer Drobo ließ sich nicht lesen."
+            "value": "%@ erprobt, die Firmware deiner Drobo ließ sich nicht lesen."
           }
         },
         "en": {
@@ -7441,12 +7441,12 @@
         }
       }
     },
-    "%@ erprobt, Ihre Firmware %@ nicht.": {
+    "%@ erprobt, deine Firmware %@ nicht.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ erprobt, Ihre Firmware %@ nicht."
+            "value": "%@ erprobt, deine Firmware %@ nicht."
           }
         },
         "en": {
@@ -7457,12 +7457,12 @@
         }
       }
     },
-    "Ihre Drobo entspricht der erprobten: %@ · Firmware %@ · über %@.": {
+    "Deine Drobo entspricht der erprobten: %@ · Firmware %@ · über %@.": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ihre Drobo entspricht der erprobten: %@ · Firmware %@ · über %@."
+            "value": "Deine Drobo entspricht der erprobten: %@ · Firmware %@ · über %@."
           }
         },
         "en": {
