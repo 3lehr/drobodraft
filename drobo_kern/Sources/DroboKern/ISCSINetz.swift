@@ -94,10 +94,15 @@ public func netzStatus(sitzung s: ISCSISitzung) throws -> (DroboStatus, NetzInfo
     return (st, info)
 }
 
-public func netzStatusLesen(host: String, fortschritt: ((Int) -> Void)? = nil) throws -> (DroboStatus, NetzInfo) {
-    let s = try netzSitzung(host: host, zeitgrenze: 10); defer { s.abmelden() }
+/// Aktion "Aufwecken": Weckphase und danach Status in DERSELBEN Sitzung (kein zweiter Login, der die DroboPro zurueck in den Standby schickt).
+public func netzAufweckenUndLesen(sitzung s: ISCSISitzung, fortschritt: ((Int) -> Void)? = nil) throws -> (DroboStatus, NetzInfo) {
     try netzAufwecken(sitzung: s, fortschritt: fortschritt)
     return try netzStatus(sitzung: s)
+}
+
+public func netzStatusLesen(host: String, fortschritt: ((Int) -> Void)? = nil) throws -> (DroboStatus, NetzInfo) {
+    let s = try netzSitzung(host: host, zeitgrenze: 10); defer { s.abmelden() }
+    return try netzAufweckenUndLesen(sitzung: s, fortschritt: fortschritt)
 }
 
 /// Metadaten-Sicherung der HFS+-Partition einer LUN (gleiches Format wie bei der 5C); Ort wird wie dort geprueft (nie Systemplatte).

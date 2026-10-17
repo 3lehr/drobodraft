@@ -7969,22 +7969,6 @@
         }
       }
     },
-    "Standby (die Betriebslampe leuchtet orange) ist normal: Die DroboPro schaltet sich nach Ruhe selbst in den Standby. Beim Suchen und Einhängen in DroboDraft wacht sie von allein auf. Die App hält dafür eine Sitzung offen und wartet bis zu 90 Sekunden; dabei steht „Die DroboPro wacht auf …“ mit den vergangenen Sekunden da.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Standby (die Betriebslampe leuchtet orange) ist normal: Die DroboPro schaltet sich nach Ruhe selbst in den Standby. Beim Suchen und Einhängen in DroboDraft wacht sie von allein auf. Die App hält dafür eine Sitzung offen und wartet bis zu 90 Sekunden; dabei steht „Die DroboPro wacht auf …“ mit den vergangenen Sekunden da."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Standby (the power lamp is orange) is normal: the DroboPro puts itself into standby after idling. When you search or mount in DroboDraft it wakes up by itself. The app keeps one session open and waits up to 90 seconds; “The DroboPro is waking up …” with the elapsed seconds is shown meanwhile."
-          }
-        }
-      }
-    },
     "Partitionsgröße": {
       "localizations": {
         "de": {
@@ -8108,7 +8092,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Waking up"
+            "value": "Wake up"
           }
         }
       }
@@ -8269,6 +8253,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "Quit anyway"
+          }
+        }
+      }
+    },
+    "Standby (die Betriebslampe leuchtet orange) ist normal: Die DroboPro schaltet sich nach Ruhe selbst in den Standby. Beim Suchen und Einhängen in DroboDraft wacht sie von allein auf. Die App hält dafür eine Sitzung offen und wartet bis zu 90 Sekunden; dabei steht „Die DroboPro wacht auf …“ mit den vergangenen Sekunden da. Reagiert sie nicht, wähle im Menü „Drobo“ den Eintrag „Aufwecken“.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standby (die Betriebslampe leuchtet orange) ist normal: Die DroboPro schaltet sich nach Ruhe selbst in den Standby. Beim Suchen und Einhängen in DroboDraft wacht sie von allein auf. Die App hält dafür eine Sitzung offen und wartet bis zu 90 Sekunden; dabei steht „Die DroboPro wacht auf …“ mit den vergangenen Sekunden da. Reagiert sie nicht, wähle im Menü „Drobo“ den Eintrag „Aufwecken“."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standby (the power lamp is orange) is normal: the DroboPro puts itself into standby after idling. When you search or mount in DroboDraft it wakes up by itself. The app keeps one session open and waits up to 90 seconds; “The DroboPro is waking up …” with the elapsed seconds is shown meanwhile. If it does not respond, choose “Wake up” from the “Drobo” menu."
+          }
+        }
+      }
+    },
+    "Die DroboPro ist wach und antwortet.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die DroboPro ist wach und antwortet."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The DroboPro is awake and responding."
           }
         }
       }

@@ -17,6 +17,7 @@ struct UebersichtAnsicht: View {
                     }
                     Text(a.zustandText).font(.title3).foregroundStyle(.secondary)
                     if let s = m.weckt[a.eintrag.uuid] { WeckHinweis(sekunden: s) }
+                    if a.eintrag.netz != nil && m.aktiv(.aufwecken) { Button { m.fuehreAus(.aufwecken) } label: { Label(Aktion.aufwecken.def.titel, systemImage: "sun.max") } }
                     if a.eintrag.netz != nil && a.bremse == .reagiertNicht {
                         VStack(alignment: .leading, spacing: Abstand.s) {
                             Hinweis(symbol: "exclamationmark.triangle.fill", text: "Die DroboPro reagiert nicht mehr auf Befehle, obwohl sie im Netzwerk erreichbar ist. Meist leuchten dann alle Schachtlampen rot und die Platten sind still. Bitte neu starten: Drobo über den Knopf ausschalten, das Netzkabel ziehen, ein bis zwei Minuten warten, wieder einstecken und einschalten. Danach kann es bis zu 30 Minuten dauern, bis alle Lampen grün leuchten. In dieser Zeit keine Platten ziehen oder umstecken.", farbe: .red)

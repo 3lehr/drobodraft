@@ -70,7 +70,7 @@ enum DemoDaten {
                     h.schwere = .kritisch; a.hw = h
                 }
                 a.luns = [LunEintrag(lun: 0, groesse: 16 << 40, schema: "GPT", partitionBytes: 2 << 40, uuid: "00000000-0000-4000-8000-00000000D0B1"), LunEintrag(lun: 1, groesse: 16 << 40, schema: "GPT", partitionBytes: 2 << 40, uuid: uuidPro), LunEintrag(lun: 2, groesse: 16 << 40, schema: "-", partitionBytes: nil, uuid: nil)]
-                a.lunEingehaengt = [1: true]
+                a.lunEingehaengt = ProcessInfo.processInfo.environment["DROBO_DEMO_NICHT_EINGEHAENGT"] != nil ? [:] : [1: true]      // DROBO_DEMO_NICHT_EINGEHAENGT=1: keine LUN eingehaengt
                 a.netz = NetzInfo(name: "DroboPro", gelbProzent: 85, rotProzent: 95); a.netzStand = Date()
                 if let b = bremse { a.bremse = b }
             }

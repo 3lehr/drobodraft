@@ -131,6 +131,24 @@ final class DroboModell: ObservableObject {
     /// Netzwerk-Drobos: Bremse je UUID (hoechstens alle 5 min, nie eingehaengt, nach einer Zeitueberschreitung Pause bis \"Erneut pruefen\"; die DroboPro haengt sonst).
     private var bremsen: [String: StatusBremse] = [:]
     private func bremse(_ uuid: String) -> StatusBremse { if let b = bremsen[uuid] { return b }; let b = StatusBremse(); bremsen[uuid] = b; return b }
+    /// Aktion "Aufwecken": Weckphase (eine Sitzung, TEST UNIT READY bis 90 s) und danach Status lesen, als Vorgang mit Sperre und Schlafsperre. Kein 0xEA, kein Schreiben.
+    func aufwecken() {
+        #if DEBUG
+        guard DemoDaten.art == nil else { return }   // Demo fasst kein Netz an
+        #endif
+        guard let nz = aktuell?.eintrag.netz, let u = aktuell?.eintrag.uuid else { return }
+        let b = bremse(u); b.erneutPruefen()      // eine bewusste Handlung hebt die "reagiert nicht"-Pause auf
+        guard b.weckenBeginnen() else { return }
+        let fp = weckFortschritt(u)
+        ausfuehren("Aufwecken") { [weak self] in
+            do {
+                let (st, info) = try netzStatusLesen(host: nz.host, fortschritt: fp)
+                b.weckenEnde(nil)
+                await MainActor.run { if var a = self?.drobos[u] { (a.hw, a.netz, a.netzStand, a.netzFehler, a.verbunden, a.bremse) = (st, info, Date(), nil, true, .bereit); self?.drobos[u] = a } }
+                return String(localized: "Die DroboPro ist wach und antwortet.")
+            } catch { b.weckenEnde(error); throw error }
+        }
+    }
     func erneutPruefen(_ uuid: String) { bremse(uuid).erneutPruefen(); aktualisieren(freigabe: true) }
     /// Weckphase einer schlafenden DroboPro: UUID -> vergangene Sekunden (Zustand "wacht auf ..."); leer = keine Weckphase.
     @Published var weckt: [String: Int] = [:]

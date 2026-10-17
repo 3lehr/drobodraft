@@ -492,4 +492,18 @@ extension ISCSITests {
         XCTAssertThrowsError(try netzLunNachFormat(host: "x", lun: 1, versuche: 1, pause: 0, verzeichnis: flaky), "Einmalversuch scheitert")
         n = 0; XCTAssertEqual(try netzLunNachFormat(host: "x", lun: 1, versuche: 4, pause: 0, verzeichnis: flaky).neu, e); XCTAssertEqual(n, 3)
     }
+
+    /// Aktion "Aufwecken" (K): Weckphase und Status in einer Sitzung gegen eine schlafende DroboPro (--sleep 20). Rotprobe: Status OHNE Weckphase scheitert an NOT READY.
+    func testAufweckenUndLesen_EineSitzung() throws {
+        let port = try ziel(["--sleep", "20"])
+        let roh = try sitzung(port, zeit: 10, erste: ISCSISitzung.ersteZeitgrenzeNetz)
+        XCTAssertThrowsError(try netzStatus(sitzung: roh), "ohne Weckphase: NOT READY") { guard case .scsi? = $0 as? ISCSIFehler else { return XCTFail("\($0)") } }
+        roh.abmelden()
+        let s = try sitzung(port, zeit: 10, erste: ISCSISitzung.ersteZeitgrenzeNetz); defer { s.abmelden() }
+        var schritte = 0
+        let (st, info) = try netzAufweckenUndLesen(sitzung: s, fortschritt: { _ in schritte += 1 })
+        XCTAssertEqual(st.schaechte.count, 8); XCTAssertEqual(info.name, "DroboPro"); XCTAssertGreaterThan(schritte, 0)
+        XCTAssertEqual(logins("Normal"), 2, "1 fuer die Rotprobe + 1 Sitzung der Weckphase (nicht je Versuch ein Login)")
+        XCTAssertTrue(ereignisse("fehler").isEmpty)
+    }
 }

@@ -18,7 +18,7 @@ struct Kuerzel: Equatable {
 
 enum Aktion: String, CaseIterable, Identifiable {
     case geheUebersicht, geheLaufwerke, geheProtokoll, geheTempo, geheSichern, geheFinden
-    case drobosSuchen, gefundeneHinzufuegen, umbenennen, entfernen, erneutPruefen
+    case drobosSuchen, gefundeneHinzufuegen, umbenennen, entfernen, erneutPruefen, aufwecken
     case einhaengenLesen, einhaengenSchreiben, neuSchreiben, aushaengen, imFinder, alleEinhaengen, alleAushaengen, formatieren
     case zugriffPruefen, dateisystemPruefen, probelauf, zurueckspielen, wegsichern, tempoMessung, aktualisieren
     case sicherungsortWaehlen, hilfsdienstEinrichten, zugriffOeffnen, spotlightAnleitung
@@ -50,6 +50,7 @@ enum Aktion: String, CaseIterable, Identifiable {
         case .umbenennen: return Def(menu: Self.menuDrobo, titel: String(localized: "Umbenennen …"), kuerzel: Kuerzel("r", [.command, .shift]), aendert: true, undo: true, gruppe: 1)
         case .entfernen: return Def(menu: Self.menuDrobo, titel: String(localized: "Aus der Liste entfernen"), kuerzel: Kuerzel(loeschen: .command), aendert: true, undo: true, gruppe: 1)
         case .erneutPruefen: return Def(menu: Self.menuDrobo, titel: String(localized: "Erneut prüfen"), kuerzel: nil, gruppe: 2)
+        case .aufwecken: return Def(menu: Self.menuDrobo, titel: String(localized: "Aufwecken"), kuerzel: nil, gruppe: 2)
         case .einhaengenLesen: return Def(menu: Self.menuVolume, titel: String(localized: "Einhängen (nur lesen)"), kuerzel: Kuerzel("e", [.command, .shift]), gruppe: 0)
         case .einhaengenSchreiben: return Def(menu: Self.menuVolume, titel: String(localized: "Zum Schreiben einhängen …"), kuerzel: nil, gruppe: 0)
         case .neuSchreiben: return Def(menu: Self.menuVolume, titel: String(localized: "Zum Schreiben neu …"), kuerzel: nil, gruppe: 0)
@@ -118,6 +119,7 @@ extension DroboModell {
         case .umbenennen: return d != nil && blatt == nil
         case .entfernen: return d != nil && einstellungen.drobos.count > 1
         case .erneutPruefen: return d?.eintrag.netz != nil && d?.bremse != .bereit
+        case .aufwecken: return frei && d.map { x in x.eintrag.netz != nil && vorgaenge[x.eintrag.uuid] == nil && !x.eingehaengt && x.lunEingehaengt.isEmpty && (!x.verbunden || x.bremse != .bereit || x.netzFehler != nil) } == true
         case .einhaengenLesen: return frei && einhaengbar
         case .einhaengenSchreiben: return frei && blatt == nil && einhaengbar
         case .neuSchreiben: return frei && blatt == nil && d?.eingehaengt == true && d?.nurlesen == true
@@ -156,6 +158,7 @@ extension DroboModell {
         case .umbenennen: if let n = arg { umbenennen(auswahl, name: n) } else { blatt = .umbenennen(auswahl) }
         case .entfernen: entfernen(auswahl)
         case .erneutPruefen: erneutPruefen(auswahl)
+        case .aufwecken: aufwecken()
         case .einhaengenLesen: einhaengen(schreiben: false)
         case .einhaengenSchreiben, .neuSchreiben: schreibenLun = ziel?.lun; blatt = .schreiben
         case .lunEinhaengenLesen: if let l = ziel?.lun { lunEinhaengen(l, schreiben: false) }
@@ -262,6 +265,7 @@ extension DroboModell {
             z.append(SymbolZeile(id: "d-\(u)", art: .drobo, titel: "\(d.eintrag.name): \(d.zustandText)", symbol: sym))
             if let g = d.hwZustand, g.belegt + g.frei > 0 { z.append(SymbolZeile(id: "f-\(u)", art: .info, titel: String(localized: "\(groesseText(g.frei)) frei"), frei: g.frei)) }
             if d.eintrag.netz != nil {
+                if aktiv(.aufwecken, arg: u) { z.append(aktion(.aufwecken, u, nil, "sun.max")) }
                 if d.bremse != .bereit { z.append(aktion(.erneutPruefen, u)); continue }
                 for l in d.luns where l.hatDateisystem {
                     let nm = d.eintrag.netz?.luns?.first { $0.lun == l.lun }?.name ?? String(localized: "Volume \(l.lun + 1)")

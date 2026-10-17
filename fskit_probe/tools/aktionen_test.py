@@ -92,6 +92,25 @@ def vorgang_test():
         pruefe(z["vorgang"] is None and z["vorgaenge"] == 0, "Ende raeumt auf")
     finally: beenden(p)
 
+def aufwecken_test():
+    """Aktion Aufwecken: im Katalog/Menue, in der Menueleiste (Symbolmenue) nur bei der Netz-Drobo, die nicht antwortet, und ohne laufenden Vorgang; nie bei der 5C."""
+    for bremse in [None, "reagiert"]:
+        p, port, daten = start("beide", extra={"DROBO_DEMO_NICHT_EINGEHAENGT": "1", **({"DROBO_DEMO_BREMSE": bremse} if bremse else {})})
+        try:
+            get = lambda x: holen(port, x); post = lambda x: holen(port, x, True)
+            kat = {a["id"]: a for a in get("/aktionen")}
+            pruefe("aufwecken" in kat and kat["aufwecken"]["menue"].startswith("Drobo"), f"Aufwecken steht im Menue ({kat.get('aufwecken', {}).get('menue')})")
+            pro = [d["uuid"] for d in get("/zustand")["drobos"] if d["name"] == "DroboPro"][0]
+            def zeilen(): return [r["id"] for r in get("/symbolmenue") if r["id"].startswith("a-aufwecken-")]
+            pruefe(zeilen() == ([f"a-aufwecken-{pro}"] if bremse else []), f"bremse={bremse}: Menueleiste {zeilen()}")
+            if bremse:
+                r = post(f"/aktion?id=aufwecken&arg={pro}"); pruefe(r["ok"], f"Aufwecken ausfuehrbar (Demo: ohne Netz) ({r.get('fehler')})")   # waehlt zugleich die DroboPro
+                pruefe(get("/zustand")["auswahl"] == pro, "Aktion mit Ziel waehlt die DroboPro")
+                post("/vorgang?titel=Formatieren"); pruefe(zeilen() == [], "waehrend eines Vorgangs keine Aufwecken-Zeile")
+                pruefe(not [x for x in get("/aktionen") if x["id"] == "aufwecken"][0]["aktiv"], "waehrend eines Vorgangs nicht aktiv"); post("/vorgang?ende=1")
+                pruefe(zeilen() == [f"a-aufwecken-{pro}"], "nach dem Vorgang wieder aktiv")
+        finally: beenden(p)
+
 def symbol_test():
     """Menueleisten-Symbol (Zeilen aus dem Modell, Aktionen aus dem Katalog): alle Drobos, freier Platz, Warnungen oben mit Hilfe, Schreiben nur ueber das Blatt,
     Nur-Menueleiste mit Undo, App laeuft nach dem Schliessen aller Fenster weiter."""
@@ -208,6 +227,7 @@ def main():
     blatt_test()
     symbol_test()
     vorgang_test()
+    aufwecken_test()
     print(f"\n{'ALLES GRUEN' if not fehler else str(len(fehler)) + ' FEHLER'}")
     sys.exit(1 if fehler else 0)
 

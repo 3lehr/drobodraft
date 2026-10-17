@@ -25,7 +25,7 @@ struct HilfeAnsicht: View {
                     Text("Abhilfe: Drobo über den Knopf ausschalten, Netzkabel ziehen, ein bis zwei Minuten warten, wieder einstecken und einschalten. Danach kann es bis zu 30 Minuten dauern, bis alle Lampen grün leuchten. In dieser Zeit keine Platten ziehen oder umstecken.")
                 }
                 Karte(titel: "DroboPro: Standby und Neustart") {
-                    Text("Standby (die Betriebslampe leuchtet orange) ist normal: Die DroboPro schaltet sich nach Ruhe selbst in den Standby. Beim Suchen und Einhängen in DroboDraft wacht sie von allein auf. Die App hält dafür eine Sitzung offen und wartet bis zu 90 Sekunden; dabei steht „Die DroboPro wacht auf …“ mit den vergangenen Sekunden da.")
+                    Text("Standby (die Betriebslampe leuchtet orange) ist normal: Die DroboPro schaltet sich nach Ruhe selbst in den Standby. Beim Suchen und Einhängen in DroboDraft wacht sie von allein auf. Die App hält dafür eine Sitzung offen und wartet bis zu 90 Sekunden; dabei steht „Die DroboPro wacht auf …“ mit den vergangenen Sekunden da. Reagiert sie nicht, wähle im Menü „Drobo“ den Eintrag „Aufwecken“.")
                     Text("Einen Knopf für Neustart, Standby oder Blinken gibt es in der App nicht: Solche Systembefehle lösen bei der DroboPro einen Neustart aus, der Minuten dauert. Reagiert die DroboPro danach gar nicht mehr, hilft nur stromlos machen, siehe „Wenn die DroboPro nicht reagiert“.")
                 }
                 Karte(titel: "Mehrere Rechner") {
