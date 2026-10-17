@@ -34,8 +34,10 @@ public struct Einstellungen: Codable, Equatable {
     public var mitteilungen = true
     /// Spotlight/Time-Machine-Ausschluss: nur Einstellung des Betreibers, Vorgabe aus (Hinweis statt Zwang).
     public var spotlightAusgeschlossen = false
+    /// Nur Menueleisten-Symbol, kein Dock-Symbol (Aktivierungsregel .accessory); Vorgabe aus.
+    public var nurMenueleiste = false
     public init() {}
-    enum CodingKeys: String, CodingKey { case drobos, einhaengeort, vorgabeSchreiben, sicherungOrt, sicherungAnzahl, mitteilungen, spotlightAusgeschlossen }
+    enum CodingKeys: String, CodingKey { case drobos, einhaengeort, vorgabeSchreiben, sicherungOrt, sicherungAnzahl, mitteilungen, spotlightAusgeschlossen, nurMenueleiste }
     public init(from d: Decoder) throws {
         self.init()
         let c = try d.container(keyedBy: CodingKeys.self)
@@ -46,6 +48,7 @@ public struct Einstellungen: Codable, Equatable {
         sicherungAnzahl = try c.decodeIfPresent(Int.self, forKey: .sicherungAnzahl) ?? sicherungAnzahl
         mitteilungen = try c.decodeIfPresent(Bool.self, forKey: .mitteilungen) ?? mitteilungen
         spotlightAusgeschlossen = try c.decodeIfPresent(Bool.self, forKey: .spotlightAusgeschlossen) ?? spotlightAusgeschlossen
+        nurMenueleiste = try c.decodeIfPresent(Bool.self, forKey: .nurMenueleiste) ?? nurMenueleiste
     }
 }
 

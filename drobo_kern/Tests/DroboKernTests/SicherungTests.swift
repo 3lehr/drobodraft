@@ -257,6 +257,14 @@ extension KernTests {
         XCTAssertEqual(Einstellungen().drobos, [], "keine Vorgabe-Drobo"); XCTAssertFalse(Einstellungen().spotlightAusgeschlossen)
     }
 
+    func testNurMenueleisteVorgabeAusUndAltdateiOhneFeld() throws {
+        XCTAssertFalse(Einstellungen().nurMenueleiste, "Vorgabe: Dock-Symbol bleibt")
+        let alt = try JSONDecoder().decode(Einstellungen.self, from: Data(#"{"mitteilungen":false}"#.utf8))
+        XCTAssertFalse(alt.nurMenueleiste); XCTAssertFalse(alt.mitteilungen)
+        var e = Einstellungen(); e.nurMenueleiste = true
+        XCTAssertTrue(try JSONDecoder().decode(Einstellungen.self, from: JSONEncoder().encode(e)).nurMenueleiste)
+    }
+
     // MARK: Wegsichern
 
     func testWegsichernInkrementellMitPruefsumme() throws {
