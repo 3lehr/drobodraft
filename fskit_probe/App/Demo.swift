@@ -9,6 +9,8 @@ enum DemoDaten {
     static var art: String? { ProcessInfo.processInfo.environment["DROBO_DEMO"].flatMap { $0.isEmpty ? nil : $0 } }
     /// DROBO_DEMO_SEITE=uebersicht|laufwerke|protokoll|tempo|volume|finden (Startansicht), DROBO_DEMO_SCHACHT=n (Einzelheiten dieses Schachts offen).
     static var seite: Abschnitt? { ProcessInfo.processInfo.environment["DROBO_DEMO_SEITE"].flatMap { s in Abschnitt.allCases.first { "\($0)" == s } } }
+    /// DROBO_DEMO_PROBLEM=1: Treibermodul "nicht freigeschaltet" (zeigt die Statusleiste).
+    static var problem: Bool { ProcessInfo.processInfo.environment["DROBO_DEMO_PROBLEM"] != nil }
     static var schacht: Int? { ProcessInfo.processInfo.environment["DROBO_DEMO_SCHACHT"].flatMap { Int($0) } }
     static let uuid5C = "00000000-0000-4000-8000-0000000005C0", uuidPro = "00000000-0000-4000-8000-00000000D0B0"
 

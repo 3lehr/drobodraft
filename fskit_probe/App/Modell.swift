@@ -152,7 +152,7 @@ final class DroboModell: ObservableObject {
 
     func aktualisieren(freigabe: Bool = true) {
         #if DEBUG
-        if let d = DemoDaten.ansichten() { uebernehmen(d, modul: ModulStatus(installiert: true, freigeschaltet: true), dienst: String(localized: "bereit")); return }
+        if let d = DemoDaten.ansichten() { uebernehmen(d, modul: ModulStatus(installiert: true, freigeschaltet: !DemoDaten.problem), dienst: String(localized: "bereit")); return }
         #endif
         let ds = einstellungen.drobos
         let alt = drobos
