@@ -34,11 +34,11 @@ public enum ErprobtErgebnis: Equatable {
     public var istErprobt: Bool { if case .erprobt = self { return true }; return false }
 }
 
-/// Kabel-iSCSI: nur gelesen, Schreiben NICHT erprobt. USB/FireWire an der DroboPro: nie gemessen.
+/// Kabel-iSCSI: Schreiben erprobt 2026-10-17 (en8, 100 MBit: iscsi-write-test 4K/256K/512K byte-gleich; Modul 50 MiB, md5 nach Neueinhaengen gleich). Formatieren ueber Kabel nicht. USB/FireWire an der DroboPro: nie gemessen.
 public let erprobteDrobos: [ErprobtEintrag] = [
     ErprobtEintrag(modell: "5c gen3", anzeige: "Drobo 5C Gen3", firmwareBuild: 50532, anschluss: .usb, schreiben: true, formatieren: false, beleg: "Schreibtest 21/21, Platzsperre, Haertetest Abbilder"),
     ErprobtEintrag(modell: "pro", anzeige: "DroboPro", firmwareBuild: 22137, anschluss: .iscsiWLAN, schreiben: true, formatieren: true, beleg: "200 MiB, md5 nach Neueinhaengen; LUN 1 formatiert und verifiziert"),
-    ErprobtEintrag(modell: "pro", anzeige: "DroboPro", firmwareBuild: 22137, anschluss: .iscsiKabel, schreiben: false, formatieren: false, beleg: "nur gelesen"),
+    ErprobtEintrag(modell: "pro", anzeige: "DroboPro", firmwareBuild: 22137, anschluss: .iscsiKabel, schreiben: true, formatieren: false, beleg: "50 MiB über das Modul, Prüfsumme nach Neueinhängen gleich"),
 ]
 
 func normalisiere(_ modell: String) -> String {

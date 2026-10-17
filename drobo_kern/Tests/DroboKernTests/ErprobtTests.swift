@@ -13,8 +13,9 @@ final class ErprobtTests: XCTestCase {
         XCTAssertTrue(e("Pro", 22137, .iscsiWLAN, .schreiben).istErprobt)
         XCTAssertTrue(e("DroboPro", 22137, .iscsiWLAN, .formatieren).istErprobt)
     }
-    func testProUeberKabel_NurGelesen_SchreibenUndFormatierenNichtErprobt() {
-        XCTAssertTrue(nicht(e("Pro", 22137, .iscsiKabel, .schreiben)))
+    func testProUeberKabel_SchreibenErprobt_FormatierenNicht() {
+        // gemessen 2026-10-17: Modul 50 MiB ueber en8, md5 nach Neueinhaengen gleich; Formatieren ueber Kabel nie
+        XCTAssertTrue(e("Pro", 22137, .iscsiKabel, .schreiben).istErprobt)
         XCTAssertTrue(nicht(e("Pro", 22137, .iscsiKabel, .formatieren)))
     }
     func testProUSBFirewireUnbekannt_NieErprobt() {
@@ -33,7 +34,7 @@ final class ErprobtTests: XCTestCase {
         guard case .nichtErprobt(let l, _, _, _) = e("X", 1, .usb, .formatieren) else { return XCTFail() }
         XCTAssertEqual(l.map(\.anzeige), ["DroboPro"])
         guard case .nichtErprobt(let s, _, _, _) = e("X", 1, .usb, .schreiben) else { return XCTFail() }
-        XCTAssertEqual(s.map(\.anschluss), [.usb, .iscsiWLAN], "Kabel steht NICHT als erprobt zum Schreiben da")
+        XCTAssertEqual(s.map(\.anschluss), [.usb, .iscsiWLAN, .iscsiKabel], "Kabel seit 2026-10-17 zum Schreiben erprobt")
     }
 
     // Teiltreffer: je Merkmal uebereinstimmend / abweichend
@@ -45,8 +46,8 @@ final class ErprobtTests: XCTestCase {
         guard case .erprobt(let eintrag) = e("Pro", 22137, .iscsiWLAN, .schreiben) else { return XCTFail() }
         XCTAssertEqual(eintrag.anzeige, "DroboPro"); XCTAssertEqual(eintrag.firmwareBuild, 22137)
     }
-    func testTeiltreffer_NurAnschlussAbweichend_Kabel() {
-        let t = teil("Pro", 22137, .iscsiKabel)
+    func testTeiltreffer_NurAnschlussAbweichend_FormatierenUeberKabel() {
+        let t = teil("Pro", 22137, .iscsiKabel, .formatieren)
         XCTAssertEqual(t?.ok, [.modell, .firmware]); XCTAssertEqual(t?.ab, [.anschluss]); XCTAssertEqual(t?.bester, "DroboPro")
     }
     func testTeiltreffer_NurFirmwareAbweichend() {

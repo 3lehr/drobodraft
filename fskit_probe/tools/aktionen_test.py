@@ -62,13 +62,14 @@ def blatt_test():
         pruefe(post("/bestaetigen?name=NEU")["ok"], "Formatieren nach Sperre mit gueltigem Namen")
         post("/uhr?versatz=0")
     finally: beenden(p)
-    # Neustart mit gleichem Datenordner und anderem Anschluss: Kabel ist nicht erprobt -> volles Blatt, Kaestchen noetig
-    p, port, daten = start("pro", daten, {"DROBO_DEMO_ANSCHLUSS": "kabel"})
+    # Neustart mit gleichem Datenordner, Kabel + fremde Firmware 21000: nicht erprobt -> volles Blatt, Kaestchen noetig
+    # (Kabel allein ist seit 2026-10-17 zum Schreiben erprobt, darum zusaetzlich fremder Build)
+    p, port, daten = start("pro", daten, {"DROBO_DEMO_ANSCHLUSS": "kabel", "DROBO_DEMO_BUILD": "21000"})
     try:
         get = lambda x: holen(port, x); post = lambda x: holen(port, x, True)
         post("/aktion?id=sicherungsortWaehlen&arg=/private/tmp/drobo_aktionen_ziel")
         post("/aktion?id=einhaengenSchreiben"); z = get("/zustand")
-        pruefe(z["blatt_art"] == "voll:nichtErprobt" and len(z["bestaetigt"]) == 1, f"Kabel: nicht erprobt = volles Blatt trotz frueherer Bestaetigung ({z['blatt_art']})")
+        pruefe(z["blatt_art"] == "voll:nichtErprobt" and len(z["bestaetigt"]) == 1, f"Kabel+fremde Firmware: nicht erprobt = volles Blatt trotz frueherer Bestaetigung ({z['blatt_art']})")
         post("/uhr?versatz=16"); z2 = get("/zustand"); r = post("/bestaetigen"); pruefe(not r["ok"], f"ohne Sicherungs-Kaestchen abgelehnt: {r['fehler']} (vorher: art={z2['blatt_art']} gesichert={z2['gesichert']} blatt={z2['blatt']} auswahl={z2['auswahl']})")
         post("/gesichert?an=1"); pruefe(post("/bestaetigen")["ok"], "mit Kaestchen nach der Sperre bestaetigt")
     finally: beenden(p)
