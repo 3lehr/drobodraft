@@ -10,8 +10,8 @@ final class NetzTests: XCTestCase {
         for (sub, n) in ISCSISitzung.modeSenseExakt { XCTAssertNil(ISCSISitzung.verbot(cdb: cdb(sub, n), schreiben: 0, lesen: n), "sub \(sub)"); XCTAssertNotNil(ISCSISitzung.verbot(cdb: cdb(sub, n - 1), schreiben: 0, lesen: n - 1)); XCTAssertNotNil(ISCSISitzung.verbot(cdb: cdb(sub, n + 1), schreiben: 0, lesen: n + 1)) }
         XCTAssertNotNil(ISCSISitzung.verbot(cdb: cdb(0x04, 512), schreiben: 0, lesen: 512), "04 braucht genau 157")
         XCTAssertNotNil(ISCSISitzung.verbot(cdb: cdb(0x03, 4096), schreiben: 0, lesen: 4096))
-        XCTAssertNotNil(ISCSISitzung.verbot(cdb: cdb(0x35, 512), schreiben: 0, lesen: 512), "35 (SlotInfo2) nur mit exakter Laenge: Kopf 12 + 8 Schaechte x 108")
-        XCTAssertEqual(ISCSISitzung.modeSenseExakt[0x35], 12 + 8 * 108)
+        for al in [4, 8, 512, 864, 868, 869, 872, 876, 1308] { XCTAssertNotNil(ISCSISitzung.verbot(cdb: cdb(0x35, al), schreiben: 0, lesen: al), "35 an der DroboPro nie senden (Messbefund 2026-10-17), Laenge \(al)") }
+        XCTAssertNil(ISCSISitzung.modeSenseExakt[0x35]); XCTAssertFalse(ISCSISitzung.modeSenseUnterseiten.contains(0x35))
         XCTAssertNil(ISCSISitzung.verbot(cdb: cdb(0x01, 512), schreiben: 0, lesen: 512), "bisheriges Verhalten bleibt")
         XCTAssertNotNil(ISCSISitzung.verbot(cdb: cdb(0x31, 100), schreiben: 0, lesen: 100))
     }

@@ -147,7 +147,7 @@ do {
         print("\(a) ok")
     case "iscsi-probe":
         guard let h = ProcessInfo.processInfo.environment["DROBO_ISCSI_HOST"], !h.isEmpty else { throw Fehler.eingabe("set DROBO_ISCSI_HOST to the target's address") }
-        print(try iscsiSonde(host: h, port: ProcessInfo.processInfo.environment["DROBO_ISCSI_PORT"].flatMap { UInt16($0) } ?? 3260, schreibtest: flag("--write-test"), slotInfo2: flag("--slotinfo2")))
+        print(try iscsiSonde(host: h, port: ProcessInfo.processInfo.environment["DROBO_ISCSI_PORT"].flatMap { UInt16($0) } ?? 3260, schreibtest: flag("--write-test")))
     case "iscsi-write-test":     // Testgeraet: schreibt auf LUN 1 ab --lba (Vorgabe 16 Mi), je Groesse (Byte, Vorgabe 4096,262144,524288), liest zurueck und vergleicht
         guard let h = ProcessInfo.processInfo.environment["DROBO_ISCSI_HOST"], !h.isEmpty else { throw Fehler.eingabe("set DROBO_ISCSI_HOST to the target's address") }
         try iscsiSchreibprobe(host: h, ablba: opt("--lba").flatMap { UInt64($0) } ?? 16 << 20, groessen: (opt("--sizes") ?? "4096,262144,524288").split(separator: ",").compactMap { Int($0) }, meldung: { print($0) })
