@@ -42,6 +42,7 @@ struct DroboGeraet: View {
                     VStack(spacing: Abstand.m) {   // rechts: Fuellstand senkrecht, darunter die Betriebslampe
                         FuellLeiste(g: g, senkrecht: true).padding(.top, Abstand.l)
                         BetriebsLampe(b: betrieb)
+                        StatusLampe()
                     }.frame(width: Mass.ledSpalte)
                 }
             }
@@ -169,10 +170,10 @@ struct Lampe: View {
 /// Betriebslampe (nur DroboPro-Bild): Farbe NICHT vom Geraet gelesen (keine Statusseite bekannt; unbekannte Seiten wie 0x36 werden nicht abgefragt, sie haengen die DroboPro).
 /// Abgeleitet aus Sitzung und Status: Ein = erreichbar und Status gelesen, Aus = nicht erreichbar, Reagiert nicht = Bremse "reagiert nicht".
 enum Betrieb {
-    case ein, aus, haengt
-    var wort: String { switch self { case .ein: return String(localized: "Ein"); case .aus: return String(localized: "Aus oder nicht erreichbar"); case .haengt: return String(localized: "Reagiert nicht") } }
-    var symbol: String { switch self { case .ein: return "power.circle.fill"; case .aus: return "power.circle"; case .haengt: return "exclamationmark.octagon.fill" } }
-    var farbe: Color { switch self { case .ein: return .green; case .aus: return .secondary; case .haengt: return .red } }
+    case ein, standby, aus, haengt   // standby (orange, Drobo-S-Handbuch): vorgesehen, derzeit NICHT ableitbar (Netz und TCP 3260 bleiben im Standby an) -> wird nicht gesetzt
+    var wort: String { switch self { case .standby: return String(localized: "Standby"); case .ein: return String(localized: "Ein"); case .aus: return String(localized: "Aus oder nicht erreichbar"); case .haengt: return String(localized: "Reagiert nicht") } }
+    var symbol: String { switch self { case .standby: return "moon.circle.fill"; case .ein: return "power.circle.fill"; case .aus: return "power.circle"; case .haengt: return "exclamationmark.octagon.fill" } }
+    var farbe: Color { switch self { case .standby: return .orange; case .ein: return .green; case .aus: return .secondary; case .haengt: return .red } }
 }
 
 struct BetriebsLampe: View {
@@ -185,6 +186,19 @@ struct BetriebsLampe: View {
         .frame(width: Mass.ledSpalte)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(String(localized: "Betrieb: \(b.wort)"))
+    }
+}
+
+/// Zweite Lampe unter der Betriebslampe (DroboPro): am Geraet rot. Bedeutung OFFEN (Betreiber 2026-10-17: nur zeichnen) -> kein Zustand, nicht aus Daten abgeleitet, Beschriftung "Status" ohne Deutung.
+struct StatusLampe: View {
+    var body: some View {
+        VStack(spacing: Abstand.xs) {
+            Image(systemName: "circle.fill").foregroundStyle(.red).font(.title2).accessibilityHidden(true)
+            Text("Status").font(.caption2).foregroundStyle(.white).multilineTextAlignment(.center)
+        }
+        .frame(width: Mass.ledSpalte)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(String(localized: "Status"))
     }
 }
 

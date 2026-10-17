@@ -145,3 +145,18 @@ Betreiber (nach Foto vom Originalgerät): blaue Punkte rechts senkrecht, darunte
 ```
 Betriebslampe: Farbe NICHT vom Gerät gelesen (keine Statusseite bekannt, 0x36 wird nicht abgefragt: unbekannte Seiten hängen die DroboPro). Abgeleitet aus Sitzung/Status: Ein = erreichbar und Status gelesen, Aus = nicht erreichbar, Reagiert nicht = Bremse „reagiert nicht“. VoiceOver: „Betrieb: Ein“. Füllstand weiter als ein Element „Physisch belegt: N %“.
 Korrektur in derselben Änderung: Beim Umstellen auf Token waren Rundinstrument, Aufteilungsbalken und LEDs von fester Größe auf `minWidth/minHeight` gerutscht und dehnten sich (greedy Formen); sie bekommen wieder feste Größe über Token/`@ScaledMetric`.
+
+## Ergänzung Betreiber 3 (2026-10-17T11:43:07+0200): zwei Statuslampen unter den blauen LEDs (DroboPro, Lage „nebeneinander“)
+Betreiber: unter der senkrechten blauen LED-Spalte sitzen ZWEI Lampen. Oben Betriebslampe grün/orange (orange = Standby, Drobo-S-Handbuch), darunter eine rote Lampe (Bedeutung OFFEN, wird nur gezeichnet, nicht aus Daten abgeleitet).
+```
+  ... Schächte 1..8 |  ●  <- blaue LEDs (10, von unten gefüllt)
+                    |  ●
+                    |  ●
+                    | ─────
+                    |  ⏻   Betriebslampe: Symbol + Wort
+                    |  Ein            (grün)   | Standby (orange, ☾; noch nicht ableitbar, ungenutzt)
+                    |                 | Aus oder nicht erreichbar (grau) | Reagiert nicht (rot, Achteck)
+                    |  ●   rote Lampe, Wort „Status“ (Bedeutung OFFEN, keine Deutung, nicht aus Daten)
+```
+- Betriebslampe weiter aus Sitzung/Status abgeleitet (Ein / Aus oder nicht erreichbar / Reagiert nicht); Standby ist vorgesehen, aber nicht ableitbar (Netz und TCP 3260 bleiben im Standby an, Messung 2026-10-17), also ungenutzt.
+- Rote Lampe: VoiceOver „Status“; kein Zustandswort, weil die Bedeutung unbekannt ist.
