@@ -175,6 +175,7 @@ final class DroboModell: ObservableObject {
         if let es = DemoDaten.eintraege() { e.drobos = es }
         #endif
         einstellungen = e
+        if e.drobos.contains(where: { $0.netz != nil }) { ablage.einstellungenSetzen(e) }      // zusammengefuehrte Netz-Drobos (gleiches Ziel) auch in der Datei
         let z = Self.ansichtLesen(ablage.ordner)
         auswahl = z?.auswahl.flatMap { a in e.drobos.contains { $0.uuid == a } ? a : nil } ?? e.drobos.first?.uuid ?? ""
         abschnitt = z?.abschnitt.flatMap(Abschnitt.init(rawValue:)) ?? .uebersicht
@@ -613,6 +614,7 @@ final class DroboModell: ObservableObject {
         guard !sucheLaeuft else { return }
         sucheLaeuft = true; sucheInfo = nil
         let bekannt = Set(einstellungen.drobos.map { $0.uuid })
+        let bekannteHosts = Set(einstellungen.drobos.compactMap { $0.netz?.host })
         let ausnehmen = Set(drobos.values.filter { $0.eingehaengt }.compactMap { $0.eintrag.netz?.host })     // eingehaengte DroboPro: keine zweite Sitzung
         // Bekannte DroboPros (Adresse eingerichtet): Weckphase beim Treffer; die Abfrage ist dafuer in der Bremse reserviert (keine zweite Sitzung, die die Weck-Sitzung ersetzte)
         let netzDrobos = einstellungen.drobos.compactMap { d in d.netz.map { (uuid: d.uuid, host: $0.host) } }
@@ -631,7 +633,7 @@ final class DroboModell: ObservableObject {
                 self.sucheLaeuft = false; self.weckt = [:]; for u in weckUUIDs { self.vorgaenge[u] = nil }
                 self.sucheBekannt = Set((r.usb.map(\.uuid) + r.lan.flatMap { $0.luns.map(\.uuid) }).filter { bekannt.contains($0) })
                 self.erkannte = r.usb.filter { !bekannt.contains($0.uuid) }
-                self.lanErkannte = r.lan.map { LanDrobo(host: $0.host, luns: $0.luns.filter { !bekannt.contains($0.uuid) }) }.filter { !$0.luns.isEmpty }
+                self.lanErkannte = r.lan.filter { !bekannteHosts.contains($0.host) }.map { LanDrobo(host: $0.host, luns: $0.luns.filter { !bekannt.contains($0.uuid) }) }.filter { !$0.luns.isEmpty }      // bekannte Adresse = bekannte Drobo (neue UUID nach Format ist keine neue Drobo)
                 if let f = r.lanFehler { self.ablage.protokoll("Suche im Netzwerk: \(f)"); self.sucheInfo = String(localized: "Die Suche im lokalen Netzwerk ist nicht möglich. Läuft der Hilfsdienst?") }
                 else if r.usb.isEmpty && r.lan.isEmpty { self.sucheInfo = String(localized: "Keine Drobo gefunden.") }
                 self.aktualisieren()
@@ -646,6 +648,7 @@ final class DroboModell: ObservableObject {
         aendern(String(localized: "Drobo hinzufügen")) {
             $0.drobos.removeAll { e in d.luns.contains { $0.uuid == e.uuid } }
             $0.drobos.append(DroboEintrag(uuid: erste.uuid, name: "DroboPro", netz: NetzZiel(host: d.host, lun: erste.lun, iqn: nil, luns: l)))
+            $0 = $0.netzZusammengefuehrt()      // gleiches Ziel = dieselbe Drobo, nie ein zweiter Eintrag
         }
         auswahl = erste.uuid
         sucheBekannt.formUnion(d.luns.map(\.uuid))
@@ -676,6 +679,7 @@ final class DroboModell: ObservableObject {
         aendern(String(localized: "Drobo hinzufügen")) {
             $0.drobos.removeAll { $0.uuid == lun.uuid }
             $0.drobos.append(DroboEintrag(uuid: lun.uuid, name: name.isEmpty ? "DroboPro" : name, netz: NetzZiel(host: h, lun: lun.lun)))
+            $0 = $0.netzZusammengefuehrt()
         }
         auswahl = lun.uuid
     }

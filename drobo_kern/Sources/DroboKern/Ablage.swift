@@ -22,6 +22,29 @@ public struct NetzZiel: Codable, Equatable { public var host: String; public var
     public init(host: String, lun: Int, iqn: String? = nil, luns: [NetzLunEintrag]? = nil) { self.host = host; self.lun = lun; self.iqn = iqn; self.luns = luns } }
 
 
+/// Standardname einer LUN ("Volume 3"): ein solcher Name ist nie eine Nutzerwahl und weicht jedem anderen.
+func istStandardLunName(_ n: String) -> Bool { n.range(of: #"^Volume [0-9]+$"#, options: .regularExpression) != nil }
+
+extension Einstellungen {
+    /// Eine Netzwerk-Drobo ist durch ihr ZIEL bestimmt (feste IQN, sonst Adresse), nicht durch die Volume-UUID einer LUN: nach einem Format oder einer zweiten LUN entstand sonst ein
+    /// zweiter Eintrag fuer dasselbe Geraet. Eintraege mit gleicher IQN oder gleicher Adresse werden zusammengefuehrt: Name, Rolle, UUID und Haupt-LUN des AELTEREN (frueher in der Liste),
+    /// LUN-Liste vereinigt, je LUN die UUID des neueren, der Name ohne Standardnamen ("Volume N") gewinnt.
+    public func netzZusammengefuehrt() -> Einstellungen {
+        var neu = self, aus: [DroboEintrag] = []
+        for e in drobos {
+            guard let nz = e.netz, let i = aus.firstIndex(where: { o in o.netz.map { $0.host == nz.host || ($0.iqn != nil && $0.iqn == nz.iqn) } ?? false }), var alt = aus[i].netz else { aus.append(e); continue }
+            alt.iqn = alt.iqn ?? nz.iqn
+            var m: [Int: NetzLunEintrag] = [:]
+            for l in alt.luns ?? [] { m[l.lun] = l }
+            for l in nz.luns ?? [] { m[l.lun] = m[l.lun].map { a in NetzLunEintrag(lun: l.lun, uuid: l.uuid, name: istStandardLunName(a.name) ? l.name : a.name) } ?? l }
+            alt.luns = m.values.sorted { $0.lun < $1.lun }
+            aus[i].netz = alt
+        }
+        neu.drobos = aus
+        return neu
+    }
+}
+
 public struct Einstellungen: Codable, Equatable {
     /// Keine Vorgabe-Drobo: eingerichtet wird, was angeschlossen und erkannt (erkenneDrobos) und vom Nutzer hinzugefuegt wurde.
     public var drobos: [DroboEintrag] = []
@@ -120,7 +143,7 @@ public final class Datenablage {
         if let d = try? e.encode(w) { try? d.write(to: URL(fileURLWithPath: pfad(n)), options: .atomic) }
     }
 
-    public func einstellungen() -> Einstellungen { Self.sperre.lock(); defer { Self.sperre.unlock() }; return lesen("einstellungen.json", Einstellungen.self) ?? Einstellungen() }
+    public func einstellungen() -> Einstellungen { Self.sperre.lock(); defer { Self.sperre.unlock() }; return (lesen("einstellungen.json", Einstellungen.self) ?? Einstellungen()).netzZusammengefuehrt() }
     public func einstellungenSetzen(_ e: Einstellungen) { Self.sperre.lock(); defer { Self.sperre.unlock() }; schreiben("einstellungen.json", e) }
 
     public func merker(_ uuid: String) -> Merker {
