@@ -7,6 +7,17 @@ public let tempoPlatzReserve: UInt64 = 2
 let tempoBlock = Int(8 * MiB)
 
 /// Laufende Messung: Rate ueber das letzte Fenster (>= 0,4 s), damit der Zeiger nicht zittert.
+/// Skala der Rundinstrumente (MB/s): kleinste Stufe 1-2-5-10-20-50 ... mit mindestens 10 % Luft ueber `spitze`; ohne Messwert 100.
+public func tempoSkala(spitze: Double) -> Double {
+    guard spitze > 0 else { return 100 }
+    var dekade = 1.0
+    while true {
+        for f in [1.0, 2, 5] where f * dekade >= spitze * 1.1 { return f * dekade }
+        dekade *= 10
+        if dekade > 1e12 { return dekade }
+    }
+}
+
 public struct TempoFortschritt: Equatable {
     public var art: String          // lesen | schreiben
     public var bytes: UInt64

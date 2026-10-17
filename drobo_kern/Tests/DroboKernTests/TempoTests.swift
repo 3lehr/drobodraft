@@ -114,4 +114,14 @@ final class FormateTests: XCTestCase {
         XCTAssertEqual(proResTabelle[3].mbit(codec: 2, fps: 30), 629)
         XCTAssertEqual(proResTabelle[6].mbit(codec: 5, fps: 60), 16970)
     }
+
+    /// Skala der Rundinstrumente: kleinste Stufe 1-2-5 mit mindestens 10 % Luft ueber dem Messwert (DroboPro ~5 MB/s darf nicht auf einer 0-200-Skala kleben).
+    func testTempoSkalaPasstSichAn() {
+        XCTAssertEqual(tempoSkala(spitze: 0), 100, "noch keine Messung: bisherige Vorgabe")
+        XCTAssertEqual(tempoSkala(spitze: 4.9), 10); XCTAssertEqual(tempoSkala(spitze: 5), 10, "5 MB/s: eine 5er-Skala haette keine Luft")
+        XCTAssertEqual(tempoSkala(spitze: 0.4), 1)
+        XCTAssertEqual(tempoSkala(spitze: 17), 20); XCTAssertEqual(tempoSkala(spitze: 18), 20, "18 * 1,1 = 19,8 <= 20"); XCTAssertEqual(tempoSkala(spitze: 18.2), 50, "18,2 * 1,1 = 20,02 > 20")
+        XCTAssertEqual(tempoSkala(spitze: 190), 500); XCTAssertEqual(tempoSkala(spitze: 1800), 2000)
+        XCTAssertEqual(tempoSkala(spitze: 60000), 100000, "ueber die Tabelle hinaus: weiter in 1-2-5 Stufen")
+    }
 }
