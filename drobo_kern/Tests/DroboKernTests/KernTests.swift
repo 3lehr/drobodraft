@@ -8,7 +8,7 @@ final class KernTests: XCTestCase {
     /// Der Integrationstest schreibt in die ECHTE Freigabeliste des Betreibers (das Modul liest nur diesen Pfad, ein eigener Container ist nicht moeglich). Darum nur auf ausdruecklichen Wunsch:
     /// DROBO_INTEGRATION_ECHT=1 und nur, wenn gerade nichts Echtes eingehaengt ist. Sonst wird die echte Datei weder gelesen noch geschrieben.
     static let integration = Kern.umgebung("DROBO_INTEGRATION_ECHT") == "1"
-    static func listeStand(_ pfad: String) -> String { let a = try? FileManager.default.attributesOfItem(atPath: pfad); return "\(a?[.size] ?? -1)/\(String(describing: a?[.modificationDate]))" }
+    static func listeStand(_ pfad: String) -> String { let a = try? FileManager.default.attributesOfItem(atPath: pfad); return "\(a?[.size] ?? -1)/\((a?[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0)" }
     var vorherStand = ""
     var vorher: Data?
     var dir = ""
@@ -329,6 +329,6 @@ final class ListeStandTests: XCTestCase {
         let a = KernTests.listeStand(p); XCTAssertEqual(KernTests.listeStand(p), a, "unberuehrt = gleich")
         Thread.sleep(forTimeInterval: 0.05); try "[]".write(toFile: p, atomically: true, encoding: .utf8)
         XCTAssertNotEqual(KernTests.listeStand(p), a, "Schreiben (selber Inhalt) faellt auf")
-        XCTAssertEqual(KernTests.listeStand(p + ".fehlt"), "-1/nil")
+        XCTAssertEqual(KernTests.listeStand(p + ".fehlt"), "-1/0.0")
     }
 }
