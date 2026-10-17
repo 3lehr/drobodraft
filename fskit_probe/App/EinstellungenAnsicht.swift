@@ -43,6 +43,8 @@ struct EinstellungenAnsicht: View {
             Section("Start") {
                 Toggle("Beim Anmelden starten", isOn: Binding(get: { m.anmeldeStart }, set: { m.anmeldeStartSetzen($0) }))
                 Text("Standard: aus. Die App startet dann beim Anmelden im Hintergrund mit Symbol in der Menüleiste.").font(.callout).foregroundStyle(.secondary)
+                Toggle(Aktion.nurMenueleiste.def.titel, isOn: m.binding(\.nurMenueleiste, String(localized: "Nur in der Menüleiste ändern")))
+                Text("Standard: aus. Dann gibt es kein Dock-Symbol; die App bleibt über das Symbol neben der Uhr erreichbar, auch wenn alle Fenster geschlossen sind.").font(.callout).foregroundStyle(.secondary)
             }
             Section("Mitteilungen") {
                 Toggle("Mitteilungen bei Anschluss, Trennung und Warnungen", isOn: m.binding(\.mitteilungen, String(localized: "Mitteilungen ändern")))
@@ -96,20 +98,33 @@ struct EinstellungenAnsicht: View {
 struct MenueleistenInhalt: View {
     @EnvironmentObject var m: DroboModell
     @Environment(\.openWindow) private var openWindow
+
+    func fensterZeigen() { openWindow(id: "haupt"); NSApp.activate(ignoringOtherApps: true) }
+
+    /// Schreib-Einhaengen und "Drobos finden" zeigen ihr Blatt bzw. ihre Ansicht im Hauptfenster; nie wird aus dem Menue direkt geschrieben.
+    func tun(_ z: SymbolZeile) {
+        guard let a = z.aktion else { return }
+        if a == .hilfe { openWindow(id: "hilfe"); NSApp.activate(ignoringOtherApps: true); return }
+        m.fuehreAus(a, arg: z.arg)
+        if a == .einhaengenSchreiben || a == .geheFinden { fensterZeigen() }
+    }
+
     var body: some View {
         Text("DroboDraft · Frühe Alpha 0.1.0")
-        if let a = m.aktuell {
-            Text("\(a.eintrag.name): \(a.zustandText)")
-            if let s = a.hw?.schwere { Label(s == .kritisch ? "Zustand: kritisch" : (s == .warnung ? "Zustand: Warnung" : "Zustand: in Ordnung"), systemImage: s == .ok ? "checkmark.circle" : (s == .warnung ? "exclamationmark.triangle" : "xmark.octagon")) }
-            if m.liste.count > 1 {
-                Picker("Drobo", selection: $m.auswahl) { ForEach(m.liste, id: \.eintrag.uuid) { Text($0.eintrag.name).tag($0.eintrag.uuid) } }
+        let zeilen = m.symbolMenue()
+        ForEach(zeilen) { z in
+            switch z.art {
+            case .warnung: Label(z.titel, systemImage: z.symbol ?? "exclamationmark.triangle.fill")
+            case .hilfe: Divider(); Button(z.titel) { tun(z) }
+            case .drobo: Divider(); Label(z.titel, systemImage: z.symbol ?? "externaldrive")
+            case .info: Text(z.titel)
+            case .lun: Label(z.titel, systemImage: z.symbol ?? "internaldrive")
+            case .aktion: Button(z.titel) { tun(z) }.disabled(!z.aktiv)
             }
-            Divider()
-            Button("Im Finder öffnen") { m.fuehreAus(.imFinder) }.disabled(!m.aktiv(.imFinder))
-            Button("Aushängen") { m.fuehreAus(.aushaengen) }.disabled(!m.aktiv(.aushaengen))
         }
         Divider()
-        Button("Fenster öffnen …") { openWindow(id: "haupt"); NSApp.activate(ignoringOtherApps: true) }
+        Button(Aktion.geheFinden.def.titel + " …") { m.fuehreAus(.geheFinden); fensterZeigen() }
+        Button(Aktion.fensterOeffnen.def.titel) { fensterZeigen() }
         SettingsLink { Text("Einstellungen …") }
         Divider()
         Button("DroboDraft beenden") { NSApp.terminate(nil) }

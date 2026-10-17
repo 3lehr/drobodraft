@@ -24,6 +24,8 @@ enum DemoDaten {
         if s.hasPrefix("format:"), let n = Int(s.dropFirst(7)) { return .format(n) }
         return nil
     }
+    /// DROBO_DEMO_BREMSE=reagiert|anderer: Demo-DroboPro "reagiert nicht" bzw. "von anderem Rechner belegt" (Warnung im Menueleisten-Symbol).
+    static var bremse: StatusBremse.Zustand? { ProcessInfo.processInfo.environment["DROBO_DEMO_BREMSE"].flatMap { $0 == "reagiert" ? .reagiertNicht : ($0 == "anderer" ? .anderemRechner : nil) } }
     static let uuid5C = "00000000-0000-4000-8000-0000000005C0", uuidPro = "00000000-0000-4000-8000-00000000D0B0"
 
     static func eintraege() -> [DroboEintrag]? {
@@ -70,6 +72,7 @@ enum DemoDaten {
                 a.luns = [LunEintrag(lun: 0, groesse: 16 << 40, schema: "GPT", partitionBytes: 2 << 40, uuid: "00000000-0000-4000-8000-00000000D0B1"), LunEintrag(lun: 1, groesse: 16 << 40, schema: "GPT", partitionBytes: 2 << 40, uuid: uuidPro), LunEintrag(lun: 2, groesse: 16 << 40, schema: "-", partitionBytes: nil, uuid: nil)]
                 a.lunEingehaengt = [1: true]
                 a.netz = NetzInfo(name: "DroboPro", gelbProzent: 85, rotProzent: 95); a.netzStand = Date()
+                if let b = bremse { a.bremse = b }
             }
             r[e.uuid] = a
         }

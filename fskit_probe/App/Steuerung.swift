@@ -11,6 +11,8 @@ import Network
 /// POST /aktion?id=<id>[&arg=<text>]   fuehrt die Aktion aus (arg ersetzt Eingabeblatt/Ordnerwahl)
 /// POST /undo, /redo   Rueckgaengig / Wiederholen ueber den UndoManager
 /// POST /bestaetigen[?name=]   Knopf des offenen Schreib-/Formatblatts (Sperre gilt); POST /uhr?versatz=<s> verstellt die Uhr der Sperre; POST /gesichert?an=1 setzt das Sicherungs-Kaestchen
+/// GET /symbolmenue   Zeilen des Menueleisten-Symbols (art, titel, aktion, arg, aktiv, frei); POST /fensterschliessen schliesst alle Fenster (App laeuft weiter)
+/// GET /text?k=<Schluessel>   Katalogtext in der Sprache des Laufs (Pruefung der Lokalisierung)
 /// GET /bild       PNG des Hauptfensters (nur eigener Prozess, keine Bildschirmaufnahme)
 /// Dieselben Texte wie die Oberflaeche (Titel kommen aus String(localized:)). Eine Uhr gibt es in der App nicht, nichts zu verstellen.
 @MainActor
@@ -52,9 +54,16 @@ final class Steuerung {
         switch (String(teile[0]), u.path) {
         case ("GET", "/aktionen"): return json(Aktion.allCases.map { a in
             let d = a.def
-            return ["id": a.id, "titel": d.titel, "menue": a.menuePfad, "kuerzel": d.kuerzel?.text as Any? ?? NSNull(), "aendert_daten": d.aendert, "undo": d.undo, "aktiv": m.aktiv(a), "nur_menue": a.nurMenue] as [String: Any]
+            return ["id": a.id, "titel": d.titel, "menue": a.menuePfad, "kuerzel": d.kuerzel?.text as Any? ?? NSNull(), "aendert_daten": d.aendert, "undo": d.undo, "aktiv": m.aktiv(a), "nur_menue": a.nurMenue, "nur_symbol": d.nurSymbol] as [String: Any]
         })
         case ("GET", "/menue"): return json(menueleiste())
+        case ("GET", "/symbolmenue"): return json(m.symbolMenue().map { z in
+            ["id": z.id, "art": z.art.rawValue, "titel": z.titel, "symbol": z.symbol as Any? ?? NSNull(), "aktion": z.aktion?.rawValue as Any? ?? NSNull(), "arg": z.arg as Any? ?? NSNull(), "aktiv": z.aktiv, "frei": z.frei.map { Int($0) } as Any? ?? NSNull()] as [String: Any] })
+        case ("GET", "/text"):   // Katalogsuche zur Laufzeit in der gestarteten Sprache (-AppleLanguages): "«fehlt»" = Schluessel nicht im Katalog
+            return json(["schluessel": q["k"] ?? "", "text": Bundle.main.localizedString(forKey: q["k"] ?? "", value: "«fehlt»", table: nil)])
+        case ("POST", "/fensterschliessen"):   // wie der Schliessknopf; die App muss danach weiterlaufen (Symbol in der Menueleiste)
+            NSApp.windows.filter { $0.canBecomeMain }.forEach { $0.close() }
+            return json(["fenster_offen": NSApp.windows.filter { $0.isVisible && $0.canBecomeMain }.count])
         case ("GET", "/zustand"): return json(zustand())
         case ("POST", "/aktion"):
             guard let a = Aktion(rawValue: q["id"] ?? "") else { return json(["ok": false, "fehler": "unbekannte Aktion"], "404 Not Found") }
@@ -82,7 +91,7 @@ final class Steuerung {
         return ["abschnitt": m.abschnitt?.rawValue ?? "", "auswahl": m.auswahl, "blatt": m.blatt?.id as Any? ?? NSNull(),
                 "drobos": m.einstellungen.drobos.map { ["uuid": $0.uuid, "name": $0.name, "rolle": $0.rolle.rawValue] },
                 "blatt_art": blattArtText(), "sperre_rest": m.sperreRest(), "gesichert": m.blattGesichert, "bestaetigt": m.bestaetigt.mapValues { "\($0.build.map(String.init) ?? "-")/\($0.anschluss)/\($0.schreibweg)" },
-                "einstellungen": e, "kann_undo": m.undoManager.canUndo, "kann_redo": m.undoManager.canRedo, "undo_titel": m.undoManager.undoActionName] as [String: Any]
+                "einstellungen": e, "aktivierung_soll": DroboModell.aktivierung(nurMenueleiste: m.einstellungen.nurMenueleiste) == .accessory ? "accessory" : "regular", "kann_undo": m.undoManager.canUndo, "kann_redo": m.undoManager.canRedo, "undo_titel": m.undoManager.undoActionName] as [String: Any]
     }
 
     func blattArtText() -> String {

@@ -176,7 +176,21 @@ final class DroboModell: ObservableObject {
 
     // MARK: Start / Aktualisieren
 
+    private var gestartet = false
+    /// Aktivierungsregel der App: Dock-Symbol (regular) oder nur Menueleiste (accessory).
+    static func aktivierung(nurMenueleiste: Bool) -> NSApplication.ActivationPolicy { nurMenueleiste ? .accessory : .regular }
+    func aktivierungAnwenden() {
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["DROBO_DEMO_HINTEN"] != nil { return }   // Testlauf bleibt unsichtbar (kein Dock-Symbol)
+        #endif
+        NSApp.setActivationPolicy(Self.aktivierung(nurMenueleiste: einstellungen.nurMenueleiste))
+    }
+
+    /// Wird beim Erscheinen des Fensters gerufen; die App lebt nach dem Schliessen weiter (Menueleiste), das Fenster kann also mehrmals erscheinen: nur einmal starten.
     func starten() {
+        guard !gestartet else { return }
+        gestartet = true
+        aktivierungAnwenden()
         #if DEBUG
         Steuerung.startenWennGewuenscht(self)
         if ProcessInfo.processInfo.environment["DROBO_DEMO_HINTEN"] != nil { DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { NSApp.windows.forEach { $0.orderOut(nil) } } }
@@ -628,6 +642,7 @@ final class DroboModell: ObservableObject {
         let alt = einstellungen
         guard alt != neu else { return }
         einstellungen = neu; einstellungenSpeichern()
+        if alt.nurMenueleiste != neu.nurMenueleiste { aktivierungAnwenden() }
         undoManager.registerUndo(withTarget: self) { $0.einstellungenSetzen(alt, name) }
         undoManager.setActionName(name)
     }

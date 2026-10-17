@@ -7792,6 +7792,70 @@
           }
         }
       }
+    },
+    "%@ frei": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ frei"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ free"
+          }
+        }
+      }
+    },
+    "Nur in der Menüleiste (ohne Dock-Symbol)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur in der Menüleiste (ohne Dock-Symbol)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menu bar only (no Dock icon)"
+          }
+        }
+      }
+    },
+    "Nur in der Menüleiste ändern": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur in der Menüleiste ändern"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change menu bar only"
+          }
+        }
+      }
+    },
+    "Standard: aus. Dann gibt es kein Dock-Symbol; die App bleibt über das Symbol neben der Uhr erreichbar, auch wenn alle Fenster geschlossen sind.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standard: aus. Dann gibt es kein Dock-Symbol; die App bleibt über das Symbol neben der Uhr erreichbar, auch wenn alle Fenster geschlossen sind."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default: off. There is then no Dock icon; the app stays reachable from the icon next to the clock, even when all windows are closed."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

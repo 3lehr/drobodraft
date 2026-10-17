@@ -73,6 +73,73 @@ def blatt_test():
         post("/gesichert?an=1"); pruefe(post("/bestaetigen")["ok"], "mit Kaestchen nach der Sperre bestaetigt")
     finally: beenden(p)
 
+SCHREIBEND = {"einhaengenSchreiben", "neuSchreiben", "formatieren", "zurueckspielen", "wegsichern"}
+ERLAUBT_IM_SYMBOL = {"hilfe", "erneutPruefen", "einhaengenLesen", "einhaengenSchreiben", "aushaengen", "imFinder", "lunEinhaengenLesen", "lunAushaengen"}
+
+def symbol_test():
+    """Menueleisten-Symbol (Zeilen aus dem Modell, Aktionen aus dem Katalog): alle Drobos, freier Platz, Warnungen oben mit Hilfe, Schreiben nur ueber das Blatt,
+    Nur-Menueleiste mit Undo, App laeuft nach dem Schliessen aller Fenster weiter."""
+    p, port, daten = start("beide", extra={"DROBO_DEMO_BREMSE": "anderer"})
+    try:
+        get = lambda x: holen(port, x); post = lambda x: holen(port, x, True)
+        z = get("/symbolmenue"); katalog = {a["id"]: a for a in get("/aktionen")}
+        arten = [r["art"] for r in z]
+        drobos = get("/zustand")["drobos"]
+        pruefe([r["id"] for r in z if r["art"] == "drobo"] == ["d-" + d["uuid"] for d in drobos], f"jede Drobo steht im Symbolmenue ({len(drobos)})")
+        pruefe("warnung" in arten and arten.index("warnung") < arten.index("drobo"), "Warnungen stehen vor allen Drobos")
+        pruefe(arten.count("warnung") == 2 and any("Platz wird knapp" in r["titel"] for r in z) and any("anderen Rechner" in r["titel"] for r in z), "Warnungen: Platz knapp (5C) und von anderem Rechner belegt (DroboPro)")
+        i = max(k for k, a in enumerate(arten) if a == "warnung"); pruefe(arten[i + 1] == "hilfe" and z[i + 1]["aktion"] == "hilfe", "nach den Warnungen steht Hilfe oeffnen")
+        for r in z:
+            if r["aktion"]: pruefe(r["aktion"] in katalog, f"Zeile kommt aus dem Katalog: {r['aktion']}")
+            if r["aktion"]: pruefe(r["aktion"] in ERLAUBT_IM_SYMBOL and r["aktion"] != "neuSchreiben", f"erlaubte Aktion im Symbol: {r['aktion']}")
+        pruefe(not ({r["aktion"] for r in z} & (SCHREIBEND - {"einhaengenSchreiben"})), "nie Neu-Schreiben/Formatieren/Zurueckspielen/Wegsichern im Symbol")
+        frei = {r["id"]: r["frei"] for r in z if r["art"] == "info"}
+        pruefe(sorted(frei.values()) == [4250000000000, 16890000000000], f"echter freier Platz je Drobo (Seite 02): {sorted(frei.values())}")
+        pruefe(all(r["symbol"] for r in z if r["art"] in ("warnung", "drobo")), "Zustand und Warnung haben Symbol UND Text")
+        # Nur in der Menueleiste: Zustand, Undo
+        pruefe(get("/zustand")["aktivierung_soll"] == "regular", "Vorgabe: Dock-Symbol")
+        post("/aktion?id=nurMenueleiste"); zz = get("/zustand")
+        pruefe(zz["aktivierung_soll"] == "accessory" and zz["einstellungen"]["nurMenueleiste"], "Nur in der Menueleiste: Regel accessory")
+        post("/undo"); zz = get("/zustand")
+        pruefe(zz["aktivierung_soll"] == "regular" and not zz["einstellungen"]["nurMenueleiste"], "Rueckgaengig stellt das Dock-Symbol wieder her")
+        # App laeuft weiter, wenn das letzte Fenster geschlossen wird
+        r = post("/fensterschliessen"); pruefe(r["fenster_offen"] == 0, "alle Fenster zu")
+        time.sleep(1.5)
+        pruefe(p.poll() is None, "Prozess laeuft nach dem Schliessen des letzten Fensters weiter")
+        pruefe(len(get("/symbolmenue")) == len(z), "Symbolmenue antwortet weiter")
+    finally: beenden(p)
+    # Zeile einer ANDEREN Drobo als der gewaehlten: Aktion gilt der Drobo der Zeile (Auswahl wechselt), Schreiben nur ueber das Blatt
+    p, port, daten = start("beide")
+    try:
+        get = lambda x: holen(port, x); post = lambda x: holen(port, x, True)
+        z = get("/symbolmenue"); u0 = get("/zustand")["auswahl"]
+        sch = next(r for r in reversed(z) if r["aktion"] == "einhaengenSchreiben")
+        pruefe(not sch["arg"].startswith(u0), f"Testzeile gehoert einer anderen Drobo als der gewaehlten ({sch['arg']})")
+        before = get("/zustand")["bestaetigt"]
+        r = post(f"/aktion?id=einhaengenSchreiben&arg={sch['arg'].replace('#', '%23')}"); zz = get("/zustand")
+        pruefe(r["ok"] and zz["blatt"] is not None and zz["auswahl"] == sch["arg"].split("#")[0], f"Zum Schreiben einhaengen oeffnet nur das Blatt, fuer die Drobo der Zeile ({zz['blatt']}, {zz['auswahl']})")
+        pruefe(zz["bestaetigt"] == before, "nichts bestaetigt, nichts geschrieben")
+    finally: beenden(p)
+    # LUN-Zeilen ohne Warnung: je LUN mit Dateisystem Einhaengen (nur lesen) / Aushaengen, Schreiben nur als Blatt
+    p, port, daten = start("pro")
+    try:
+        get = lambda x: holen(port, x); post = lambda x: holen(port, x, True)
+        z = get("/symbolmenue")
+        pruefe("warnung" not in [r["art"] for r in z] and "hilfe" not in [r["art"] for r in z], "ohne Warnung keine Warnzeile und kein Hilfe-Knopf")
+        luns = [r for r in z if r["art"] == "lun"]
+        pruefe(len(luns) == 2, f"zwei LUNs mit Dateisystem, die dritte (ohne) fehlt ({len(luns)})")
+        u = next(d["uuid"] for d in get("/zustand")["drobos"])
+        a = {(r["aktion"], r["arg"]): r for r in z if r["art"] == "aktion"}
+        pruefe((("lunEinhaengenLesen", f"{u}#0") in a) and (("einhaengenSchreiben", f"{u}#0") in a) and (("lunAushaengen", f"{u}#1") in a), "LUN 0 nicht eingehaengt: Lesen/Schreiben; LUN 1 eingehaengt: Aushaengen")
+        pruefe(("lunEinhaengenLesen", f"{u}#1") not in a and ("lunAushaengen", f"{u}#0") not in a, "keine unpassenden Zeilen je LUN")
+        pruefe(all(r["aktiv"] for r in a.values()), "Zeilen aktiv")
+        pruefe(not post(f"/aktion?id=lunAushaengen&arg={u}%230")["ok"], "Aushaengen einer nicht eingehaengten LUN abgelehnt")
+        pruefe(not post(f"/aktion?id=lunEinhaengenLesen&arg={u}%232")["ok"], "Einhaengen einer LUN ohne Dateisystem abgelehnt")
+        pruefe(not post(f"/aktion?id=lunEinhaengenLesen&arg={u}")["ok"], "Einhaengen ohne LUN abgelehnt")
+        r = post(f"/aktion?id=einhaengenSchreiben&arg={u}%231"); pruefe(not r["ok"], "Schreiben-Blatt fuer eingehaengte LUN abgelehnt")
+        r = post(f"/aktion?id=einhaengenSchreiben&arg={u}%230"); pruefe(r["ok"] and get("/zustand")["blatt"] is not None, "Schreiben-Blatt fuer LUN 0 offen")
+    finally: beenden(p)
+
 def main():
     p, port, daten = start()
     try:
@@ -81,7 +148,9 @@ def main():
         pruefe(len(aktionen) > 20, f"Katalog hat {len(aktionen)} Aktionen")
         for a in aktionen: pruefe(set(["id", "titel", "menue", "kuerzel", "aendert_daten", "undo"]) <= set(a), f"Zeile vollstaendig: {a['id']}")
         echte = {norm(m["pfad"]) for m in menue}
-        for a in aktionen: pruefe(norm(a["menue"]) in echte, f"Menue enthaelt: {a['menue']}")
+        for a in aktionen:
+            if a["nur_symbol"]: continue   # nur im Menueleisten-Symbol (symbol_test)
+            pruefe(norm(a["menue"]) in echte, f"Menue enthaelt: {a['menue']}")
         ks = [a["kuerzel"] for a in aktionen if a["kuerzel"]]
         pruefe(len(ks) == len(set(ks)), "kein Kuerzel doppelt im Katalog: " + str([k for k in set(ks) if ks.count(k) > 1]))
         mk = [m["kuerzel"] for m in menue if m["kuerzel"]]
@@ -121,6 +190,7 @@ def main():
         r = post("/aktion?id=einhaengenSchreiben"); pruefe(not r["ok"], "zweites Blatt wird abgelehnt (hoechstens ein Blatt)")
     finally: beenden(p)
     blatt_test()
+    symbol_test()
     print(f"\n{'ALLES GRUEN' if not fehler else str(len(fehler)) + ' FEHLER'}")
     sys.exit(1 if fehler else 0)
 
