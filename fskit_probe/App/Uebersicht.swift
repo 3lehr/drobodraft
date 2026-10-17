@@ -25,16 +25,18 @@ struct UebersichtAnsicht: View {
                         Hinweis(symbol: "clock.arrow.circlepath", text: "Dieses Laufwerk ist als Time-Machine-Ziel eingetragen. Die App zeigt nur den Anschluss; macOS verwaltet das Laufwerk und die App hängt es nie selbst ein.", farbe: .blue)
                     }
                     if let h = a.hw, let g = a.hwZustand {
-                        HStack(alignment: .top, spacing: 24) {
-                            VStack(spacing: 6) {
-                                DroboGeraet(h: h, g: g, mitFehler: a.eintrag.netz == nil)
-                                if let p = g.belegtProzent { Text("Physisch belegt: \(p) %").font(.callout).foregroundStyle(.secondary) }
-                                #if DEBUG
-                                // Demo: Popover laesst sich ohne Klick nicht fotografieren -> Einzelheiten des Schachts DROBO_DEMO_SCHACHT stehen darunter
-                                if let n = DemoDaten.schacht { SchachtDetail(nr: n, s: h.schaechte.first { $0.nr == n }, mitFehler: a.eintrag.netz == nil).background(.background.secondary, in: RoundedRectangle(cornerRadius: 8)) }
-                                #endif
-                            }
-                            ZustandsSpalte(g: g, gelb: a.netz?.gelbProzent ?? 85, rot: a.netz?.rotProzent ?? 95)
+                        let geraet = VStack(spacing: 6) {
+                            DroboGeraet(h: h, g: g, mitFehler: a.eintrag.netz == nil)
+                            if let p = g.belegtProzent { Text("Physisch belegt: \(p) %").font(.callout).foregroundStyle(.secondary) }
+                            #if DEBUG
+                            // Demo: Popover laesst sich ohne Klick nicht fotografieren -> Einzelheiten des Schachts DROBO_DEMO_SCHACHT stehen darunter
+                            if let n = DemoDaten.schacht { SchachtDetail(nr: n, s: h.schaechte.first { $0.nr == n }, mitFehler: a.eintrag.netz == nil).background(.background.secondary, in: RoundedRectangle(cornerRadius: 8)) }
+                            #endif
+                        }
+                        let zustand = ZustandsSpalte(g: g, gelb: a.netz?.gelbProzent ?? 85, rot: a.netz?.rotProzent ?? 95)
+                        ViewThatFits(in: .horizontal) {   // breites Geraet (8 senkrechte Schaechte): Spalte rutscht darunter
+                            HStack(alignment: .top, spacing: 24) { geraet; zustand }
+                            VStack(alignment: .leading, spacing: 14) { geraet; zustand }
                         }
                     } else if a.eintrag.rolle != .timemachine {
                         LaufwerkeAnsicht.KeineDaten(netz: a.eintrag.netz != nil)
