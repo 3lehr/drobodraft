@@ -42,9 +42,9 @@ extension DroboModell {
 
     func lunEinhaengen(_ lun: Int, schreiben: Bool) {
         guard let nz = aktuell?.eintrag.netz else { return }
-        let e = einstellungen
+        let e = einstellungen, fp = weckFortschritt(aktuell?.eintrag.uuid ?? "")
         ausfuehren(schreiben ? "Zum Schreiben einhängen" : "Einhängen") { [ablage] in
-            try iscsiEinhaengen(host: nz.host, lun: lun, schreiben: schreiben, ziel: nil, ort: nil, sicherung: schreiben ? (e.sicherungOrt, e.sicherungAnzahl) : nil, meldung: { ablage.protokoll("Netzwerk-Drobo LUN \(lun): \($0)") })
+            try iscsiEinhaengen(host: nz.host, lun: lun, schreiben: schreiben, ziel: nil, ort: nil, sicherung: schreiben ? (e.sicherungOrt, e.sicherungAnzahl) : nil, meldung: { ablage.protokoll("Netzwerk-Drobo LUN \(lun): \($0)") }, weckfortschritt: fp)
             return nil
         }
     }

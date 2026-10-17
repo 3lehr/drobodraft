@@ -6129,22 +6129,6 @@
         }
       }
     },
-    "Für Schutz reserviert": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Für Schutz reserviert"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reserved for protection"
-          }
-        }
-      }
-    },
     "Gemessen: %@": {
       "localizations": {
         "de": {
@@ -7873,22 +7857,6 @@
         }
       }
     },
-    "Standby (die Betriebslampe leuchtet orange) ist normal: Die DroboPro schaltet sich nach Ruhe selbst in den Standby. Beim Einhängen in DroboDraft wacht sie von allein auf. Die erste Anmeldung danach darf bis zu 30 Sekunden dauern; die App wartet so lange.": {
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Standby (die Betriebslampe leuchtet orange) ist normal: Die DroboPro schaltet sich nach Ruhe selbst in den Standby. Beim Einhängen in DroboDraft wacht sie von allein auf. Die erste Anmeldung danach darf bis zu 30 Sekunden dauern; die App wartet so lange."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Standby (the power light is orange) is normal: the DroboPro puts itself into standby after being idle. Mounting it in DroboDraft wakes it up on its own. The first sign-in afterwards may take up to 30 seconds; the app waits that long."
-          }
-        }
-      }
-    },
     "Einen Knopf für Neustart, Standby oder Blinken gibt es in der App nicht: Solche Systembefehle lösen bei der DroboPro einen Neustart aus, der Minuten dauert. Reagiert die DroboPro danach gar nicht mehr, hilft nur stromlos machen, siehe „Wenn die DroboPro nicht reagiert“.": {
       "localizations": {
         "de": {
@@ -7917,6 +7885,102 @@
           "stringUnit": {
             "state": "translated",
             "value": "Standby"
+          }
+        }
+      }
+    },
+    "Platten gesamt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Platten gesamt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Total disk capacity"
+          }
+        }
+      }
+    },
+    "Für Schutz verwendet": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Für Schutz verwendet"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Used for protection"
+          }
+        }
+      }
+    },
+    "Die Drobo hält Daten so, dass Platten ausfallen dürfen; dafür wird ein Teil der Plattenkapazität verwendet.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Drobo hält Daten so, dass Platten ausfallen dürfen; dafür wird ein Teil der Plattenkapazität verwendet."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Drobo stores data so that drives may fail; a part of the disk capacity is used for that."
+          }
+        }
+      }
+    },
+    "Status: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Status: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Status: %@"
+          }
+        }
+      }
+    },
+    "Die DroboPro wacht auf … %lld s von höchstens %lld s": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die DroboPro wacht auf … %lld s von höchstens %lld s"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The DroboPro is waking up … %lld s of at most %lld s"
+          }
+        }
+      }
+    },
+    "Standby (die Betriebslampe leuchtet orange) ist normal: Die DroboPro schaltet sich nach Ruhe selbst in den Standby. Beim Suchen und Einhängen in DroboDraft wacht sie von allein auf. Die App hält dafür eine Sitzung offen und wartet bis zu 90 Sekunden; dabei steht „Die DroboPro wacht auf …“ mit den vergangenen Sekunden da.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standby (die Betriebslampe leuchtet orange) ist normal: Die DroboPro schaltet sich nach Ruhe selbst in den Standby. Beim Suchen und Einhängen in DroboDraft wacht sie von allein auf. Die App hält dafür eine Sitzung offen und wartet bis zu 90 Sekunden; dabei steht „Die DroboPro wacht auf …“ mit den vergangenen Sekunden da."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standby (the power lamp is orange) is normal: the DroboPro puts itself into standby after idling. When you search or mount in DroboDraft it wakes up by itself. The app keeps one session open and waits up to 90 seconds; “The DroboPro is waking up …” with the elapsed seconds is shown meanwhile."
           }
         }
       }

@@ -127,6 +127,10 @@ final class DroboModell: ObservableObject {
     private var bremsen: [String: StatusBremse] = [:]
     private func bremse(_ uuid: String) -> StatusBremse { if let b = bremsen[uuid] { return b }; let b = StatusBremse(); bremsen[uuid] = b; return b }
     func erneutPruefen(_ uuid: String) { bremse(uuid).erneutPruefen(); aktualisieren(freigabe: true) }
+    /// Weckphase einer schlafenden DroboPro: UUID -> vergangene Sekunden (Zustand "wacht auf ..."); leer = keine Weckphase.
+    @Published var weckt: [String: Int] = [:]
+    /// Fortschritts-Rueckruf fuer den Kern (beliebiger Thread) -> Anzeige.
+    nonisolated func weckFortschritt(_ uuid: String) -> (Int) -> Void { { [weak self] s in Task { @MainActor in self?.weckt[uuid] = s } } }
     @Published var netzTreffer: [NetzLun] = []
     @Published var netzSucheLaeuft = false
     /// "Drobos suchen": im LAN gefundene, noch nicht eingerichtete Drobos (USB-Funde stehen in `erkannte`).
@@ -239,6 +243,7 @@ final class DroboModell: ObservableObject {
         let eingehaengteHosts = Set(drobos.values.filter { $0.eingehaengt || !$0.lunEingehaengt.isEmpty }.compactMap { $0.eintrag.netz?.host })
         let netzLesen = Set(ds.filter { d in d.netz.map { nz in bremse(d.uuid).darfAbfragen(eingehaengt: eingehaengteHosts.contains(nz.host), jetzt: jetzt) } ?? false }.map { $0.uuid })
         let bremsenKopie = bremsen
+        let weckFP: @Sendable (String) -> (Int) -> Void = { u in self.weckFortschritt(u) }
         Task.detached { [ablage] in
             var neu: [String: DroboAnsicht] = [:]
             var zugriff: Bool?
@@ -259,7 +264,7 @@ final class DroboModell: ObservableObject {
                         if statfs(e.ort, &s) == 0 { a.gesamt = UInt64(s.f_blocks) * UInt64(s.f_bsize); a.belegt = a.gesamt - UInt64(s.f_bfree) * UInt64(s.f_bsize) }
                     } else if netzLesen.contains(d.uuid) {
                         do {
-                            let (st, info) = try netzStatusLesen(host: nz.host); (a.hw, a.netz, a.netzStand, a.netzFehler) = (st, info, Date(), nil)
+                            let (st, info) = try netzStatusLesen(host: nz.host, fortschritt: weckFP(d.uuid)); (a.hw, a.netz, a.netzStand, a.netzFehler) = (st, info, Date(), nil)
                             br?.ergebnis(nil)       // Status gelesen: die Sitzung ist zu; Kontakt/LUN-Liste folgt nacheinander (nie zwei Sitzungen gleichzeitig)
                             let k = Self.netzKontakt(nz); if !k.luns.isEmpty { a.luns = k.luns }
                             if let n = k.ziel { ziele[d.uuid] = n }
@@ -310,6 +315,7 @@ final class DroboModell: ObservableObject {
                 if let z = zugriff { self.festplattenzugriff = z ? String(localized: "in Ordnung") : String(localized: "fehlt") }
                 self.erkannte = erk
                 self.zieleUebernehmen(ziele)
+                self.weckt = self.weckt.filter { !netzLesen.contains($0.key) }
                 self.uebernehmen(neu, modul: m, dienst: hd)
             }
         }
@@ -374,7 +380,7 @@ final class DroboModell: ObservableObject {
             var fehler: String?; var info: String?
             do { info = try await arbeitsschritt() } catch { fehler = Self.fehlerText(error) }
             await MainActor.run {
-                self.arbeit = nil
+                self.arbeit = nil; self.weckt = [:]
                 if let f = fehler { self.meldung = Meldung(titel: was + " nicht möglich", text: f); self.ablage.protokoll("\(was): \(f)") }
                 else if let i = info { self.meldung = Meldung(titel: was, text: i) }
                 self.aktualisieren()
@@ -390,10 +396,10 @@ final class DroboModell: ObservableObject {
 
     /// Netzwerk-Drobo einhaengen (ueber den Hilfsdienst); Schreiben nur mit Metadaten-Sicherung (der Kern lehnt sonst ab).
     func netzEinhaengen(_ nz: NetzZiel, schreiben: Bool) {
-        let e = einstellungen
+        let e = einstellungen, u = aktuell?.eintrag.uuid ?? "", fp = weckFortschritt(u)
         ausfuehren(schreiben ? "Zum Schreiben einhängen" : "Einhängen") { [ablage] in
             try iscsiEinhaengen(host: nz.host, lun: nz.lun, schreiben: schreiben, ziel: nil, ort: nil, sicherung: schreiben ? (e.sicherungOrt, e.sicherungAnzahl) : nil,
-                                meldung: { ablage.protokoll("Netzwerk-Drobo: \($0)") })
+                                meldung: { ablage.protokoll("Netzwerk-Drobo: \($0)") }, weckfortschritt: fp)
             return nil
         }
     }
@@ -422,10 +428,10 @@ final class DroboModell: ObservableObject {
 
     func neuZumSchreiben() {
         if let nz = aktuell?.eintrag.netz {
-            let e = einstellungen
+            let e = einstellungen, fp = weckFortschritt(aktuell?.eintrag.uuid ?? "")
             ausfuehren("Zum Schreiben neu einhängen") { [ablage] in
                 try iscsiAushaengen(ort: iscsiOrt(nz.lun))
-                try iscsiEinhaengen(host: nz.host, lun: nz.lun, schreiben: true, ziel: nil, ort: nil, sicherung: (e.sicherungOrt, e.sicherungAnzahl), meldung: { ablage.protokoll("Netzwerk-Drobo: \($0)") })
+                try iscsiEinhaengen(host: nz.host, lun: nz.lun, schreiben: true, ziel: nil, ort: nil, sicherung: (e.sicherungOrt, e.sicherungAnzahl), meldung: { ablage.protokoll("Netzwerk-Drobo: \($0)") }, weckfortschritt: fp)
                 return nil
             }
             return
@@ -577,10 +583,17 @@ final class DroboModell: ObservableObject {
         sucheLaeuft = true; sucheInfo = nil
         let bekannt = Set(einstellungen.drobos.map { $0.uuid })
         let ausnehmen = Set(drobos.values.filter { $0.eingehaengt }.compactMap { $0.eintrag.netz?.host })     // eingehaengte DroboPro: keine zweite Sitzung
+        // Bekannte DroboPros (Adresse eingerichtet): Weckphase beim Treffer; die Abfrage ist dafuer in der Bremse reserviert (keine zweite Sitzung, die die Weck-Sitzung ersetzte)
+        let netzDrobos = einstellungen.drobos.compactMap { d in d.netz.map { (uuid: d.uuid, host: $0.host) } }
+        let weckHosts = Set(netzDrobos.filter { !ausnehmen.contains($0.host) && bremse($0.uuid).weckenBeginnen() }.map(\.host))
+        let fortschritt: [String: (Int) -> Void] = Dictionary(netzDrobos.map { ($0.host, weckFortschritt($0.uuid)) }, uniquingKeysWith: { a, _ in a })
+        let bremsenKopie = netzDrobos.map { ($0.host, bremse($0.uuid)) }
+        let fehler = NSLock(); nonisolated(unsafe) var weckFehler: [String: Error] = [:]
         Task.detached {
-            let r = DroboKern.drobosSuchen(ausnehmen: ausnehmen)
+            let r = DroboKern.drobosSuchen(ausnehmen: ausnehmen, bekannt: weckHosts, weckfortschritt: { h, s in fortschritt[h]?(s) }, weckfehler: { h, e in fehler.lock(); weckFehler[h] = e; fehler.unlock() })
+            for (h, b) in bremsenKopie where weckHosts.contains(h) { fehler.lock(); let e = weckFehler[h]; fehler.unlock(); b.weckenEnde(e) }
             await MainActor.run {
-                self.sucheLaeuft = false
+                self.sucheLaeuft = false; self.weckt = [:]
                 self.sucheBekannt = Set((r.usb.map(\.uuid) + r.lan.flatMap { $0.luns.map(\.uuid) }).filter { bekannt.contains($0) })
                 self.erkannte = r.usb.filter { !bekannt.contains($0.uuid) }
                 self.lanErkannte = r.lan.map { LanDrobo(host: $0.host, luns: $0.luns.filter { !bekannt.contains($0.uuid) }) }.filter { !$0.luns.isEmpty }

@@ -16,6 +16,7 @@ struct UebersichtAnsicht: View {
                         FruehAlphaAbzeichen()
                     }
                     Text(a.zustandText).font(.title3).foregroundStyle(.secondary)
+                    if let s = m.weckt[a.eintrag.uuid] { WeckHinweis(sekunden: s) }
                     if a.eintrag.netz != nil && a.bremse == .reagiertNicht {
                         VStack(alignment: .leading, spacing: Abstand.s) {
                             Hinweis(symbol: "exclamationmark.triangle.fill", text: "Die DroboPro reagiert nicht mehr auf Befehle, obwohl sie im Netzwerk erreichbar ist. Meist leuchten dann alle Schachtlampen rot und die Platten sind still. Bitte neu starten: Drobo über den Knopf ausschalten, das Netzkabel ziehen, ein bis zwei Minuten warten, wieder einstecken und einschalten. Danach kann es bis zu 30 Minuten dauern, bis alle Lampen grün leuchten. In dieser Zeit keine Platten ziehen oder umstecken.", farbe: .red)
@@ -34,7 +35,7 @@ struct UebersichtAnsicht: View {
                     }
                     if let h = a.hw, let g = a.hwZustand {
                         let geraet = VStack(spacing: Abstand.s) {
-                            DroboGeraet(h: h, g: g, mitFehler: a.eintrag.netz == nil, betrieb: a.bremse == .reagiertNicht ? .haengt : (a.verbunden && h.ok && a.netzFehler == nil ? .ein : .aus))
+                            DroboGeraet(h: h, g: g, mitFehler: a.eintrag.netz == nil, betrieb: a.bremse == .reagiertNicht ? .haengt : (a.verbunden && h.ok && a.netzFehler == nil ? .ein : .aus), antwortet: a.verbunden && h.ok && a.netzFehler == nil && a.bremse == .bereit)
                             if let p = g.belegtProzent { Text("Physisch belegt: \(p) %").font(.callout).foregroundStyle(.secondary) }
                             #if DEBUG
                             // Demo: Popover laesst sich ohne Klick nicht fotografieren -> Einzelheiten des Schachts DROBO_DEMO_SCHACHT stehen darunter
@@ -97,7 +98,7 @@ struct UebersichtAnsicht: View {
     }
 }
 
-/// Rechte Spalte: Zustand mit Schlagzeile, genau eine Empfehlung, Schutz und die Aufteilung belegt / frei / fuer Schutz reserviert (Seite 02).
+/// Rechte Spalte: Zustand mit Schlagzeile, genau eine Empfehlung, Schutz und die Aufteilung belegt / frei / fuer Schutz verwendet (Platten gesamt aus Seite 03/35 minus geschuetzt aus Seite 02).
 struct ZustandsSpalte: View {
     let g: Gesamtzustand
     let gelb: Int, rot: Int
@@ -126,9 +127,13 @@ struct Aufteilung: View {
                     Rectangle().fill(Color.orange.opacity(0.7)).frame(width: p.size.width * Double(g.reserviert) / summe)
                 }.clipShape(RoundedRectangle(cornerRadius: Radius.rechteck))
             }.frame(height: Mass.aufteilungHoehe).accessibilityHidden(true)
+            if g.plattenGesamt > 0 { zeile("Platten gesamt", g.plattenGesamt, Color.secondary, "internaldrive") }
             zeile("Belegt", g.belegt, Color.blue, "square.fill")
             zeile("Frei", g.frei, Color.gray, "square")
-            if g.reserviert > 0 { zeile("Für Schutz reserviert", g.reserviert, Color.orange, "square.lefthalf.filled") }
+            if g.reserviert > 0 {
+                zeile("Für Schutz verwendet", g.reserviert, Color.orange, "square.lefthalf.filled")
+                Text("Die Drobo hält Daten so, dass Platten ausfallen dürfen; dafür wird ein Teil der Plattenkapazität verwendet.").font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
     func zeile(_ name: LocalizedStringKey, _ b: UInt64, _ farbe: Color, _ symbol: String) -> some View {

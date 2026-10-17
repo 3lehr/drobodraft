@@ -21,6 +21,7 @@ struct DroboGeraet: View {
     let g: Gesamtzustand
     var mitFehler = true
     var betrieb: Betrieb = .aus
+    var antwortet = false      // DroboPro hat Befehle beantwortet (Status gelesen) -> untere Lampe gruen, sonst rot
     @State private var offen: Int?
 
     /// 5 Schaechte (Drobo 5C) oder 8 (DroboPro); die Statusseite nennt die Zahl, sonst das Modell.
@@ -42,7 +43,7 @@ struct DroboGeraet: View {
                     VStack(spacing: Abstand.m) {   // rechts: Fuellstand senkrecht, darunter die Betriebslampe
                         FuellLeiste(g: g, senkrecht: true).padding(.top, Abstand.l)
                         BetriebsLampe(b: betrieb)
-                        StatusLampe()
+                        StatusLampe(antwortet: antwortet)
                     }.frame(width: Mass.ledSpalte)
                 }
             }
@@ -189,16 +190,18 @@ struct BetriebsLampe: View {
     }
 }
 
-/// Zweite Lampe unter der Betriebslampe (DroboPro): am Geraet rot. Bedeutung OFFEN (Betreiber 2026-10-17: nur zeichnen) -> kein Zustand, nicht aus Daten abgeleitet, Beschriftung "Status" ohne Deutung.
+/// Zweite Lampe unter der Betriebslampe (DroboPro): am Geraet rot im Standby, beim Aufwachen kurz gruen. Hier der GEMESSENE Zustand: gruen = die DroboPro hat Befehle beantwortet,
+/// rot = nicht erreichbar oder reagiert nicht. Beschriftung "Status", keine weitergehende Deutung. Symbol + Farbe + VoiceOver-Wort (WCAG 1.4.1).
 struct StatusLampe: View {
+    let antwortet: Bool
     var body: some View {
         VStack(spacing: Abstand.xs) {
-            Image(systemName: "circle.fill").foregroundStyle(.red).font(.title2).accessibilityHidden(true)
+            Image(systemName: antwortet ? "checkmark.circle.fill" : "xmark.circle.fill").foregroundStyle(antwortet ? .green : .red).font(.title2).accessibilityHidden(true)
             Text("Status").font(.caption2).foregroundStyle(.white).multilineTextAlignment(.center)
         }
         .frame(width: Mass.ledSpalte)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(String(localized: "Status"))
+        .accessibilityLabel(String(localized: "Status: \((antwortet ? SchachtFarbe.gruen : SchachtFarbe.rot).wortText)"))
     }
 }
 

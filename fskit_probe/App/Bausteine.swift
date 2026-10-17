@@ -58,6 +58,21 @@ struct Hinweis: View {
     }
 }
 
+/// Weckphase der DroboPro: Symbol + Text + Fortschrittsbalken (Sekunden von hoechstens `weckDauer`).
+struct WeckHinweis: View {
+    let sekunden: Int
+    var body: some View {
+        let grenze = Int(weckDauer)
+        VStack(alignment: .leading, spacing: Abstand.s) {
+            Label { Text("Die DroboPro wacht auf … \(sekunden) s von höchstens \(grenze) s").fixedSize(horizontal: false, vertical: true) } icon: { Image(systemName: "hourglass").foregroundStyle(.blue) }
+            ProgressView(value: Double(min(sekunden, grenze)), total: Double(grenze)).accessibilityHidden(true)
+        }
+        .padding().frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: Radius.klein))
+        .accessibilityElement(children: .combine)
+    }
+}
+
 func groesseText(_ b: UInt64) -> String { ByteCountFormatter.string(fromByteCount: Int64(b), countStyle: .file) }
 
 /// Kennzeichnung "Frühe Alpha": Text + Symbol (nicht nur Farbe).

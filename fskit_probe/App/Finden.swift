@@ -18,6 +18,7 @@ struct DrobosFindenAnsicht: View {
                         .disabled(m.sucheLaeuft)
                     if m.sucheLaeuft { ProgressView().controlSize(.small).accessibilityLabel("Suche läuft …") }
                 }
+                if let s = m.weckt.values.max() { WeckHinweis(sekunden: s) }
                 if let i = m.sucheInfo { Hinweis(symbol: "info.circle", text: LocalizedStringKey(i), farbe: .blue) }
                 if !m.erkannte.isEmpty {
                     Karte(titel: "Per USB angeschlossen") {
