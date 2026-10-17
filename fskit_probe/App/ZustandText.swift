@@ -8,7 +8,7 @@ extension Schlagzeile {
         case .inOrdnung: return String(localized: "Alles in Ordnung")
         case .platzKnapp: return String(localized: "Platz wird knapp")
         case .platzSehrKnapp: return String(localized: "Platz ist fast aufgebraucht")
-        case .plattenDefekt: return String(localized: "Eine Festplatte ist defekt")
+        case .plattenDefekt: return String(localized: "Eine Festplatte ist ausgefallen oder fehlt")
         case .keinePlatten: return String(localized: "Keine Festplatten eingesetzt")
         case .zuVieleFehlen: return String(localized: "Zu viele Festplatten fehlen")
         case .keineRedundanz: return String(localized: "Kein Schutz vor Festplattenausfall")
@@ -24,10 +24,12 @@ extension Gesamtzustand {
     var empfehlungText: String? {
         switch empfehlung {
         case .keine: return nil
-        case .schachtTauschen(let n): return schlagzeile == .plattenDefekt ? String(localized: "Festplatte in Schacht \(n) ersetzen") : String(localized: "Schacht \(n) durch eine größere Festplatte ersetzen")
+        case .schachtTauschen(let n): return schlagzeile == .plattenDefekt ? String(localized: "Festplatte in Schacht \(n) ersetzen (ausgefallen oder fehlt)") : String(localized: "Schacht \(n) durch eine größere Festplatte ersetzen")
         case .platteEinsetzen: return String(localized: "Festplatte einsetzen")
         case .platzSchaffen: return String(localized: "Dateien löschen oder eine größere Festplatte einsetzen")
-        case .abwarten: return String(localized: "Abwarten und die Drobo eingeschaltet lassen")
+        // Bedeutungen der blinkenden Lampen sind NICHT am Geraet belegt (drobo-utils/Betreiber): vorsichtig formuliert.
+        case .abwarten: return String(localized: "Daten werden neu verteilt – Festplatte nicht entfernen, Drobo eingeschaltet lassen")
+        case .zustandPruefen: return String(localized: "Achtung, Zustand der Festplatten prüfen")
         case .dateisystemPruefen: return String(localized: "Das Dateisystem prüfen (links „Ordner sichern“, dann „Jetzt prüfen“)")
         }
     }

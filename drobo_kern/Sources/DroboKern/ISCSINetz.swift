@@ -67,9 +67,7 @@ public func netzStatus(sitzung s: ISCSISitzung) throws -> (DroboStatus, NetzInfo
     guard var st = decodiereDroboStatus(d) else { throw ISCSIFehler.protokoll("status pages not decodable") }
     st.modell = st.modell.trimmingCharacters(in: .whitespaces)
     st.schaechte = droboProSchaechte(try s.modeSense3A(lun: 0, unterseite: 0x03))
-    for sc in st.schaechte {
-        switch sc.farbe { case .rot, .rotGelb, .rotGruen, .rotAus: st.schwere = max(st.schwere, .kritisch); case .gelb: st.schwere = max(st.schwere, .warnung); default: break }
-    }
+    for sc in st.schaechte { st.schwere = max(st.schwere, schachtSchwere(sc.farbe)) }
     let n = try s.modeSense3A(lun: 0, unterseite: 0x05), o = try s.modeSense3A(lun: 0, unterseite: 0x30)
     let name = n.count >= 12 && n[1] == 0x05 ? String(decoding: n[10..<min(n.count, 42)].prefix { $0 != 0 }, as: UTF8.self) : ""
     let info = NetzInfo(name: name, gelbProzent: o.count >= 6 && o[1] == 0x30 ? Int(o[4]) : 85, rotProzent: o.count >= 6 && o[1] == 0x30 ? Int(o[5]) : 95)

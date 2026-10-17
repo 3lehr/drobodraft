@@ -71,6 +71,12 @@ private func s(_ b: [UInt8], _ o: Int, _ n: Int) -> String {
     return String(decoding: teil, as: UTF8.self).trimmingCharacters(in: .whitespaces)
 }
 
+/// Schweregrad einer Schachtlampe: 1 rot / 6 rot-aus = Platte ausgefallen oder fehlt (kritisch), 4 rot-gruen / 5 rot-gelb blinkend = Daten werden neu verteilt bzw. Achtung (Warnung),
+/// 2 gelb = Warnung. Bedeutungen nach drobo-utils (_ledstatus) und Betreiber, am Geraet NICHT einzeln belegt (ausser gruen/leer/gelb der 5C).
+public func schachtSchwere(_ f: SchachtFarbe) -> Schweregrad {
+    switch f { case .rot, .rotAus: return .kritisch; case .gelb, .rotGruen, .rotGelb: return .warnung; default: return .ok }
+}
+
 func farbe(_ c: UInt8) -> SchachtFarbe {
     switch c { case 0: return .aus; case 1: return .rot; case 2: return .gelb; case 3: return .gruen; case 4: return .rotGruen; case 5: return .rotGelb; case 6: return .rotAus; case 0x80: return .leer; default: return .unbekannt(c) }
 }
@@ -134,9 +140,7 @@ public func decodiereDroboStatus(_ d: [String: Any]) -> DroboStatus? {
         }
         if rest != 0 { meld.append(Meldung(bit: rest, text: "Weitere Meldung der Drobo", schwere: .ok)) }   // unbekannte Bits: kein Urteil
     }
-    for sc in schaechte {
-        switch sc.farbe { case .rot, .rotGelb, .rotGruen, .rotAus: schwere = max(schwere, .kritisch); case .gelb: schwere = max(schwere, .warnung); default: break }
-    }
+    for sc in schaechte { schwere = max(schwere, schachtSchwere(sc.farbe)) }
     return DroboStatus(zeit: Date(timeIntervalSince1970: zeit), ok: (d["ok"] as? Bool) ?? false, fehler: d["fehler"] as? String ?? "", modell: modell, firmware: fw,
                        firmwareBuild: build, protokoll: protokoll, schaechte: schaechte, kapazitaet: kap, statusBits: bits, relayout: relayout, meldungen: meld, schwere: schwere, unbelegt: unb)
 }

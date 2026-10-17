@@ -6160,6 +6160,150 @@
           }
         }
       }
+    },
+    "Rot/Grün blinkend": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rot/Grün blinkend"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Red/green blinking"
+          }
+        }
+      }
+    },
+    "Rot/Gelb blinkend": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rot/Gelb blinkend"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Red/yellow blinking"
+          }
+        }
+      }
+    },
+    "Rot/Aus blinkend": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rot/Aus blinkend"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Red/off blinking"
+          }
+        }
+      }
+    },
+    "Unbekannt (0x%@)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unbekannt (0x%@)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unknown (0x%@)"
+          }
+        }
+      }
+    },
+    "Eine Festplatte ist ausgefallen oder fehlt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Festplatte ist ausgefallen oder fehlt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A disk has failed or is missing"
+          }
+        }
+      }
+    },
+    "Festplatte in Schacht %lld ersetzen (ausgefallen oder fehlt)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Festplatte in Schacht %lld ersetzen (ausgefallen oder fehlt)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replace the disk in bay %lld (failed or missing)"
+          }
+        }
+      }
+    },
+    "Daten werden neu verteilt – Festplatte nicht entfernen, Drobo eingeschaltet lassen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Daten werden neu verteilt – Festplatte nicht entfernen, Drobo eingeschaltet lassen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Data is being redistributed - do not remove a disk, leave the Drobo switched on"
+          }
+        }
+      }
+    },
+    "Achtung, Zustand der Festplatten prüfen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Achtung, Zustand der Festplatten prüfen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attention, check the state of the disks"
+          }
+        }
+      }
+    },
+    "Füllstand unbekannt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Füllstand unbekannt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fill level unknown"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

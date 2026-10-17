@@ -3,19 +3,27 @@ import SwiftUI
 
 /// Farbe + Wort (Farbe allein trägt keine Information).
 extension SchachtFarbe {
+    /// Wort je Lampencode (drobo-utils _ledstatus); unbekannter Code wird benannt statt still zu einer Vorgabe zu werden. Gelb wirkt am Geraet orange (Farbe orange, Text Gelb).
     var wortText: String {
         switch self {
         case .aus: return String(localized: "Aus"); case .rot: return String(localized: "Rot"); case .gelb: return String(localized: "Gelb"); case .gruen: return String(localized: "Grün")
-        case .rotGruen: return String(localized: "Rot/Grün"); case .rotGelb: return String(localized: "Rot/Gelb"); case .rotAus: return String(localized: "Rot/Aus")
-        case .leer: return String(localized: "Leer"); case .unbekannt: return String(localized: "Unbekannt")
+        case .rotGruen: return String(localized: "Rot/Grün blinkend"); case .rotGelb: return String(localized: "Rot/Gelb blinkend"); case .rotAus: return String(localized: "Rot/Aus blinkend")
+        case .leer: return String(localized: "Leer"); case .unbekannt(let c): return String(localized: "Unbekannt (0x\(String(c, radix: 16, uppercase: true)))")
         }
     }
     var wort: LocalizedStringKey { LocalizedStringKey(wortText) }
     var farbe: Color {
-        switch self { case .gruen: return .green; case .gelb, .rotGelb: return .orange; case .rot, .rotGruen, .rotAus: return .red; default: return .secondary }
+        switch self { case .gruen: return .green; case .gelb: return .orange; case .rot, .rotGruen, .rotGelb, .rotAus: return .red; default: return .secondary }
     }
     var symbol: String {
-        switch self { case .gruen: return "checkmark.circle.fill"; case .gelb, .rotGelb: return "exclamationmark.triangle.fill"; case .rot, .rotGruen, .rotAus: return "xmark.octagon.fill"; case .leer: return "circle.dashed"; default: return "circle" }
+        switch self {
+        case .gruen: return "checkmark.circle.fill"; case .gelb: return "exclamationmark.triangle.fill"; case .rot: return "xmark.octagon.fill"
+        case .rotGruen, .rotGelb, .rotAus: return "circle.lefthalf.striped.horizontal"; case .leer: return "circle.dashed"; case .aus: return "circle"; case .unbekannt: return "questionmark.circle"
+        }
+    }
+    /// Blinkende Codes (4/5/6): zwei Farben im Wechsel (~1 Hz); bei "Bewegung reduzieren" statisch geteilt.
+    var blinkfarben: (Color, Color)? {
+        switch self { case .rotGruen: return (.red, .green); case .rotGelb: return (.red, .orange); case .rotAus: return (.red, Color.secondary.opacity(0.35)); default: return nil }
     }
 }
 

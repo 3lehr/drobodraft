@@ -12,6 +12,8 @@ enum DemoDaten {
     /// DROBO_DEMO_PROBLEM=1: Treibermodul "nicht freigeschaltet" (zeigt die Statusleiste).
     static var problem: Bool { ProcessInfo.processInfo.environment["DROBO_DEMO_PROBLEM"] != nil }
     static var schacht: Int? { ProcessInfo.processInfo.environment["DROBO_DEMO_SCHACHT"].flatMap { Int($0) } }
+    /// DROBO_DEMO_LAMPEN=1: DroboPro mit allen Lampencodes (gruen, gelb, rot, rot/gruen, rot/gelb, rot/aus, leer, unbekannt 0x42).
+    static var lampen: Bool { ProcessInfo.processInfo.environment["DROBO_DEMO_LAMPEN"] != nil }
     static let uuid5C = "00000000-0000-4000-8000-0000000005C0", uuidPro = "00000000-0000-4000-8000-00000000D0B0"
 
     static func eintraege() -> [DroboEintrag]? {
@@ -50,6 +52,11 @@ enum DemoDaten {
                     schacht(4, .gruen, 3_000_592_982_016, "ST3000DM001-1CH166"), schacht(5, .gruen, 3_000_592_982_016, "ST3000DM001-1CH166"),
                     schacht(6, .leer, 0, ""), schacht(7, .leer, 0, ""), schacht(8, .leer, 0, "")],
                     frei: 16_890_000_000_000, benutzt: 990_000_000_000, geschuetzt: 17_880_000_000_000, roh: 20_000_000_000_000)
+                if lampen, var h = a.hw {
+                    let f: [SchachtFarbe] = [.gruen, .gelb, .rot, .rotGruen, .rotGelb, .rotAus, .leer, .unbekannt(0x42)]
+                    for i in h.schaechte.indices { h.schaechte[i].farbe = f[i] }
+                    h.schwere = .kritisch; a.hw = h
+                }
                 a.netz = NetzInfo(name: "DroboPro", gelbProzent: 85, rotProzent: 95); a.netzStand = Date()
             }
             r[e.uuid] = a

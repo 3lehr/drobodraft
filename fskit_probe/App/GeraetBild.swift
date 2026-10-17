@@ -40,10 +40,10 @@ struct DroboGeraet: View {
                     }
                 }
             }
-            FuellLeiste(anteil: g.belegtAnteil).padding(.top, 4)
+            FuellLeiste(g: g).padding(.top, 4)
         }
         .padding(12)
-        .frame(width: lage == .gestapelt ? 300 : CGFloat(anzahl) * 56 + 6 * CGFloat(anzahl - 1) + 24)
+        .frame(width: lage == .gestapelt ? 334 : CGFloat(anzahl) * 56 + 6 * CGFloat(anzahl - 1) + 24)
         .background(RoundedRectangle(cornerRadius: 14).fill(Color(white: 0.14)))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.3), lineWidth: 1))
         .environment(\.colorScheme, .dark)   // Geraet bleibt dunkel, auch im hellen Modus; Systemfarben passen sich an
@@ -54,7 +54,11 @@ struct DroboGeraet: View {
 
 /// Text zu einem Schacht fuer Tooltip und VoiceOver. Temperatur und Restlebensdauer ohne Einheit: laut Recon nur Vermutung (offen: am Geraet eichen).
 func schachtBeschreibung(nr: Int, s: Schacht?, mitFehler: Bool) -> String {
-    guard let s, s.belegt else { return String(localized: "Schacht \(nr), leer") }
+    guard let s, s.belegt else {
+        // kein Laufwerk erkannt, aber die Lampe kann trotzdem etwas melden (rot = fehlt/ausgefallen): nie hinter "leer" verstecken
+        if let s, s.farbe != .leer { return String(localized: "Schacht \(nr)") + ", " + s.farbe.wortText }
+        return String(localized: "Schacht \(nr), leer")
+    }
     var t = [String(localized: "Schacht \(nr)"), s.farbe.wortText, groesseText(s.kapazitaet)]
     if !s.modell.isEmpty { t.append(s.modell) }
     if let x = s.temperatur { t.append(String(localized: "Temperatur \(x)")) }
@@ -71,7 +75,6 @@ struct SchachtFeld: View {
     @Binding var offen: Int?
     var belegt: Bool { s?.belegt ?? false }
     var farbe: SchachtFarbe { s?.farbe ?? .leer }
-    var lampe: Color { farbe.farbe == .secondary ? Color.white.opacity(0.75) : farbe.farbe }
     var kapText: String { belegt ? groesseText(s?.kapazitaet ?? 0) : String(localized: "Leer") }
 
     var body: some View {
@@ -82,17 +85,17 @@ struct SchachtFeld: View {
                     Text("\(nr)").font(.callout.bold().monospacedDigit()).foregroundStyle(.white).frame(width: 16)
                     platte.frame(height: 30)
                     HStack(spacing: 4) {
-                        Image(systemName: farbe.symbol).foregroundStyle(lampe)
-                        Text(farbe.wortText).font(.caption).foregroundStyle(.white)
-                    }.frame(width: 76, alignment: .leading)
+                        Lampe(f: farbe)
+                        Text(farbe.wortText).font(.caption).foregroundStyle(.white).fixedSize(horizontal: false, vertical: true)
+                    }.frame(width: 110, alignment: .leading)
                 }
                 .contentShape(Rectangle())
             } else {
                 VStack(spacing: 4) {
                     Text("\(nr)").font(.callout.bold().monospacedDigit()).foregroundStyle(.white)
                     platte.frame(width: 44, height: 150).overlay(Text(kapText).font(.callout).monospacedDigit().foregroundStyle(.white).fixedSize().rotationEffect(.degrees(-90)))
-                    Image(systemName: farbe.symbol).foregroundStyle(lampe)
-                    Text(farbe.wortText).font(.caption2).foregroundStyle(.white).lineLimit(1).minimumScaleFactor(0.7)
+                    Lampe(f: farbe)   // Spalte = Einschub = Lampe = Wort: alle auf derselben Mittelachse
+                    Text(farbe.wortText).font(.caption2).foregroundStyle(.white).multilineTextAlignment(.center).frame(width: 56, height: 28, alignment: .top)
                 }
                 .frame(width: 56)
                 .contentShape(Rectangle())
@@ -140,18 +143,35 @@ struct SchachtDetail: View {
     }
 }
 
-/// Zehn blaue Segmente wie die Kapazitaetsanzeige am Geraet; der genaue Wert steht als Text daneben/darunter (Farbe traegt keine Information allein).
-struct FuellLeiste: View {
-    let anteil: Double?
-    var gefuellt: Int { Int(((anteil ?? 0) * 10).rounded()) }
+/// Lampe eines Schachts: Symbol + Farbe; blinkende Codes (4/5/6) wechseln ~1 Hz zwischen zwei Farben, bei "Bewegung reduzieren" statisch geteilt. Das Wort steht immer daneben/darunter.
+struct Lampe: View {
+    let f: SchachtFarbe
+    @Environment(\.accessibilityReduceMotion) private var wenig
     var body: some View {
-        HStack(spacing: 4) {
+        Group {
+            if let (a, b) = f.blinkfarben {
+                if wenig {
+                    Image(systemName: f.symbol).foregroundStyle(LinearGradient(stops: [.init(color: a, location: 0), .init(color: a, location: 0.5), .init(color: b, location: 0.5), .init(color: b, location: 1)], startPoint: .leading, endPoint: .trailing))
+                } else {
+                    TimelineView(.periodic(from: .now, by: 0.5)) { t in Image(systemName: f.symbol).foregroundStyle(Int(t.date.timeIntervalSinceReferenceDate * 2) % 2 == 0 ? a : b) }
+                }
+            } else { Image(systemName: f.symbol).foregroundStyle(f.farbe == .secondary ? Color.white.opacity(0.75) : f.farbe) }
+        }
+        .imageScale(.large).frame(width: 22, height: 22).accessibilityHidden(true)
+    }
+}
+
+/// Blaue Fuellstands-LEDs wie am Geraet: zehn runde Punkte, je 10 % einer, ab > 0 % mindestens einer (Kern: `ledAnzahl`). VoiceOver: "Physisch belegt: N %".
+struct FuellLeiste: View {
+    let g: Gesamtzustand
+    var body: some View {
+        HStack(spacing: 8) {
             ForEach(0..<10, id: \.self) { i in
-                RoundedRectangle(cornerRadius: 2).fill(i < gefuellt ? Color(red: 0.30, green: 0.64, blue: 1.0) : Color.white.opacity(0.18)).frame(height: 8)
+                Circle().fill(i < g.ledAnzahl ? Color(red: 0.30, green: 0.64, blue: 1.0) : Color.white.opacity(0.18)).frame(width: 12, height: 12)
             }
         }
+        .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(String(localized: "Füllstand"))
-        .accessibilityValue(anteil.map { "\(Int(($0 * 100 + 1e-9).rounded(.down))) %" } ?? String(localized: "unbekannt"))
+        .accessibilityLabel(g.belegtProzent.map { String(localized: "Physisch belegt: \($0) %") } ?? String(localized: "Füllstand unbekannt"))
     }
 }

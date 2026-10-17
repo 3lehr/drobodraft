@@ -21,6 +21,8 @@ final class NetzTests: XCTestCase {
         let hex = h.components(separatedBy: "0x03: \"")[1].components(separatedBy: "\"")[0]
         let s = droboProSchaechte(bytes(hex))
         XCTAssertEqual(s.count, 8)
+        XCTAssertEqual(s.map(\.farbe), [.gruen, .gruen, .gruen, .gruen, .gruen, .gruen, .leer, .gruen], "am Geraet 2026-10-17: alle gruen ausser Schacht 7 (leer)")
+        XCTAssertEqual(s.map(\.nr), Array(1...8)); XCTAssertEqual(s.filter(\.belegt).count, 7)
         XCTAssertEqual(s[0].nr, 1); XCTAssertEqual(s[0].kapazitaet, 8_001_563_222_016); XCTAssertEqual(s[0].modell, "ST8000DM004-2CX188"); XCTAssertEqual(s[0].farbe, .gruen)
         XCTAssertEqual(s[6].farbe, .leer); XCTAssertFalse(s[6].belegt); XCTAssertEqual(s[7].nr, 8); XCTAssertEqual(s[4].kapazitaet, 3_000_592_982_016)
         XCTAssertTrue(droboProSchaechte([0x7A, 0x03]).isEmpty); XCTAssertTrue(droboProSchaechte([]).isEmpty)

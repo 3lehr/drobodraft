@@ -74,4 +74,32 @@ final class GesamtzustandTests: XCTestCase {
     func testAufteilungBelegtFreiReserviert() {
         let g = gesamtzustand(prozent(40)); XCTAssertEqual(g.belegt, 400); XCTAssertEqual(g.frei, 600); XCTAssertEqual(g.reserviert, 500)
     }
+
+    /// Lampencodes der Schaechte (drobo-utils _ledstatus): alle acht und ein unbekannter.
+    func testLampencodeZuFarbe() {
+        let erwartet: [(UInt8, SchachtFarbe)] = [(0, .aus), (1, .rot), (2, .gelb), (3, .gruen), (4, .rotGruen), (5, .rotGelb), (6, .rotAus), (0x80, .leer), (0x42, .unbekannt(0x42)), (7, .unbekannt(7))]
+        for (c, f) in erwartet { XCTAssertEqual(farbe(c), f, "Code \(c)") }
+    }
+
+    func testLampenSchweregrad() {
+        let w: [(SchachtFarbe, Schweregrad)] = [(.aus, .ok), (.gruen, .ok), (.leer, .ok), (.unbekannt(9), .ok), (.gelb, .warnung), (.rotGruen, .warnung), (.rotGelb, .warnung), (.rot, .kritisch), (.rotAus, .kritisch)]
+        for (f, g) in w { XCTAssertEqual(schachtSchwere(f), g, "\(f)") }
+    }
+
+    func testGesamtzustandJeLampe() {
+        func g(_ f: SchachtFarbe) -> Gesamtzustand { gesamtzustand(prozent(10, schaechte: [.gruen, f])) }
+        for f in [SchachtFarbe.rot, .rotAus] { XCTAssertEqual(g(f).stufe, .kritisch, "\(f)"); XCTAssertEqual(g(f).schlagzeile, .plattenDefekt); XCTAssertEqual(g(f).empfehlung, .schachtTauschen(2)) }
+        XCTAssertEqual(g(.rotGruen).stufe, .warnung); XCTAssertEqual(g(.rotGruen).schlagzeile, .redundanzWirdHergestellt); XCTAssertEqual(g(.rotGruen).empfehlung, .abwarten)
+        XCTAssertEqual(g(.rotGelb).stufe, .warnung); XCTAssertEqual(g(.rotGelb).schlagzeile, .redundanzWirdHergestellt); XCTAssertEqual(g(.rotGelb).empfehlung, .zustandPruefen)
+        XCTAssertEqual(g(.gelb).schlagzeile, .platzKnapp); XCTAssertEqual(g(.gelb).empfehlung, .schachtTauschen(2))
+        for f in [SchachtFarbe.gruen, .leer, .aus] { XCTAssertEqual(g(f).stufe, .ok, "\(f)"); XCTAssertEqual(g(f).schlagzeile, .inOrdnung) }
+    }
+
+    /// Blaue LEDs: je 10 %, ab > 0 % mindestens eine (Betreiber: bei 5 % am Geraet fehlte die Anzeige in der App).
+    func testFuellLEDs() {
+        func led(_ p: Double) -> Int { var g = gesamtzustand(prozent(10)); g.belegtAnteil = p; return g.ledAnzahl }
+        XCTAssertEqual(led(0), 0); XCTAssertEqual(led(0.001), 1); XCTAssertEqual(led(0.049), 1); XCTAssertEqual(led(0.05), 1); XCTAssertEqual(led(0.149), 1); XCTAssertEqual(led(0.15), 2)
+        XCTAssertEqual(led(0.937), 9); XCTAssertEqual(led(0.95), 10); XCTAssertEqual(led(1.0), 10)
+        var o = gesamtzustand(prozent(10)); o.belegtAnteil = nil; XCTAssertEqual(o.ledAnzahl, 0)
+    }
 }
