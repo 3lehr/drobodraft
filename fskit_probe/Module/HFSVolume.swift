@@ -216,6 +216,9 @@ final class HFSVolume: FSVolume, FSVolume.Operations, FSVolume.ReadWriteOperatio
             else { r = lifs_unmount_clean(rootItem.node) }        // Journal vollstaendig einspielen (start==end)
             return r
         }
+        #if ISCSI_MODUL
+        (dev as? IscsiGeraet)?.sitzung.abmelden()      // Logout beim Deaktivieren, nicht erst im deinit: die DroboPro behaelt sonst eine Leichensitzung (Messbefund 2026-10-17)
+        #endif
         let st = lifs_dev_stats
         log.notice("STATS unmount=\(r) nutz_geschrieben=\(self.userBytesWritten) dev_writes=\(st.writes) dev_bytes=\(st.bytes) max_cmd=\(st.max_cmd) max_call=\(st.max_call) chunked=\(st.chunked_calls) syncs=\(st.syncs) \(self.platz.zeile, privacy: .public) physisch_bau=\(physischBau) ro=\(self.readOnly ? 1 : 0) ro_blockiert=\(self.roBlocked) dev_schreibversuche=\(self.backend.writeAttempts) swift_dev_writes=\(self.backend.devWrites) swift_max=\(self.backend.devMax)")
         let be = backend

@@ -19,7 +19,17 @@ struct UebersichtAnsicht: View {
                         FruehAlphaAbzeichen()
                     }
                     Text(a.zustandText).font(.title3).foregroundStyle(.secondary)
-                    if a.eintrag.netz != nil && !a.verbunden {
+                    if a.eintrag.netz != nil && a.bremse == .reagiertNicht {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Hinweis(symbol: "exclamationmark.triangle.fill", text: "Die DroboPro reagiert nicht mehr auf Befehle, obwohl sie im Netzwerk erreichbar ist. Meist leuchten dann alle Schachtlampen rot und die Platten sind still. Bitte neu starten: Drobo über den Knopf ausschalten, das Netzkabel ziehen, ein bis zwei Minuten warten, wieder einstecken und einschalten. Danach kann es bis zu 30 Minuten dauern, bis alle Lampen grün leuchten. In dieser Zeit keine Platten ziehen oder umstecken.", farbe: .red)
+                            Button("Erneut prüfen") { m.erneutPruefen(a.eintrag.uuid) }
+                        }
+                    } else if a.eintrag.netz != nil && a.bremse == .anderemRechner {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Hinweis(symbol: "desktopcomputer.trianglebadge.exclamationmark", text: "Diese DroboPro wird gerade von einem anderen Rechner benutzt. Die App fragt erst wieder, wenn Sie „Erneut prüfen“ wählen.")
+                            Button("Erneut prüfen") { m.erneutPruefen(a.eintrag.uuid) }
+                        }
+                    } else if a.eintrag.netz != nil && !a.verbunden {
                         Hinweis(symbol: "wifi.exclamationmark", text: "Die DroboPro ist nicht erreichbar. Prüfen Sie, ob sie eingeschaltet und mit dem Netzwerk verbunden ist, und wählen Sie links „Drobos finden“.", farbe: .orange)
                     }
                     if a.eintrag.rolle == .timemachine {

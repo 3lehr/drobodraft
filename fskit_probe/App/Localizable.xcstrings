@@ -6688,6 +6688,182 @@
           }
         }
       }
+    },
+    "Abhilfe: Drobo über den Knopf ausschalten, Netzkabel ziehen, ein bis zwei Minuten warten, wieder einstecken und einschalten. Danach kann es bis zu 30 Minuten dauern, bis alle Lampen grün leuchten. In dieser Zeit keine Platten ziehen oder umstecken.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abhilfe: Drobo über den Knopf ausschalten, Netzkabel ziehen, ein bis zwei Minuten warten, wieder einstecken und einschalten. Danach kann es bis zu 30 Minuten dauern, bis alle Lampen grün leuchten. In dieser Zeit keine Platten ziehen oder umstecken."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remedy: switch the Drobo off with its button, unplug the power cable, wait one to two minutes, plug it in and switch it on. It can then take up to 30 minutes until all lights are green. During that time do not pull or swap any disks."
+          }
+        }
+      }
+    },
+    "Anzeichen: Die DroboPro ist im Netzwerk erreichbar, aber die App bekommt keine Antwort; meist leuchten alle Schachtlampen rot und die Platten sind still. Die App fragt dann nicht weiter nach, bis Sie „Erneut prüfen“ wählen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anzeichen: Die DroboPro ist im Netzwerk erreichbar, aber die App bekommt keine Antwort; meist leuchten alle Schachtlampen rot und die Platten sind still. Die App fragt dann nicht weiter nach, bis Sie „Erneut prüfen“ wählen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signs: the DroboPro is reachable on the network but the app gets no answer; usually all bay lights are red and the disks are silent. The app then stops asking until you choose “Check again”."
+          }
+        }
+      }
+    },
+    "Die DroboPro gibt über iSCSI die rohe Platte heraus, nicht einen Ordner. Jede virtuelle Festplatte darf nur ein Rechner gleichzeitig einhängen; die DroboPro lässt außerdem nur einen Rechner zur Zeit zu. Bei „von einem anderen Rechner benutzt“ den anderen Rechner zuerst aushängen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die DroboPro gibt über iSCSI die rohe Platte heraus, nicht einen Ordner. Jede virtuelle Festplatte darf nur ein Rechner gleichzeitig einhängen; die DroboPro lässt außerdem nur einen Rechner zur Zeit zu. Bei „von einem anderen Rechner benutzt“ den anderen Rechner zuerst aushängen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The DroboPro hands out the raw disk over iSCSI, not a folder. Only one computer may mount a virtual disk at a time, and the DroboPro only admits one computer at a time. If it says “in use by another computer”, unmount it on the other computer first."
+          }
+        }
+      }
+    },
+    "Die DroboPro reagiert nicht mehr auf Befehle, obwohl sie im Netzwerk erreichbar ist. Meist leuchten dann alle Schachtlampen rot und die Platten sind still. Bitte neu starten: Drobo über den Knopf ausschalten, das Netzkabel ziehen, ein bis zwei Minuten warten, wieder einstecken und einschalten. Danach kann es bis zu 30 Minuten dauern, bis alle Lampen grün leuchten. In dieser Zeit keine Platten ziehen oder umstecken.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die DroboPro reagiert nicht mehr auf Befehle, obwohl sie im Netzwerk erreichbar ist. Meist leuchten dann alle Schachtlampen rot und die Platten sind still. Bitte neu starten: Drobo über den Knopf ausschalten, das Netzkabel ziehen, ein bis zwei Minuten warten, wieder einstecken und einschalten. Danach kann es bis zu 30 Minuten dauern, bis alle Lampen grün leuchten. In dieser Zeit keine Platten ziehen oder umstecken."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The DroboPro no longer answers commands although it is reachable on the network. Usually all bay lights are red and the disks are silent. Please restart it: switch the Drobo off with its button, unplug the power cable, wait one to two minutes, plug it in and switch it on. It can then take up to 30 minutes until all lights are green. During that time do not pull or swap any disks."
+          }
+        }
+      }
+    },
+    "Diese DroboPro wird gerade von einem anderen Rechner benutzt.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese DroboPro wird gerade von einem anderen Rechner benutzt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This DroboPro is currently in use by another computer."
+          }
+        }
+      }
+    },
+    "Diese DroboPro wird gerade von einem anderen Rechner benutzt. Die App fragt erst wieder, wenn Sie „Erneut prüfen“ wählen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese DroboPro wird gerade von einem anderen Rechner benutzt. Die App fragt erst wieder, wenn Sie „Erneut prüfen“ wählen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This DroboPro is currently in use by another computer. The app will only ask again when you choose “Check again”."
+          }
+        }
+      }
+    },
+    "DroboPro reagiert nicht – bitte neu starten": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboPro reagiert nicht – bitte neu starten"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboPro is not responding – please restart it"
+          }
+        }
+      }
+    },
+    "Erneut prüfen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erneut prüfen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check again"
+          }
+        }
+      }
+    },
+    "Gemeinsame Nutzung ist nur über eine Freigabe (SMB) von einem Rechner aus möglich: Dieser Rechner hängt die Festplatte ein und gibt den Ordner im Netzwerk frei.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gemeinsame Nutzung ist nur über eine Freigabe (SMB) von einem Rechner aus möglich: Dieser Rechner hängt die Festplatte ein und gibt den Ordner im Netzwerk frei."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sharing is only possible through a share (SMB) from one computer: that computer mounts the disk and shares the folder on the network."
+          }
+        }
+      }
+    },
+    "Mehrere Rechner": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mehrere Rechner"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Several computers"
+          }
+        }
+      }
+    },
+    "Wenn die DroboPro nicht reagiert": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wenn die DroboPro nicht reagiert"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If the DroboPro does not respond"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

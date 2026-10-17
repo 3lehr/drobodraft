@@ -20,6 +20,14 @@ struct HilfeAnsicht: View {
                     Text("Immer erst aushängen, dann abziehen. Wird ein Laufwerk im Schreibzustand getrennt, prüft die App es vor dem nächsten Einhängen.")
                     Text("„Sicherung zurückspielen“ ersetzt Verwaltungsdaten und macht alles rückgängig, was seitdem geschrieben wurde. Es gibt erst einen Probelauf und dann eine zweite Bestätigung.")
                 }
+                Karte(titel: "Wenn die DroboPro nicht reagiert") {
+                    Text("Anzeichen: Die DroboPro ist im Netzwerk erreichbar, aber die App bekommt keine Antwort; meist leuchten alle Schachtlampen rot und die Platten sind still. Die App fragt dann nicht weiter nach, bis Sie „Erneut prüfen“ wählen.")
+                    Text("Abhilfe: Drobo über den Knopf ausschalten, Netzkabel ziehen, ein bis zwei Minuten warten, wieder einstecken und einschalten. Danach kann es bis zu 30 Minuten dauern, bis alle Lampen grün leuchten. In dieser Zeit keine Platten ziehen oder umstecken.")
+                }
+                Karte(titel: "Mehrere Rechner") {
+                    Text("Die DroboPro gibt über iSCSI die rohe Platte heraus, nicht einen Ordner. Jede virtuelle Festplatte darf nur ein Rechner gleichzeitig einhängen; die DroboPro lässt außerdem nur einen Rechner zur Zeit zu. Bei „von einem anderen Rechner benutzt“ den anderen Rechner zuerst aushängen.")
+                    Text("Gemeinsame Nutzung ist nur über eine Freigabe (SMB) von einem Rechner aus möglich: Dieser Rechner hängt die Festplatte ein und gibt den Ordner im Netzwerk frei.")
+                }
                 Karte(titel: "Spotlight und Time Machine") {
                     Text("Spotlight läuft nach unseren Messungen nicht in den Einhängeort unter /Volumes hinein. Wer ganz sicher gehen will, schließt die Drobo in den Systemeinstellungen bei Spotlight und Time Machine aus. Das ist freiwillig; die App ändert dazu nichts.")
                 }

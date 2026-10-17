@@ -4,7 +4,7 @@ import Foundation
 /// unbeantwortet bleibt; jede weitere Abfrage im 60-s-Takt mit neuer Sitzung haelt sie dort fest und fuellt sie mit Leichen. Darum:
 /// hoechstens alle 5 min, nie waehrend eingehaengt, nie zwei gleichzeitig, und nach EINER Zeitueberschreitung (oder Ablehnung durch einen anderen Rechner)
 /// Pause, bis der Nutzer "Erneut pruefen" waehlt.
-public final class StatusBremse {
+public final class StatusBremse: @unchecked Sendable {
     public enum Zustand: Equatable { case bereit, reagiertNicht, anderemRechner }
     public static let abstand: TimeInterval = 300
     private let lock = NSLock()

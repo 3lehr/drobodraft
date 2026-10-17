@@ -22,6 +22,7 @@ struct DroboAnsicht: Equatable {
     var netz: NetzInfo?            // Netzwerk-Drobo: Name und Schwellen aus den Statusseiten
     var netzStand: Date?           // Netzwerk-Drobo: wann der Status zuletzt gelesen wurde
     var netzFehler: String?        // Netzwerk-Drobo: warum der Status nicht gelesen werden konnte
+    var bremse: StatusBremse.Zustand = .bereit   // Netzwerk-Drobo: Abfrage pausiert (reagiert nicht / von anderem Rechner belegt) bis "Erneut pruefen"
     var luns: [LunEintrag] = []    // Netzwerk-Drobo: alle LUNs (virtuelle Platten) laut letztem Kontakt
     var lunEingehaengt: [Int: Bool] = [:]   // eingehaengte LUNs (Wert = nur lesen)
 
@@ -30,6 +31,8 @@ struct DroboAnsicht: Equatable {
 
     var zustandText: String {
         if eintrag.netz != nil {
+            if bremse == .reagiertNicht { return String(localized: "DroboPro reagiert nicht – bitte neu starten") }
+            if bremse == .anderemRechner { return String(localized: "Diese DroboPro wird gerade von einem anderen Rechner benutzt.") }
             if !verbunden { return String(localized: "Nicht erreichbar") }
             if !eingehaengt { return String(localized: "Verbunden, nicht eingehängt") }
             return nurlesen ? String(localized: "Eingehängt, nur lesen") : String(localized: "Eingehängt, schreiben")
@@ -97,8 +100,10 @@ final class DroboModell: ObservableObject {
     /// Angeschlossene Drobos (SCSI-Hersteller "Drobo"), die noch nicht eingerichtet sind.
     @Published var erkannte: [ErkannteDrobo] = []
     private var waechter: [AbziehWaechter] = []
-    /// Netzwerk-Drobos: letzter Leseversuch je UUID (die DroboPro bedient nur eine Verbindung; nicht dauernd anklopfen, nicht waehrend sie eingehaengt ist).
-    private var netzVersuch: [String: Date] = [:]
+    /// Netzwerk-Drobos: Bremse je UUID (hoechstens alle 5 min, nie eingehaengt, nach einer Zeitueberschreitung Pause bis \"Erneut pruefen\"; die DroboPro haengt sonst).
+    private var bremsen: [String: StatusBremse] = [:]
+    private func bremse(_ uuid: String) -> StatusBremse { if let b = bremsen[uuid] { return b }; let b = StatusBremse(); bremsen[uuid] = b; return b }
+    func erneutPruefen(_ uuid: String) { bremse(uuid).erneutPruefen(); aktualisieren(freigabe: true) }
     @Published var netzTreffer: [NetzLun] = []
     @Published var netzSucheLaeuft = false
     /// "Drobos suchen": im LAN gefundene, noch nicht eingerichtete Drobos (USB-Funde stehen in `erkannte`).
@@ -135,6 +140,13 @@ final class DroboModell: ObservableObject {
 
     func starten() {
         anmeldeStart = SMAppService.mainApp.status == .enabled
+        // Ruhezustand/Ausschalten: iSCSI-Volumes vorher aushaengen, damit die Sitzungen mit Logout enden (sonst Leichen an der DroboPro). Synchron: danach ist es zu spaet.
+        for n in [NSWorkspace.willSleepNotification, NSWorkspace.willPowerOffNotification] {
+            NSWorkspace.shared.notificationCenter.addObserver(forName: n, object: nil, queue: nil) { [ablage] _ in
+                do { try iscsiAlleAushaengen(meldung: { ablage.protokoll("Netzwerk-Drobo: \($0) (Ruhezustand/Ausschalten)") }) }
+                catch { ablage.protokoll("Netzwerk-Drobo: Aushängen vor Ruhezustand/Ausschalten fehlgeschlagen: \(error)") }
+            }
+        }
         aktualisieren()
         drobosSuchen()
         timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in Task { @MainActor in self?.aktualisieren(freigabe: false) } }
@@ -163,8 +175,8 @@ final class DroboModell: ObservableObject {
         let alt = drobos
         let jetzt = Date()
         let eingehaengteHosts = Set(drobos.values.filter { $0.eingehaengt || !$0.lunEingehaengt.isEmpty }.compactMap { $0.eintrag.netz?.host })
-        let netzLesen = Set(ds.filter { d in d.netz != nil && (freigabe || jetzt.timeIntervalSince(netzVersuch[d.uuid] ?? .distantPast) > 60) }.map { $0.uuid })
-        for u in netzLesen { netzVersuch[u] = jetzt }
+        let netzLesen = Set(ds.filter { d in d.netz.map { nz in bremse(d.uuid).darfAbfragen(eingehaengt: eingehaengteHosts.contains(nz.host), jetzt: jetzt) } ?? false }.map { $0.uuid })
+        let bremsenKopie = bremsen
         Task.detached { [ablage] in
             var neu: [String: DroboAnsicht] = [:]
             var zugriff: Bool?
@@ -177,20 +189,26 @@ final class DroboModell: ObservableObject {
                     (a.hw, a.netz, a.netzStand, a.netzFehler) = (v?.hw, v?.netz, v?.netzStand, v?.netzFehler)
                     a.luns = v?.luns ?? []
                     for l in Set(a.luns.map(\.lun)).union([nz.lun]) { if let e = netzEinhaengung(lun: l) { a.lunEingehaengt[l] = e.nurlesen } }
+                    let br = bremsenKopie[d.uuid]
                     if let e = netzEinhaengung(lun: nz.lun) {      // eingehaengt: keine zweite Sitzung oeffnen
+                        if netzLesen.contains(d.uuid) { br?.ergebnis(nil) }      // reservierte Abfrage zurueckgeben
                         a.verbunden = true; a.eingehaengt = true; a.nurlesen = e.nurlesen; a.ort = e.ort; a.treiber = "iSCSI"
                         var s = statfs()
                         if statfs(e.ort, &s) == 0 { a.gesamt = UInt64(s.f_blocks) * UInt64(s.f_bsize); a.belegt = a.gesamt - UInt64(s.f_bfree) * UInt64(s.f_bsize) }
                     } else if netzLesen.contains(d.uuid) {
                         do {
                             let (st, info) = try netzStatusLesen(host: nz.host); (a.hw, a.netz, a.netzStand, a.netzFehler) = (st, info, Date(), nil)
+                            br?.ergebnis(nil)       // Status gelesen: die Sitzung ist zu; Kontakt/LUN-Liste folgt nacheinander (nie zwei Sitzungen gleichzeitig)
                             let k = Self.netzKontakt(nz); if !k.luns.isEmpty { a.luns = k.luns }
                             if let n = k.ziel { ziele[d.uuid] = n }
                         } catch {
+                            br?.ergebnis(error)
                             (a.hw, a.netzFehler) = (nil, Self.fehlerText(error))
-                            if let n = Self.netzAdresseNachfuehren(nz, ablage: ablage, ausnehmen: eingehaengteHosts) { ziele[d.uuid] = n }
+                            // Haengt die DroboPro oder gehoert sie einem anderen Rechner, wird NICHT weiter angeklopft (auch nicht fuer die Adresssuche)
+                            if br?.zustand ?? .bereit == .bereit, let n = Self.netzAdresseNachfuehren(nz, ablage: ablage, ausnehmen: eingehaengteHosts) { ziele[d.uuid] = n }
                         }
                     }
+                    a.bremse = br?.zustand ?? .bereit
                     a.verbunden = a.verbunden || (a.hw != nil && a.netzFehler == nil)
                     a.merker = ablage.merker(d.uuid)
                     a.sicherungen = eigeneSicherungen(ort: ablage.einstellungen().sicherungOrt, uuid: d.uuid).reversed()
