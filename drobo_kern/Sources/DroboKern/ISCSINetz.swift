@@ -26,9 +26,9 @@ func partitionLeser(_ s: ISCSISitzung, lun: Int, partition p: GPT.Partition) -> 
 /// Sitzung ueber die Weiterleitung des Dienstes (erstes Ziel des Geraets).
 func netzSitzung(host: String, zeitgrenze: TimeInterval = 15) throws -> ISCSISitzung {
     let port = try helferISCSIWeiterleitung(host: host)
-    let d = try ISCSISitzung(host: "127.0.0.1", port: port, zeitgrenze: zeitgrenze); let ziele = try d.ziele(); d.abmelden()
+    let d = try ISCSISitzung(host: "127.0.0.1", port: port, zeitgrenze: zeitgrenze, ersteZeitgrenze: ISCSISitzung.ersteZeitgrenzeNetz); let ziele = try d.ziele(); d.abmelden()
     guard let z = ziele.first?.name else { throw ISCSIFehler.protokoll("target offers no name") }
-    return try ISCSISitzung(host: "127.0.0.1", port: port, ziel: z, zeitgrenze: zeitgrenze)
+    return try ISCSISitzung(host: "127.0.0.1", port: port, ziel: z, zeitgrenze: zeitgrenze, ersteZeitgrenze: ISCSISitzung.ersteZeitgrenzeNetz)
 }
 
 /// LUNs mit gueltiger GPT, HFS+-Partition und Volume-ID.

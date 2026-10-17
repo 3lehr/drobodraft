@@ -134,6 +134,9 @@ public final class ISCSISitzung {
     var tot: ISCSIFehler?
     var blockgroessen: [Int: Int] = [:]
     let discovery: Bool
+    /// Zeitgrenze der Folgebefehle; Login und erster Befehl laufen mit `ersteZeitgrenze` (Standby-Aufwachen kann Sekunden bis Minuten dauern, Messung 2026-10-17: 0,7 s bis 5,7 s, nach Neustart Minuten).
+    let folgeZeitgrenze: TimeInterval
+    public static let ersteZeitgrenzeNetz: TimeInterval = 30
     /// Feste ISID je Mac und Zweck. Messbefund DroboPro 2026-10-17: Login mit gleichem Initiator-Namen und gleicher ISID wird angenommen (ersetzt die alte Sitzung),
     /// ein anderer Name wird mit Status 2/2 abgelehnt (Single-Initiator). Eine zufaellige ISID je Login liess jede abgebrochene Sitzung als Leiche stehen.
     public let isid: [UInt8]
@@ -152,8 +155,9 @@ public final class ISCSISitzung {
     public static func isid(maschine: String, zweck: String) -> [UInt8] { [0x80] + Array(SHA256.hash(data: Data("\(maschine)|\(zweck)".utf8)).prefix(5)) }
 
     /// `ziel == nil` -> Discovery-Sitzung (nur `ziele()`), sonst Normal-Sitzung auf dieses Ziel.
-    public init(host: String, port: UInt16 = 3260, ziel: String? = nil, zeitgrenze: TimeInterval = 10, initiator: String = ISCSISitzung.initiatorName(maschine: ISCSISitzung.maschine), zweck: String = "status") throws {
-        draht = try TCPDraht(host: host, port: port, zeitgrenze: zeitgrenze)
+    public init(host: String, port: UInt16 = 3260, ziel: String? = nil, zeitgrenze: TimeInterval = 10, ersteZeitgrenze: TimeInterval? = nil, initiator: String = ISCSISitzung.initiatorName(maschine: ISCSISitzung.maschine), zweck: String = "status") throws {
+        folgeZeitgrenze = zeitgrenze
+        draht = try TCPDraht(host: host, port: port, zeitgrenze: max(zeitgrenze, ersteZeitgrenze ?? 0))
         discovery = ziel == nil
         isid = Self.isid(maschine: Self.maschine, zweck: ziel == nil ? "discovery" : zweck)
         do { try anmelden(initiator: initiator, ziel: ziel) } catch { draht.schliessen(); throw error }
@@ -230,6 +234,7 @@ public final class ISCSISitzung {
     func gesichert<T>(_ block: () throws -> T) throws -> T {
         sperre.lock(); defer { sperre.unlock() }
         if let t = tot { throw t }
+        defer { if tot == nil { draht.zeitgrenze = folgeZeitgrenze } }   // erster Austausch (auch mit SCSI-Status) beantwortet: ab jetzt die kurze Grenze
         do { return try block() }
         catch let f as ISCSIFehler {
             switch f { case .scsi, .verboten: break; default: tot = f; logoutUndSchliessen() }   // Logout auch nach Zeitueberschreitung/Fehler: keine Leiche am Ziel

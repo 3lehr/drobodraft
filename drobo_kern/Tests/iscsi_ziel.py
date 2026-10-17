@@ -4,7 +4,7 @@ Login braucht zwei Runden in der Sicherheitsphase (erste Antwort ohne T), MODE S
 beantwortet, Seiten 33/35 ebenfalls nicht, InitialR2T=Yes, ImmediateData=No, MaxBurstLength=524288.
 Aufruf: python3 -I iscsi_ziel.py --image LUN0.img [--image LUN1.img] --log LOG.jsonl [Fehlerinjektion]
 Gibt "PORT <n>" auf stdout aus, sobald es lauscht. Jeder Befehl landet als JSON-Zeile im Log (Pruefstand sieht, was das Ziel wirklich erreichte).
-Fehlerinjektion: --drop-after N (Verbindung beim (N+1). SCSI-Befehl ohne Antwort schliessen), --swallow K (Befehl Nr. K nicht beantworten),
+Fehlerinjektion: --drop-after N (Verbindung beim (N+1). SCSI-Befehl ohne Antwort schliessen), --swallow K (Befehl Nr. K nicht beantworten), --first-delay S (ersten Befehl erst nach S s beantworten),
 --hang-after N (ab dem (N+1). SCSI-Befehl, auf JEDER Verbindung, nie mehr antworten wie die haengende DroboPro; Login und Discovery gehen weiter),
 --reject-other-initiator (Login mit anderem Initiator-Namen als dem ersten mit Status 2/2 ablehnen = Single-Initiator der DroboPro), --r2t-chunk N (R2T in Stuecken von N Byte), --max-seg N (eigene MaxRecvDataSegmentLength, Data-Out darueber -> Verbindung zu).
 DroboPro-Verhalten (gemessen 2026-10-16): ein WRITE ohne Daten im Command-PDU wird nicht beantwortet, kein R2T, Verbindung nach ~1 s zu (die echte DroboPro
@@ -32,6 +32,7 @@ a.add_argument("--port", type=int, default=0)
 a.add_argument("--iqn", default="iqn.2026-10.local.test:ziel")
 a.add_argument("--drop-after", type=int)
 a.add_argument("--swallow", type=int)
+a.add_argument("--first-delay", type=float, help="erster SCSI-Befehl (ueber alle Verbindungen) wird erst nach S Sekunden beantwortet (Standby-Aufwachen)")
 a.add_argument("--hang-after", type=int)
 a.add_argument("--reject-other-initiator", action="store_true")
 a.add_argument("--r2t-chunk", type=int)
@@ -154,6 +155,7 @@ def scsi(v, h, imm):
     if STATE["haengt"]: return
     if A.drop_after is not None and v.nbefehle > A.drop_after: raise Zu()
     if A.swallow == v.nbefehle: return
+    if A.first_delay and gesamt == 1: import time; time.sleep(A.first_delay)
     op = cdb[0]
     img = A.image[n] if n < len(A.image) else None
     if op == 0xA0:

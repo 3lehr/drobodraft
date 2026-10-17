@@ -22,7 +22,7 @@ public final class StatusBremse: @unchecked Sendable {
         laeuft = true; letzter = jetzt; return true
     }
 
-    /// nil = gelungen. Zeitueberschreitung nach dem Login -> `reagiertNicht`; Login-Ablehnung 2/2 -> `anderemRechner`; andere Fehler (Netz weg) bremsen nur ueber den Abstand.
+    /// nil = gelungen. Zeitueberschreitung (Login und erster Befehl: nach 30 s, Folgebefehle: nach 10 s; siehe `ISCSISitzung.ersteZeitgrenzeNetz`) -> `reagiertNicht`; Login-Ablehnung 2/2 -> `anderemRechner`; andere Fehler (Netz weg) bremsen nur ueber den Abstand.
     public func ergebnis(_ fehler: Error?) {
         lock.lock(); defer { lock.unlock() }
         laeuft = false

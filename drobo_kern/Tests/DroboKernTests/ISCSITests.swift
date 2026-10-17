@@ -39,10 +39,10 @@ final class ISCSITests: XCTestCase {
     }
     func ereignisse(_ n: String) -> [[String: Any]] { log().filter { $0["ereignis"] as? String == n } }
 
-    func sitzung(_ port: UInt16, zeit: TimeInterval = 5) throws -> ISCSISitzung {
+    func sitzung(_ port: UInt16, zeit: TimeInterval = 5, erste: TimeInterval? = nil) throws -> ISCSISitzung {
         let d = try ISCSISitzung(host: "127.0.0.1", port: port, zeitgrenze: zeit)
         let z = try d.ziele(); XCTAssertNotNil(z.first?.name); d.abmelden()
-        return try ISCSISitzung(host: "127.0.0.1", port: port, ziel: z[0].name, zeitgrenze: zeit)
+        return try ISCSISitzung(host: "127.0.0.1", port: port, ziel: z[0].name, zeitgrenze: zeit, ersteZeitgrenze: erste)
     }
     func muster(_ n: Int, _ seed: UInt8 = 7) -> [UInt8] { (0..<n).map { UInt8(truncatingIfNeeded: $0 &* 31 &+ Int(seed) &+ $0 >> 8) } }
 
@@ -366,6 +366,21 @@ extension ISCSITests {
         XCTAssertEqual(log().filter { $0["ereignis"] as? String == "befehl" }.count, 1, "genau ein Befehl am Ziel")
         b.erneutPruefen(); XCTAssertEqual(b.zustand, .bereit)
         XCTAssertTrue(b.darfAbfragen(eingehaengt: false)); XCTAssertFalse(b.darfAbfragen(eingehaengt: false), "hoechstens eine Status-Sitzung gleichzeitig")
+    }
+
+    /// Standby-Aufwachen: erste Antwort einer neuen Sitzung darf bis 30 s dauern (Folgebefehle 10 s); danach gilt die Drobo als haengend.
+    func testErsterBefehlNachStandbyBraucht30Sekunden() throws {
+        XCTAssertEqual(ISCSISitzung.ersteZeitgrenzeNetz, 30)
+        let ok = try ziel(["--first-delay", "15"])
+        let s = try sitzung(ok, zeit: 10, erste: ISCSISitzung.ersteZeitgrenzeNetz)
+        XCTAssertNoThrow(try s.inquiry(lun: 0), "15 s Verzoegerung beim ersten Befehl: ok")
+        XCTAssertEqual(s.draht.zeitgrenze, 10, "Folgebefehle wieder 10 s")
+        s.abmelden(); prozess?.terminate(); prozess?.waitUntilExit()
+        let haengt = try ziel(["--first-delay", "35"])
+        let h = try sitzung(haengt, zeit: 10, erste: ISCSISitzung.ersteZeitgrenzeNetz), b = StatusBremse()
+        XCTAssertTrue(b.darfAbfragen(eingehaengt: false))
+        do { _ = try h.inquiry(lun: 0); XCTFail("35 s muessen in die Zeitueberschreitung laufen"); b.ergebnis(nil) } catch { b.ergebnis(error) }
+        XCTAssertEqual(b.zustand, .reagiertNicht, "nach 30 s ohne Antwort = Haenger")
     }
 
     func testBremseGrenzenAbstandEingehaengtUndGleichzeitig() {
