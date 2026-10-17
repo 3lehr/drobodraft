@@ -15,11 +15,23 @@ public func hfsVolumeUUID(vh: [UInt8]) -> String? {
 
 public let iscsiVorgabeOrt = "/private/tmp/drobo_iscsi_mnt"
 
+/// Einhaengeort einer iSCSI-LUN laut Einstellung: wie beim 5C-Weg die Vorgabe /Volumes (-> der Dienst legt /Volumes/<Volumename> an, Finder-Seitenleiste),
+/// sonst nil = der alte Ort unter /private/tmp (nur CLI / ausdrueckliche Wahl). Nie ein fester /private/tmp-Ort fuer die App-Vorgabe.
+public func iscsiEinhaengeort(einstellung: String) -> String? { einstellung == vorgabeVolumes ? vorgabeVolumes : nil }
+
+/// LUN-Nummer aus der Quelle eines iSCSI-Mounts in der Mount-Tabelle: iscsi://127.0.0.1:PORT/IQN/LUN. nil = kein iSCSI-Mount.
+public func iscsiLunAusQuelle(_ von: String) -> Int? {
+    guard von.hasPrefix("iscsi://"), let l = von.split(separator: "/").last else { return nil }
+    return Int(l)
+}
+
 /// Einhaengen ueber den Hilfsdienst: Weiterleitung (Port) holen, Volume-UUID und Partitionsgroesse aus der LUN lesen, Freigabe im Container des iSCSI-Moduls setzen,
 /// `mount -F -t hfsdropro iscsi://127.0.0.1:PORT/IQN/LUN ORT`. Der Ort liegt nie unter $HOME (Spotlight).
 public func iscsiEinhaengen(host: String, lun: Int, schreiben: Bool, ziel: String?, ort: String?, sicherung: (ort: String, anzahl: Int)? = nil, ohneSicherung: Bool = false,
-                            meldung: (String) -> Void, weckfortschritt: ((Int) -> Void)? = nil) throws {
-    let ort = ort ?? "\(iscsiVorgabeOrt)\(lun)"
+                            volumenName: String? = nil, meldung: (String) -> Void, weckfortschritt: ((Int) -> Void)? = nil,
+                            ordner: (anlegen: (String, String) throws -> String, entfernen: (String) -> Void) = ({ try helferISCSIOrdnerAnlegen(uuid: $0, name: $1) }, { _ = helferISCSIOrdnerEntfernen(pfad: $0) })) throws {
+    var ort = ort ?? "\(iscsiVorgabeOrt)\(lun)"
+    let ueberDienst = ort == vorgabeVolumes
     guard !ort.hasPrefix(NSHomeDirectory() + "/"), ort != NSHomeDirectory() else { throw Fehler.ortUnterHome(ort) }
     let port = try helferISCSIWeiterleitung(host: host)
     meldung("helper forwards 127.0.0.1:\(port) -> \(host):3260")
@@ -41,40 +53,44 @@ public func iscsiEinhaengen(host: String, lun: Int, schreiben: Bool, ziel: Strin
     let modus = schreiben ? "schreiben" : "nurlesen"
     try helferISCSIFreigabeSetzen(uuid: uuid, modus: modus, maxBytes: p.bloecke * 512)
     meldung("permission \(uuid): \(modus), max_bytes \(p.bloecke * 512)")
-    try FileManager.default.createDirectory(atPath: ort, withIntermediateDirectories: true)
+    if ueberDienst { ort = try ordner.anlegen(uuid, volumenName ?? "Volume \(lun + 1)") } else { try FileManager.default.createDirectory(atPath: ort, withIntermediateDirectories: true) }
     let url = "iscsi://127.0.0.1:\(port)/\(iqn)/\(lun)"
     var (rc, out) = ausfuehren("/sbin/mount", ["-F", "-t", "hfsdropro", url, ort])
     if rc != 0 { Thread.sleep(forTimeInterval: 3); (rc, out) = ausfuehren("/sbin/mount", ["-F", "-t", "hfsdropro", url, ort]) }
-    guard rc == 0 else { throw Fehler.mountFehlgeschlagen(out) }
+    guard rc == 0 else { if ueberDienst { ordner.entfernen(ort) }; throw Fehler.mountFehlgeschlagen(out) }
     meldung("mounted \(modus): \(ort)")
 }
 
 public func iscsiAushaengen(ort: String) throws {
     let (rc, out) = ausfuehren("/sbin/umount", [ort])
     guard rc == 0 else { throw Fehler.aushaengenFehlgeschlagen(out) }
+    if ort.hasPrefix(vorgabeVolumes + "/") { _ = helferISCSIOrdnerEntfernen(pfad: ort) }      // den vom Dienst angelegten Ordner wieder wegraeumen
+}
+
+/// Haengt die LUN dort aus, wo sie laut Mount-Tabelle wirklich eingehaengt ist (/Volumes/<Name> oder alter /private/tmp-Ort).
+public func iscsiAushaengen(lun: Int) throws {
+    guard let e = netzEinhaengung(lun: lun) else { throw Fehler.nichtEingehaengt("iSCSI LUN \(lun)") }
+    try iscsiAushaengen(ort: e.ort)
 }
 
 /// Alle LUNs mit HFS+ einhaengen (je LUN eigener Ort /private/tmp/drobo_iscsi_mnt<N>, Freigabe je Volume-UUID). Bereits eingehaengte werden uebersprungen,
 /// ein Fehler bei einer LUN stoppt die anderen nicht. Rueckgabe: je LUN Fehlertext oder nil.
 @discardableResult
-public func iscsiAlleEinhaengen(host: String, schreiben: Bool, sicherung: (ort: String, anzahl: Int)? = nil, ohneSicherung: Bool = false, meldung: (String) -> Void) throws -> [Int: String?] {
+public func iscsiAlleEinhaengen(host: String, schreiben: Bool, sicherung: (ort: String, anzahl: Int)? = nil, ohneSicherung: Bool = false, ort: String? = nil, namen: [Int: String] = [:], meldung: (String) -> Void) throws -> [Int: String?] {
     var erg: [Int: String?] = [:]
     for l in try netzLunVerzeichnis(host: host) where l.hatDateisystem {
         if netzEinhaengung(lun: l.lun) != nil { meldung("LUN \(l.lun): already mounted"); erg[l.lun] = .some(nil); continue }
-        do { try iscsiEinhaengen(host: host, lun: l.lun, schreiben: schreiben, ziel: nil, ort: nil, sicherung: sicherung, ohneSicherung: ohneSicherung, meldung: { meldung("LUN \(l.lun): " + $0) }); erg[l.lun] = .some(nil) }
+        do { try iscsiEinhaengen(host: host, lun: l.lun, schreiben: schreiben, ziel: nil, ort: ort, sicherung: sicherung, ohneSicherung: ohneSicherung, volumenName: namen[l.lun], meldung: { meldung("LUN \(l.lun): " + $0) }); erg[l.lun] = .some(nil) }
         catch { meldung("LUN \(l.lun): \(error)"); erg[l.lun] = "\(error)" }
     }
     return erg
 }
 
 /// Alle eingehaengten iSCSI-LUN-Orte (Mount-Tabelle: /private/tmp/drobo_iscsi_mnt<N>).
-public func iscsiEingehaengteLuns() -> [Int] {
-    einhaengungen().values.compactMap { e in
-        let o = e.ort.hasPrefix("/private") ? String(e.ort.dropFirst(8)) : e.ort
-        return o.hasPrefix(iscsiVorgabeOrt) ? Int(o.dropFirst(iscsiVorgabeOrt.count)) : nil
-    }.sorted()
+public func iscsiEingehaengteLuns(tabelle: [String: Einhaengung] = einhaengungen()) -> [Int] {
+    tabelle.keys.compactMap(iscsiLunAusQuelle).sorted()
 }
 
 public func iscsiAlleAushaengen(meldung: (String) -> Void) throws {
-    for l in iscsiEingehaengteLuns() { try iscsiAushaengen(ort: iscsiOrt(l)); meldung("LUN \(l): unmounted") }
+    for l in iscsiEingehaengteLuns() { try iscsiAushaengen(lun: l); meldung("LUN \(l): unmounted") }
 }

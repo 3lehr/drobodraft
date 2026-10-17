@@ -30,6 +30,10 @@ public var helferAnforderung: String { anforderung(prefix: Identitaet.prefix, te
     /// "Lokales Netzwerk" kein Routing ins LAN, der Dienst nicht (gemessen, Plan DroboPro). Antwort (Port, Fehlertext); Port 0 = Fehler.
     func iscsiWeiterleitung(_ host: String, port: UInt16, reply: @escaping (UInt16, String?) -> Void)
     /// Wie freigabeSetzen, aber fuer den Container des iSCSI-Moduls (<Praefix>.drobofsprobe.iscsi). maxBytes ist Pflicht (Gate).
+    /// Wie ordnerAnlegen, aber fuer ein iSCSI-Volume: Ordnername = `name` (bei Belegung "<name> 2" ...); Freigabe der UUID im iSCSI-Container Pflicht. Antwort (Pfad, Fehlertext).
+    func iscsiOrdnerAnlegen(_ volumeUUID: String, name: String, reply: @escaping (String?, String?) -> Void)
+    /// Entfernt den mit iscsiOrdnerAnlegen angelegten Ordner (nur direkt unter /Volumes, leer, eigener Ordner).
+    func iscsiOrdnerEntfernen(_ pfad: String, reply: @escaping (String?) -> Void)
     func iscsiFreigabeSetzen(_ volumeUUID: String, modus: String, maxBytes: UInt64, reply: @escaping (String?) -> Void)
 }
 
@@ -129,7 +133,34 @@ public struct HelferLogik {
     }
 
     public func ordnerEntfernen(_ uuid: String, uid: uid_t) throws {
-        let p = try volumenPfad(uuid, uid: uid)
+        try eigenenOrdnerEntfernen(try volumenPfad(uuid, uid: uid), uid: uid)
+    }
+
+    /// iSCSI-Volume (kein lokaler Geraeteknoten): /Volumes/<name> fuer den Einhaengepunkt, damit es in der Finder-Seitenleiste steht. Die UUID muss in der Freigabeliste des
+    /// iSCSI-Moduls des Aufrufers stehen. Belegter Name (Ordner oder Einhaengepunkt) -> "<name> 2" ... "<name> 9"; nie ein fremder Ordner, nie ein Einhaengepunkt wiederverwendet.
+    public func iscsiOrdnerAnlegen(_ uuid: String, name: String, uid: uid_t) throws -> String {
+        let pfad = try listenPfad(uuid, uid: uid, modul: ".iscsi")
+        do { guard try Freigabe.lesen(uuid: uuid, pfad: pfad) != nil else { throw HelferFehler("UUID nicht in der iSCSI-Freigabeliste") } }
+        catch let h as HelferFehler { throw h } catch { throw HelferFehler("Freigabeliste unbrauchbar: \(error)") }
+        guard Self.ordnerNameGueltig(name) else { throw HelferFehler("Volumename \(name.debugDescription) ist als Ordnername unter /Volumes nicht verwendbar") }
+        for i in 1...9 {
+            let p = volumesBasis + "/" + (i == 1 ? name : "\(name) \(i)")
+            if mkdir(p, 0o755) == 0 {
+                if chown(p, uid, 20) != 0 { let e = String(cString: strerror(errno)); _ = rmdir(p); throw HelferFehler("chown \(p): \(e)") }
+                return p
+            }
+            guard errno == EEXIST else { throw HelferFehler("\(p) nicht anlegbar: \(String(cString: strerror(errno)))") }
+        }
+        throw HelferFehler("kein freier Ordnername fuer \(name.debugDescription) unter /Volumes")
+    }
+
+    /// Entfernt den vom Dienst angelegten Ordner wieder: direkt unter /Volumes, eigener leerer Ordner derselben Platte (nie ein Einhaengepunkt).
+    public func iscsiOrdnerEntfernen(pfad: String, uid: uid_t) throws {
+        guard (pfad as NSString).deletingLastPathComponent == volumesBasis, Self.ordnerNameGueltig((pfad as NSString).lastPathComponent) else { throw HelferFehler("\(pfad) liegt nicht direkt unter \(volumesBasis)") }
+        try eigenenOrdnerEntfernen(pfad, uid: uid)
+    }
+
+    private func eigenenOrdnerEntfernen(_ p: String, uid: uid_t) throws {
         guard let s = lstatDatei(p) else { return }
         guard s.st_mode & S_IFMT == S_IFDIR, s.st_uid == uid, let b = lstatDatei(volumesBasis), s.st_dev == b.st_dev else { throw HelferFehler("\(p) ist kein eigener Ordner oder ein Einhaengepunkt -- nicht entfernt") }
         if rmdir(p) != 0 { throw HelferFehler("rmdir \(p): \(String(cString: strerror(errno)))") }

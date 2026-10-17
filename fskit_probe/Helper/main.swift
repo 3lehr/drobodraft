@@ -53,6 +53,13 @@ final class Dienst: NSObject, NSXPCListenerDelegate, DroboHelferProtokoll {
         log.notice("iscsiSuche uid=\(self.uid, privacy: .public): \(h.count, privacy: .public) Drobo(s)")
         reply(h)
     }
+    func iscsiOrdnerAnlegen(_ u: String, name: String, reply: @escaping (String?, String?) -> Void) {
+        do { let p = try logik.iscsiOrdnerAnlegen(u, name: name, uid: uid); log.notice("iscsiOrdnerAnlegen uid=\(self.uid, privacy: .public): \(p, privacy: .public)"); reply(p, nil) }
+        catch { log.error("iscsiOrdnerAnlegen uid=\(self.uid, privacy: .public): ABGELEHNT \("\(error)", privacy: .public)"); reply(nil, "\(error)") }
+    }
+    func iscsiOrdnerEntfernen(_ pfad: String, reply: @escaping (String?) -> Void) {
+        lauf("iscsiOrdnerEntfernen", pfad, reply) { try self.logik.iscsiOrdnerEntfernen(pfad: pfad, uid: self.uid) }
+    }
     func iscsiFreigabeSetzen(_ u: String, modus: String, maxBytes: UInt64, reply: @escaping (String?) -> Void) {
         lauf("iscsiFreigabeSetzen(\(modus))", u, reply) { try self.logik.freigabeSetzen(u, modus: modus, maxBytes: maxBytes, uid: self.uid, modul: ".iscsi") }
     }

@@ -48,6 +48,20 @@ public func helferOrdnerEntfernen(uuid: String) -> String? {
     return r.fehler ?? r.antwort.first ?? nil
 }
 
+/// iSCSI-Einhaengepunkt /Volumes/<name> ueber den Dienst (bei Belegung "<name> 2" ...); Rueckgabe Pfad.
+public func helferISCSIOrdnerAnlegen(uuid: String, name: String) throws -> String {
+    let r = helferRPC { p, k in p.iscsiOrdnerAnlegen(uuid, name: name, reply: { k([$0, $1]) }) }
+    if let f = r.fehler ?? (r.antwort.count > 1 ? r.antwort[1] : nil) { throw Fehler.helfer(f) }
+    guard let p = r.antwort.first ?? nil else { throw Fehler.helfer("keine Antwort") }
+    return p
+}
+
+/// nil = ok, sonst Fehlertext.
+public func helferISCSIOrdnerEntfernen(pfad: String) -> String? {
+    let r = helferRPC { p, k in p.iscsiOrdnerEntfernen(pfad, reply: { k([$0]) }) }
+    return r.fehler ?? r.antwort.first ?? nil
+}
+
 /// nil = der Dienst darf zugreifen (wirkungslose Probe), sonst Fehlertext.
 public func helferZugriffPruefen(uuid: String) -> String? {
     let r = helferRPC { p, k in p.zugriffPruefen(uuid, reply: { k([$0]) }) }

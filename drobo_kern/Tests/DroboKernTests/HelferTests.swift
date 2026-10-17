@@ -213,4 +213,39 @@ extension HelferTests {
         XCTAssertThrowsError(try logik(bsd: nil).zugriffPruefen(U, uid: 501))
         l.datei = { _ in nil }; XCTAssertThrowsError(try l.zugriffPruefen(U, uid: 501)); XCTAssertEqual(calls, [])
     }
+
+    // MARK: iSCSI-Einhaengepunkt /Volumes/<Name> (Finder-Seitenleiste)
+
+    func iscsiListe() throws {
+        let d = home + "/Library/Containers/\(appKennung).iscsi/Data"
+        try FileManager.default.createDirectory(atPath: d, withIntermediateDirectories: true)
+        try gut.write(toFile: d + "/freigabe.json", atomically: true, encoding: .utf8)
+        try FileManager.default.createDirectory(atPath: home + "/Volumes", withIntermediateDirectories: true)
+    }
+    func testISCSIOrdner_NameKollisionUndAufraeumen() throws {
+        try iscsiListe()
+        let (l, _) = ordnerLogik(); let me = getuid()
+        let a = try l.iscsiOrdnerAnlegen(U, name: "DROPRO1", uid: me), b = try l.iscsiOrdnerAnlegen(U, name: "DROPRO1", uid: me)
+        XCTAssertEqual(a, home + "/Volumes/DROPRO1"); XCTAssertEqual(b, home + "/Volumes/DROPRO1 2", "Kollision: Name 2")
+        XCTAssertNoThrow(try l.iscsiOrdnerEntfernen(pfad: a, uid: me)); XCTAssertFalse(FileManager.default.fileExists(atPath: a)); XCTAssertTrue(FileManager.default.fileExists(atPath: b))
+        XCTAssertThrowsError(try l.iscsiOrdnerEntfernen(pfad: "/etc", uid: me)); XCTAssertThrowsError(try l.iscsiOrdnerEntfernen(pfad: home + "/Volumes/../x", uid: me))
+        XCTAssertThrowsError(try l.iscsiOrdnerEntfernen(pfad: b, uid: me + 1), "fremder Eigentuemer"); XCTAssertTrue(FileManager.default.fileExists(atPath: b))
+    }
+    func testISCSIOrdner_OhneFreigabeUndUngueltigerNameAbgelehnt() throws {
+        try FileManager.default.createDirectory(atPath: home + "/Volumes", withIntermediateDirectories: true)
+        XCTAssertThrowsError(try ordnerLogik().0.iscsiOrdnerAnlegen(U, name: "X", uid: 501)) { XCTAssertTrue("\($0)".contains("iSCSI"), "\($0)") }   // keine Liste
+        try iscsiListe()
+        XCTAssertThrowsError(try ordnerLogik().0.iscsiOrdnerAnlegen("22222222-2222-2222-2222-222222222222", name: "X", uid: 501), "UUID nicht freigegeben")
+        for n in ["", ".v", "a/b", ".."] { XCTAssertThrowsError(try ordnerLogik().0.iscsiOrdnerAnlegen(U, name: n, uid: 501), n) }
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: home + "/Volumes"), [])
+    }
+    /// Betreiberbefund: iSCSI haengte unter /private/tmp ein (Finder-Seitenleiste leer). Vorgabe ist /Volumes; die Mount-Tabelle wird nach der Quelle durchsucht, nicht nach einem festen Ort.
+    func testISCSIEinhaengeortVorgabeVolumes_UndErkennungOhneFestenOrt() {
+        XCTAssertEqual(iscsiEinhaengeort(einstellung: Einstellungen().einhaengeort), vorgabeVolumes); XCTAssertNotEqual(iscsiEinhaengeort(einstellung: vorgabeVolumes), "/private/tmp/drobo_iscsi_mnt1")
+        XCTAssertNil(iscsiEinhaengeort(einstellung: "/irgendwo"))
+        let tab = ["iscsi://127.0.0.1:56157/iqn.2005-06.com.datarobotics:x/1": Einhaengung(ort: "/Volumes/DROPRO1", nurlesen: false, treiber: .hfsdrobo),
+                   "/dev/disk9s2": Einhaengung(ort: "/Volumes/Drobo", nurlesen: true, treiber: .kernel)]
+        XCTAssertEqual(netzEinhaengung(lun: 1, tabelle: tab)?.ort, "/Volumes/DROPRO1"); XCTAssertNil(netzEinhaengung(lun: 0, tabelle: tab)); XCTAssertEqual(iscsiEingehaengteLuns(tabelle: tab), [1])
+        XCTAssertEqual(iscsiLunAusQuelle("iscsi://127.0.0.1:1/iqn/12"), 12); XCTAssertNil(iscsiLunAusQuelle("/dev/disk9s2")); XCTAssertNil(iscsiLunAusQuelle("iscsi://127.0.0.1:1/iqn/x"))
+    }
 }

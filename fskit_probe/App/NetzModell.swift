@@ -42,21 +42,22 @@ extension DroboModell {
 
     func lunEinhaengen(_ lun: Int, schreiben: Bool) {
         guard let nz = aktuell?.eintrag.netz else { return }
-        let e = einstellungen, fp = weckFortschritt(aktuell?.eintrag.uuid ?? "")
+        let e = einstellungen, fp = weckFortschritt(aktuell?.eintrag.uuid ?? ""), name = nz.luns?.first { $0.lun == lun }?.name
         ausfuehren(schreiben ? "Zum Schreiben einhängen" : "Einhängen") { [ablage] in
-            try iscsiEinhaengen(host: nz.host, lun: lun, schreiben: schreiben, ziel: nil, ort: nil, sicherung: schreiben ? (e.sicherungOrt, e.sicherungAnzahl) : nil, meldung: { ablage.protokoll("Netzwerk-Drobo LUN \(lun): \($0)") }, weckfortschritt: fp)
+            try iscsiEinhaengen(host: nz.host, lun: lun, schreiben: schreiben, ziel: nil, ort: iscsiEinhaengeort(einstellung: e.einhaengeort), sicherung: schreiben ? (e.sicherungOrt, e.sicherungAnzahl) : nil, volumenName: name, meldung: { ablage.protokoll("Netzwerk-Drobo LUN \(lun): \($0)") }, weckfortschritt: fp)
             return nil
         }
     }
 
     func lunAushaengen(_ lun: Int) {
-        ausfuehren("Aushängen") { [ablage] in try iscsiAushaengen(ort: iscsiOrt(lun)); ablage.protokoll("Netzwerk-Drobo LUN \(lun) ausgehängt"); return nil }
+        ausfuehren("Aushängen") { [ablage] in try iscsiAushaengen(lun: lun); ablage.protokoll("Netzwerk-Drobo LUN \(lun) ausgehängt"); return nil }
     }
 
     func alleLunsEinhaengen() {
         guard let nz = aktuell?.eintrag.netz else { return }
+        let e = einstellungen, namen = Dictionary((nz.luns ?? []).map { ($0.lun, $0.name) }, uniquingKeysWith: { a, _ in a })
         ausfuehren("Alle einhängen") { [ablage] in
-            let r = try iscsiAlleEinhaengen(host: nz.host, schreiben: false, meldung: { ablage.protokoll("Netzwerk-Drobo: \($0)") })
+            let r = try iscsiAlleEinhaengen(host: nz.host, schreiben: false, ort: iscsiEinhaengeort(einstellung: e.einhaengeort), namen: namen, meldung: { ablage.protokoll("Netzwerk-Drobo: \($0)") })
             let fehler = r.filter { $0.value != nil }.keys.sorted()
             return fehler.isEmpty ? nil : String(localized: "Nicht jede virtuelle Festplatte ließ sich einhängen. Einzelheiten stehen im Protokoll.")
         }

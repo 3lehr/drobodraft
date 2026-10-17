@@ -10,7 +10,8 @@ public struct NetzInfo: Equatable { public var name: String; public var gelbProz
 public func iscsiOrt(_ lun: Int) -> String { "\(iscsiVorgabeOrt)\(lun)" }
 
 /// Aktuelle Einhaengung dieser LUN (Mount-Tabelle), nil = nicht eingehaengt.
-public func netzEinhaengung(lun: Int) -> Einhaengung? { einhaengungen().values.first { $0.ort == iscsiOrt(lun) || $0.ort == "/private" + iscsiOrt(lun) } }
+/// Gesucht wird in der Mount-Tabelle nach der QUELLE (iscsi://.../<lun>), nicht nach einem festen Ort: der Ort ist /Volumes/<Name> oder der alte /private/tmp-Ort.
+public func netzEinhaengung(lun: Int, tabelle: [String: Einhaengung] = einhaengungen()) -> Einhaengung? { tabelle.first { iscsiLunAusQuelle($0.key) == lun }?.value }
 
 /// Lesequelle auf die Partition einer LUN (Offsets ab Partitionsanfang, 512-B-Sektoren, nie ueber das Partitionsende).
 func partitionLeser(_ s: ISCSISitzung, lun: Int, partition p: GPT.Partition) -> (UInt64, Int) throws -> [UInt8] {

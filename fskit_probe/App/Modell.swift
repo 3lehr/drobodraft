@@ -396,10 +396,10 @@ final class DroboModell: ObservableObject {
 
     /// Netzwerk-Drobo einhaengen (ueber den Hilfsdienst); Schreiben nur mit Metadaten-Sicherung (der Kern lehnt sonst ab).
     func netzEinhaengen(_ nz: NetzZiel, schreiben: Bool) {
-        let e = einstellungen, u = aktuell?.eintrag.uuid ?? "", fp = weckFortschritt(u)
+        let e = einstellungen, u = aktuell?.eintrag.uuid ?? "", fp = weckFortschritt(u), name = nz.luns?.first { $0.lun == nz.lun }?.name
         ausfuehren(schreiben ? "Zum Schreiben einhängen" : "Einhängen") { [ablage] in
-            try iscsiEinhaengen(host: nz.host, lun: nz.lun, schreiben: schreiben, ziel: nil, ort: nil, sicherung: schreiben ? (e.sicherungOrt, e.sicherungAnzahl) : nil,
-                                meldung: { ablage.protokoll("Netzwerk-Drobo: \($0)") }, weckfortschritt: fp)
+            try iscsiEinhaengen(host: nz.host, lun: nz.lun, schreiben: schreiben, ziel: nil, ort: iscsiEinhaengeort(einstellung: e.einhaengeort), sicherung: schreiben ? (e.sicherungOrt, e.sicherungAnzahl) : nil,
+                                volumenName: name, meldung: { ablage.protokoll("Netzwerk-Drobo: \($0)") }, weckfortschritt: fp)
             return nil
         }
     }
@@ -416,7 +416,7 @@ final class DroboModell: ObservableObject {
 
     func aushaengen() {
         if let nz = aktuell?.eintrag.netz {
-            ausfuehren("Aushängen") { [ablage] in try iscsiAushaengen(ort: iscsiOrt(nz.lun)); ablage.protokoll("Netzwerk-Drobo ausgehängt"); return nil }
+            ausfuehren("Aushängen") { [ablage] in try iscsiAushaengen(lun: nz.lun); ablage.protokoll("Netzwerk-Drobo ausgehängt"); return nil }
             return
         }
         let k = kern(auswahl)
@@ -428,10 +428,10 @@ final class DroboModell: ObservableObject {
 
     func neuZumSchreiben() {
         if let nz = aktuell?.eintrag.netz {
-            let e = einstellungen, fp = weckFortschritt(aktuell?.eintrag.uuid ?? "")
+            let e = einstellungen, fp = weckFortschritt(aktuell?.eintrag.uuid ?? ""), name = nz.luns?.first { $0.lun == nz.lun }?.name
             ausfuehren("Zum Schreiben neu einhängen") { [ablage] in
-                try iscsiAushaengen(ort: iscsiOrt(nz.lun))
-                try iscsiEinhaengen(host: nz.host, lun: nz.lun, schreiben: true, ziel: nil, ort: nil, sicherung: (e.sicherungOrt, e.sicherungAnzahl), meldung: { ablage.protokoll("Netzwerk-Drobo: \($0)") }, weckfortschritt: fp)
+                try iscsiAushaengen(lun: nz.lun)
+                try iscsiEinhaengen(host: nz.host, lun: nz.lun, schreiben: true, ziel: nil, ort: iscsiEinhaengeort(einstellung: e.einhaengeort), sicherung: (e.sicherungOrt, e.sicherungAnzahl), volumenName: name, meldung: { ablage.protokoll("Netzwerk-Drobo: \($0)") }, weckfortschritt: fp)
                 return nil
             }
             return
