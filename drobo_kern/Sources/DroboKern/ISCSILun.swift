@@ -48,6 +48,7 @@ public func lunSeite04(_ b: [UInt8]) -> [LunSeite04]? {
 }
 
 public struct LunEintrag: Equatable {
+    public init(lun: Int, groesse: UInt64, schema: String, partitionBytes: UInt64?, uuid: String?) { self.lun = lun; self.groesse = groesse; self.schema = schema; self.partitionBytes = partitionBytes; self.uuid = uuid }
     public var lun: Int
     public var groesse: UInt64          // READ CAPACITY, Bytes
     public var schema: String           // "GPT" / "-"

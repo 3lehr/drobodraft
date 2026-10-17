@@ -33,7 +33,10 @@ struct HauptAnsicht: View {
         .navigationTitle("DroboDraft")
         .sheet(isPresented: $anleitung) { SpotlightAnleitung() }
         .onReceive(NotificationCenter.default.publisher(for: .schreibenFrage)) { _ in rwFrage = true }
-        .sheet(isPresented: $rwFrage) { SchreibenBestaetigung() }
+        .sheet(isPresented: $rwFrage, onDismiss: { m.schreibenLun = nil }) { SchreibenBestaetigung() }
+        .sheet(isPresented: Binding(get: { m.umbenennenUUID != nil }, set: { if !$0 { m.umbenennenUUID = nil } })) {
+            if let u = m.umbenennenUUID { UmbenennenBlatt(uuid: u, name: m.einstellungen.drobos.first { $0.uuid == u }?.name ?? "") }
+        }
         .alert(item: $m.meldung) { Alert(title: Text(LocalizedStringKey($0.titel)), message: Text($0.text), dismissButton: .default(Text("OK"))) }
         .overlay(alignment: .top) { if let a = m.arbeit { Label("\(a) …", systemImage: "hourglass").padding(8).background(.regularMaterial, in: Capsule()).padding(.top, 8) } }
     }
@@ -200,7 +203,8 @@ struct SchreibenBestaetigung: View {
                 Button("Abbrechen") { dismiss() }.keyboardShortcut(.defaultAction)
                 Button("Zum Schreiben einhängen") {
                     dismiss()
-                    if m.aktuell?.eingehaengt == true { m.neuZumSchreiben() } else { m.einhaengen(schreiben: true) }
+                    if let l = m.schreibenLun { m.lunEinhaengen(l, schreiben: true) }
+                    else if m.aktuell?.eingehaengt == true { m.neuZumSchreiben() } else { m.einhaengen(schreiben: true) }
                 }.disabled(m.einstellungen.sicherungOrt.isEmpty)
             }
         }.padding(24).frame(width: 480)

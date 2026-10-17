@@ -6304,6 +6304,390 @@
           }
         }
       }
+    },
+    "Volume %lld": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volume %lld"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volume %lld"
+          }
+        }
+      }
+    },
+    "Virtuelle Festplatten": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Virtuelle Festplatten"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Virtual disks"
+          }
+        }
+      }
+    },
+    "Die Drobo stellt dem Mac mehrere virtuelle Festplatten (Volumes) zur Verfügung. Jede lässt sich einzeln einhängen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Drobo stellt dem Mac mehrere virtuelle Festplatten (Volumes) zur Verfügung. Jede lässt sich einzeln einhängen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Drobo offers the Mac several virtual disks (volumes). Each one can be mounted separately."
+          }
+        }
+      }
+    },
+    "Alle einhängen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle einhängen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mount all"
+          }
+        }
+      }
+    },
+    "Alle aushängen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle aushängen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unmount all"
+          }
+        }
+      }
+    },
+    "Nicht eingehängt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht eingehängt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not mounted"
+          }
+        }
+      }
+    },
+    "Kein Dateisystem": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein Dateisystem"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No file system"
+          }
+        }
+      }
+    },
+    "Zum Schreiben einhängen …": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zum Schreiben einhängen …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mount for writing …"
+          }
+        }
+      }
+    },
+    "Formatieren …": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Formatieren …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Format …"
+          }
+        }
+      }
+    },
+    "Zum Formatieren zuerst aushängen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zum Formatieren zuerst aushängen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unmount first to format."
+          }
+        }
+      }
+    },
+    "Formatiert diese virtuelle Festplatte neu.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Formatiert diese virtuelle Festplatte neu."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Formats this virtual disk anew."
+          }
+        }
+      }
+    },
+    "Volume %lld formatieren?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volume %lld formatieren?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Format volume %lld?"
+          }
+        }
+      }
+    },
+    "Alle Daten dieser virtuellen Festplatte gehen verloren. Das lässt sich nicht rückgängig machen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle Daten dieser virtuellen Festplatte gehen verloren. Das lässt sich nicht rückgängig machen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All data on this virtual disk will be lost. This cannot be undone."
+          }
+        }
+      }
+    },
+    "Größe der virtuellen Festplatte: %@. Sie wird mit einem leeren Dateisystem (Mac OS Extended) neu angelegt.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Größe der virtuellen Festplatte: %@. Sie wird mit einem leeren Dateisystem (Mac OS Extended) neu angelegt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Size of the virtual disk: %@. It is set up anew with an empty file system (Mac OS Extended)."
+          }
+        }
+      }
+    },
+    "Der Name darf nicht leer sein, keinen Doppelpunkt enthalten und höchstens 27 Zeichen lang sein.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Name darf nicht leer sein, keinen Doppelpunkt enthalten und höchstens 27 Zeichen lang sein."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The name must not be empty, must not contain a colon and may be at most 27 characters long."
+          }
+        }
+      }
+    },
+    "Formatieren": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Formatieren"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Format"
+          }
+        }
+      }
+    },
+    "Drobo umbenennen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drobo umbenennen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rename Drobo"
+          }
+        }
+      }
+    },
+    "Der Name gilt nur in dieser App.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Name gilt nur in dieser App."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The name only applies in this app."
+          }
+        }
+      }
+    },
+    "Speichern": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speichern"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save"
+          }
+        }
+      }
+    },
+    "Umbenennen …": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Umbenennen …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rename …"
+          }
+        }
+      }
+    },
+    "Nicht jede virtuelle Festplatte ließ sich einhängen. Einzelheiten stehen im Protokoll.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht jede virtuelle Festplatte ließ sich einhängen. Einzelheiten stehen im Protokoll."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not every virtual disk could be mounted. Details are in the log."
+          }
+        }
+      }
+    },
+    "Formatieren nicht möglich": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Formatieren nicht möglich"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Formatting not possible"
+          }
+        }
+      }
+    },
+    "Wählen Sie zuerst einen Sicherungsort (anderes Laufwerk als die Drobo und das Startvolume): Beim Formatieren wird dort kurz ein Abbild der neuen Partition aufgebaut (mindestens 20 GB frei).": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wählen Sie zuerst einen Sicherungsort (anderes Laufwerk als die Drobo und das Startvolume): Beim Formatieren wird dort kurz ein Abbild der neuen Partition aufgebaut (mindestens 20 GB frei)."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "First choose a backup location (a different drive than the Drobo and the startup volume): formatting briefly builds an image of the new partition there (at least 20 GB free)."
+          }
+        }
+      }
+    },
+    "Fertig. Die virtuelle Festplatte ist neu formatiert und kann eingehängt werden.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fertig. Die virtuelle Festplatte ist neu formatiert und kann eingehängt werden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done. The virtual disk is formatted anew and can be mounted."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

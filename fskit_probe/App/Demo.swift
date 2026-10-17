@@ -18,7 +18,7 @@ enum DemoDaten {
 
     static func eintraege() -> [DroboEintrag]? {
         guard let a = art else { return nil }
-        let c = DroboEintrag(uuid: uuid5C, name: "Drobo 5C"), p = DroboEintrag(uuid: uuidPro, name: "DroboPro", netz: NetzZiel(host: "192.0.2.10", lun: 0))
+        let c = DroboEintrag(uuid: uuid5C, name: "Drobo 5C"), p = DroboEintrag(uuid: uuidPro, name: "DroboPro", netz: NetzZiel(host: "192.0.2.10", lun: 0, iqn: nil, luns: [NetzLunEintrag(lun: 0, uuid: "00000000-0000-4000-8000-00000000D0B1", name: "ARCHIV"), NetzLunEintrag(lun: 1, uuid: uuidPro, name: "DROPRO1")]))
         return a == "5c" ? [c] : (a == "pro" ? [p] : [c, p])
     }
 
@@ -57,6 +57,8 @@ enum DemoDaten {
                     for i in h.schaechte.indices { h.schaechte[i].farbe = f[i] }
                     h.schwere = .kritisch; a.hw = h
                 }
+                a.luns = [LunEintrag(lun: 0, groesse: 16 << 40, schema: "GPT", partitionBytes: 2 << 40, uuid: "00000000-0000-4000-8000-00000000D0B1"), LunEintrag(lun: 1, groesse: 16 << 40, schema: "GPT", partitionBytes: 2 << 40, uuid: uuidPro), LunEintrag(lun: 2, groesse: 16 << 40, schema: "-", partitionBytes: nil, uuid: nil)]
+                a.lunEingehaengt = [1: true]
                 a.netz = NetzInfo(name: "DroboPro", gelbProzent: 85, rotProzent: 95); a.netzStand = Date()
             }
             r[e.uuid] = a

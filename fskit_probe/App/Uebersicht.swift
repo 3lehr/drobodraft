@@ -15,6 +15,7 @@ struct UebersichtAnsicht: View {
                         ZustandPunkt(stufe: a.stufe, gesamt: a.hwZustand)
                         Text(a.eintrag.name).font(.largeTitle).accessibilityAddTraits(.isHeader)
                         Spacer()
+                        Button { m.umbenennenUUID = a.eintrag.uuid } label: { Label("Umbenennen …", systemImage: "pencil") }.labelStyle(.iconOnly).help("Drobo umbenennen")
                         FruehAlphaAbzeichen()
                     }
                     Text(a.zustandText).font(.title3).foregroundStyle(.secondary)
@@ -51,6 +52,7 @@ struct UebersichtAnsicht: View {
                         if let g = a.merker.offenePruefung {
                             Hinweis(symbol: "exclamationmark.triangle.fill", text: "Vor dem nächsten Einhängen wird geprüft: \(g)", farbe: .red)
                         }
+                        if a.eintrag.netz != nil && !a.luns.isEmpty { LunKarte(a: a, rwFrage: $rwFrage) }
                         Karte(titel: "Einhängung") {
                             if let nz = a.eintrag.netz { Zeile(name: "Adresse", wert: nz.host) }
                             if a.eingehaengt {

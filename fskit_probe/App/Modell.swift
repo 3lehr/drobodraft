@@ -22,6 +22,8 @@ struct DroboAnsicht: Equatable {
     var netz: NetzInfo?            // Netzwerk-Drobo: Name und Schwellen aus den Statusseiten
     var netzStand: Date?           // Netzwerk-Drobo: wann der Status zuletzt gelesen wurde
     var netzFehler: String?        // Netzwerk-Drobo: warum der Status nicht gelesen werden konnte
+    var luns: [LunEintrag] = []    // Netzwerk-Drobo: alle LUNs (virtuelle Platten) laut letztem Kontakt
+    var lunEingehaengt: [Int: Bool] = [:]   // eingehaengte LUNs (Wert = nur lesen)
 
     /// Gesamtzustand fuer Uebersicht und Seitenleiste (Kern); Schwellen aus Seite 30 bei der DroboPro, sonst die Vorgabe 85/95 (USB: Seite 30 noch nicht gelesen).
     var hwZustand: Gesamtzustand? { hw.map { gesamtzustand($0, gelbProzent: netz?.gelbProzent ?? 85, rotProzent: netz?.rotProzent ?? 95, pruefungOK: merker.letztePruefung?.ok) } }
@@ -102,6 +104,9 @@ final class DroboModell: ObservableObject {
     /// "Drobos suchen": im LAN gefundene, noch nicht eingerichtete Drobos (USB-Funde stehen in `erkannte`).
     @Published var lanErkannte: [LanDrobo] = []
     @Published var sucheLaeuft = false
+    /// Netzwerk-Drobo: LUN, fuer die das Bestaetigungsblatt "Zum Schreiben einhaengen" gerade gilt (nil = die Haupt-LUN); Eintrag, der umbenannt wird.
+    @Published var schreibenLun: Int?
+    @Published var umbenennenUUID: String?
     /// UUIDs, die die letzte Suche fand und die schon eingerichtet sind ("schon hinzugefuegt" in "Drobos finden").
     @Published var sucheBekannt: Set<String> = []
     @Published var sucheInfo: String?
@@ -157,24 +162,34 @@ final class DroboModell: ObservableObject {
         let ds = einstellungen.drobos
         let alt = drobos
         let jetzt = Date()
+        let eingehaengteHosts = Set(drobos.values.filter { $0.eingehaengt || !$0.lunEingehaengt.isEmpty }.compactMap { $0.eintrag.netz?.host })
         let netzLesen = Set(ds.filter { d in d.netz != nil && (freigabe || jetzt.timeIntervalSince(netzVersuch[d.uuid] ?? .distantPast) > 60) }.map { $0.uuid })
         for u in netzLesen { netzVersuch[u] = jetzt }
         Task.detached { [ablage] in
             var neu: [String: DroboAnsicht] = [:]
             var zugriff: Bool?
+            var ziele: [String: NetzZiel] = [:]      // neue Adresse/IQN je Netzwerk-Drobo (wird nach dem Lauf gespeichert)
             for d in ds {
                 var k = Kern(uuid: d.uuid); k.ablage = ablage
                 var a = DroboAnsicht(eintrag: d)
                 if let nz = d.netz {            // Netzwerk-Drobo: eigener Weg, kein Geraeteknoten
                     let v = alt[d.uuid]
                     (a.hw, a.netz, a.netzStand, a.netzFehler) = (v?.hw, v?.netz, v?.netzStand, v?.netzFehler)
+                    a.luns = v?.luns ?? []
+                    for l in Set(a.luns.map(\.lun)).union([nz.lun]) { if let e = netzEinhaengung(lun: l) { a.lunEingehaengt[l] = e.nurlesen } }
                     if let e = netzEinhaengung(lun: nz.lun) {      // eingehaengt: keine zweite Sitzung oeffnen
                         a.verbunden = true; a.eingehaengt = true; a.nurlesen = e.nurlesen; a.ort = e.ort; a.treiber = "iSCSI"
                         var s = statfs()
                         if statfs(e.ort, &s) == 0 { a.gesamt = UInt64(s.f_blocks) * UInt64(s.f_bsize); a.belegt = a.gesamt - UInt64(s.f_bfree) * UInt64(s.f_bsize) }
                     } else if netzLesen.contains(d.uuid) {
-                        do { let (st, info) = try netzStatusLesen(host: nz.host); (a.hw, a.netz, a.netzStand, a.netzFehler) = (st, info, Date(), nil) }
-                        catch { (a.hw, a.netzFehler) = (nil, Self.fehlerText(error)) }
+                        do {
+                            let (st, info) = try netzStatusLesen(host: nz.host); (a.hw, a.netz, a.netzStand, a.netzFehler) = (st, info, Date(), nil)
+                            let k = Self.netzKontakt(nz); if !k.luns.isEmpty { a.luns = k.luns }
+                            if let n = k.ziel { ziele[d.uuid] = n }
+                        } catch {
+                            (a.hw, a.netzFehler) = (nil, Self.fehlerText(error))
+                            if let n = Self.netzAdresseNachfuehren(nz, ablage: ablage, ausnehmen: eingehaengteHosts) { ziele[d.uuid] = n }
+                        }
                     }
                     a.verbunden = a.verbunden || (a.hw != nil && a.netzFehler == nil)
                     a.merker = ablage.merker(d.uuid)
@@ -214,6 +229,7 @@ final class DroboModell: ObservableObject {
             await MainActor.run { [neu, zugriff] in
                 if let z = zugriff { self.festplattenzugriff = z ? String(localized: "in Ordnung") : String(localized: "fehlt") }
                 self.erkannte = erk
+                self.zieleUebernehmen(ziele)
                 self.uebernehmen(neu, modul: m, dienst: hd)
             }
         }
@@ -494,12 +510,13 @@ final class DroboModell: ObservableObject {
         }
     }
 
+    /// Ein Eintrag je Drobo (alle LUNs darin), nicht je LUN.
     func lanHinzufuegen(_ d: LanDrobo) {
-        for (i, l) in d.luns.enumerated() {
-            einstellungen.drobos.removeAll { $0.uuid == l.uuid }
-            einstellungen.drobos.append(DroboEintrag(uuid: l.uuid, name: d.luns.count > 1 ? "DroboPro \(i + 1)" : "DroboPro", netz: NetzZiel(host: d.host, lun: l.lun)))
-        }
-        if let l = d.luns.first { auswahl = l.uuid }
+        guard let erste = d.luns.first else { return }
+        let l = d.luns.map { NetzLunEintrag(lun: $0.lun, uuid: $0.uuid, name: String(localized: "Volume \($0.lun + 1)")) }
+        einstellungen.drobos.removeAll { e in d.luns.contains { $0.uuid == e.uuid } }
+        einstellungen.drobos.append(DroboEintrag(uuid: erste.uuid, name: "DroboPro", netz: NetzZiel(host: d.host, lun: erste.lun, iqn: nil, luns: l)))
+        auswahl = erste.uuid
         sucheBekannt.formUnion(d.luns.map(\.uuid))
         lanErkannte.removeAll { $0.host == d.host }
         einstellungenSpeichern()
