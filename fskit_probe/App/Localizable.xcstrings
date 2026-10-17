@@ -4704,6 +4704,422 @@
           }
         }
       }
+    },
+    "Adresse": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adresse"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Address"
+          }
+        }
+      }
+    },
+    "Adresse der DroboPro": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adresse der DroboPro"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Address of the DroboPro"
+          }
+        }
+      }
+    },
+    "Auf dieser Drobo wurde kein eingerichtetes Volume gefunden.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf dieser Drobo wurde kein eingerichtetes Volume gefunden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No set-up volume was found on this Drobo."
+          }
+        }
+      }
+    },
+    "Die DroboPro ist nicht erreichbar. Prüfen Sie, ob sie eingeschaltet und mit dem Netzwerk verbunden ist, und wählen Sie links „Drobos suchen“.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die DroboPro ist nicht erreichbar. Prüfen Sie, ob sie eingeschaltet und mit dem Netzwerk verbunden ist, und wählen Sie links „Drobos suchen“."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The DroboPro is not reachable. Check that it is switched on and connected to the network, then choose “Find Drobos” on the left."
+          }
+        }
+      }
+    },
+    "Die Statusdaten sind nicht mehr aktuell. Sie werden nicht gelesen, solange die DroboPro eingehängt ist; „Drobos suchen“ liest sie neu.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Statusdaten sind nicht mehr aktuell. Sie werden nicht gelesen, solange die DroboPro eingehängt ist; „Drobos suchen“ liest sie neu."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The status data is no longer current. It is not read while the DroboPro is mounted; “Find Drobos” reads it again."
+          }
+        }
+      }
+    },
+    "Die Suche im lokalen Netzwerk ist nicht möglich. Läuft der Hilfsdienst?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Suche im lokalen Netzwerk ist nicht möglich. Läuft der Hilfsdienst?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The search in the local network is not possible. Is the helper service running?"
+          }
+        }
+      }
+    },
+    "Drobos suchen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drobos suchen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Find Drobos"
+          }
+        }
+      }
+    },
+    "Drobos suchen, USB und lokales Netzwerk": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drobos suchen, USB und lokales Netzwerk"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Find Drobos, USB and local network"
+          }
+        }
+      }
+    },
+    "Geben Sie die Adresse der DroboPro im lokalen Netzwerk ein. Sie finden sie in Ihrem Router. Die App sucht dort nach eingerichteten Volumes.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geben Sie die Adresse der DroboPro im lokalen Netzwerk ein. Sie finden sie in Ihrem Router. Die App sucht dort nach eingerichteten Volumes."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter the address of the DroboPro in your local network. You find it in your router. The app looks there for set-up volumes."
+          }
+        }
+      }
+    },
+    "Im Netzwerk gefunden: DroboPro (%@)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Im Netzwerk gefunden: DroboPro (%@)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Found in the network: DroboPro (%@)"
+          }
+        }
+      }
+    },
+    "Keine Drobo gefunden.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Drobo gefunden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Drobo found."
+          }
+        }
+      }
+    },
+    "Keine Verbindung zu dieser Adresse. Zulässig sind nur Adressen im privaten Netz, zum Beispiel 192.168.1.20.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Verbindung zu dieser Adresse. Zulässig sind nur Adressen im privaten Netz, zum Beispiel 192.168.1.20."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No connection to this address. Only addresses in the private network are allowed, for example 192.168.1.20."
+          }
+        }
+      }
+    },
+    "Netzwerk (iSCSI)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Netzwerk (iSCSI)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Network (iSCSI)"
+          }
+        }
+      }
+    },
+    "Netzwerk-Drobo hinzufügen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Netzwerk-Drobo hinzufügen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add network Drobo"
+          }
+        }
+      }
+    },
+    "Nicht angeschlossen. Die Aktionen sind verfügbar, sobald die Drobo angeschlossen ist.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht angeschlossen. Die Aktionen sind verfügbar, sobald die Drobo angeschlossen ist."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not connected. The actions become available as soon as the Drobo is connected."
+          }
+        }
+      }
+    },
+    "Nicht erreichbar": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht erreichbar"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not reachable"
+          }
+        }
+      }
+    },
+    "Nicht erreichbar. Die Aktionen sind verfügbar, sobald die DroboPro im Netzwerk gefunden wird.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht erreichbar. Die Aktionen sind verfügbar, sobald die DroboPro im Netzwerk gefunden wird."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not reachable. The actions become available as soon as the DroboPro is found in the network."
+          }
+        }
+      }
+    },
+    "Noch keine Statusdaten von der DroboPro. Sie werden beim Start und über „Drobos suchen“ gelesen, nicht während sie eingehängt ist.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch keine Statusdaten von der DroboPro. Sie werden beim Start und über „Drobos suchen“ gelesen, nicht während sie eingehängt ist."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No status data from the DroboPro yet. It is read at start and by “Find Drobos”, not while the DroboPro is mounted."
+          }
+        }
+      }
+    },
+    "Per Adresse hinzufügen …": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Per Adresse hinzufügen …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add by address …"
+          }
+        }
+      }
+    },
+    "Prüfen, Zurückspielen und Wegsichern gibt es für Netzwerk-Drobos noch nicht. Vor dem Einhängen zum Schreiben wird die Sicherung der Verwaltungsdaten angelegt.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prüfen, Zurückspielen und Wegsichern gibt es für Netzwerk-Drobos noch nicht. Vor dem Einhängen zum Schreiben wird die Sicherung der Verwaltungsdaten angelegt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking, restoring and copying folders out are not available for network Drobos yet. The backup of the management data is created before mounting for writing."
+          }
+        }
+      }
+    },
+    "Suche läuft …": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suche läuft …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Searching …"
+          }
+        }
+      }
+    },
+    "Suchen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suchen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search"
+          }
+        }
+      }
+    },
+    "Verbunden, nicht eingehängt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbunden, nicht eingehängt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connected, not mounted"
+          }
+        }
+      }
+    },
+    "Volume %lld, %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volume %lld, %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volume %lld, %@"
+          }
+        }
+      }
+    },
+    "bereits hinzugefügt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bereits hinzugefügt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "already added"
+          }
+        }
+      }
+    },
+    "zum Beispiel 192.168.1.20": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "zum Beispiel 192.168.1.20"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "for example 192.168.1.20"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

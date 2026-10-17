@@ -13,27 +13,38 @@ struct HauptAnsicht: View {
     @State private var abschnitt: Abschnitt? = .uebersicht
     @State private var rwFrage = false
     @State private var anleitung = false
+    @State private var netzBlatt = false
 
     var body: some View {
         NavigationSplitView {
             List {
                 Section("Drobo") {
-                    if m.liste.isEmpty {
-                        Text("Keine Drobo eingerichtet").foregroundStyle(.secondary)
-                        if m.erkannte.isEmpty { Text("Keine Drobo erkannt. Drobo anschließen.").font(.callout).foregroundStyle(.secondary) }
-                        ForEach(m.erkannte, id: \.uuid) { e in
-                            HStack { Text(e.name.isEmpty ? "Drobo" : e.name); Spacer(); Button("Hinzufügen") { m.hinzufuegen(e) } }
-                                .accessibilityElement(children: .combine)
-                        }
-                    }
+                    Button { m.drobosSuchen() } label: { Label(m.sucheLaeuft ? "Suche läuft …" : "Drobos suchen", systemImage: "magnifyingglass") }
+                        .disabled(m.sucheLaeuft)
+                        .accessibilityLabel("Drobos suchen, USB und lokales Netzwerk")
+                    if let i = m.sucheInfo { Text(i).font(.callout).foregroundStyle(.secondary) }
+                    if m.liste.isEmpty { Text("Keine Drobo eingerichtet").foregroundStyle(.secondary) }
                     ForEach(m.liste, id: \.eintrag.uuid) { d in
                         Button { m.auswahl = d.eintrag.uuid } label: {
-                            HStack { ZustandPunkt(stufe: d.stufe); Text(d.eintrag.name); Spacer(); if m.auswahl == d.eintrag.uuid { Image(systemName: "checkmark").accessibilityHidden(true) } }
+                            HStack {
+                                ZustandPunkt(stufe: d.stufe)
+                                VStack(alignment: .leading, spacing: 1) { Text(d.eintrag.name); Text(d.zustandText).font(.caption).foregroundStyle(.secondary) }
+                                Spacer(); if m.auswahl == d.eintrag.uuid { Image(systemName: "checkmark").accessibilityHidden(true) }
+                            }
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("\(d.eintrag.name), \(d.zustandText)")
                         .accessibilityAddTraits(m.auswahl == d.eintrag.uuid ? [.isSelected, .isButton] : .isButton)
                     }
+                    ForEach(m.erkannte, id: \.uuid) { e in
+                        HStack { Text(e.name.isEmpty ? "Drobo" : e.name); Spacer(); Button("Hinzufügen") { m.hinzufuegen(e) } }
+                            .accessibilityElement(children: .combine)
+                    }
+                    ForEach(m.lanErkannte, id: \.host) { d in
+                        HStack { Label("Im Netzwerk gefunden: DroboPro (\(d.host))", systemImage: "network"); Spacer(); Button("Hinzufügen") { m.lanHinzufuegen(d) } }
+                            .accessibilityElement(children: .combine)
+                    }
+                    Button { netzBlatt = true } label: { Label("Per Adresse hinzufügen …", systemImage: "plus") }.font(.callout)
                 }
                 Section("Ansicht") {
                     ForEach(Abschnitt.allCases) { a in
@@ -64,6 +75,7 @@ struct HauptAnsicht: View {
         .safeAreaInset(edge: .bottom, spacing: 0) { Statusleiste() }
         .navigationTitle("DroboDraft")
         .sheet(isPresented: $anleitung) { SpotlightAnleitung() }
+        .sheet(isPresented: $netzBlatt) { NetzHinzufuegenBlatt() }
         .onReceive(NotificationCenter.default.publisher(for: .schreibenFrage)) { _ in rwFrage = true }
         .sheet(isPresented: $rwFrage) { SchreibenBestaetigung() }
         .alert(item: $m.meldung) { Alert(title: Text(LocalizedStringKey($0.titel)), message: Text($0.text), dismissButton: .default(Text("OK"))) }
@@ -104,10 +116,13 @@ struct UebersichtAnsicht: View {
                         FruehAlphaAbzeichen()
                     }
                     Text(a.zustandText).font(.title3).foregroundStyle(.secondary)
+                    if a.eintrag.netz != nil && !a.verbunden {
+                        Hinweis(symbol: "wifi.exclamationmark", text: "Die DroboPro ist nicht erreichbar. Prüfen Sie, ob sie eingeschaltet und mit dem Netzwerk verbunden ist, und wählen Sie links „Drobos suchen“.", farbe: .orange)
+                    }
                     if a.eintrag.rolle == .timemachine {
                         Hinweis(symbol: "clock.arrow.circlepath", text: "Dieses Laufwerk ist als Time-Machine-Ziel eingetragen. Die App zeigt nur den Anschluss; macOS verwaltet das Laufwerk und die App hängt es nie selbst ein.", farbe: .blue)
                     } else {
-                        if m.festplattenzugriff == String(localized: "fehlt") {
+                        if m.festplattenzugriff == String(localized: "fehlt") && a.eintrag.netz == nil {
                             VStack(alignment: .leading, spacing: 8) {
                                 Hinweis(symbol: "lock.trianglebadge.exclamationmark", text: "Der Hilfsdienst darf nicht auf das Laufwerk zugreifen. Ohne Festplattenvollzugriff lässt sich die Drobo nicht einhängen.", farbe: .red)
                                 Button("Systemeinstellungen öffnen") { m.festplattenzugriffOeffnen() }
@@ -125,7 +140,7 @@ struct UebersichtAnsicht: View {
                             if let k = a.hw?.kapazitaet, k.gesamtGeschuetzt > 0 {
                                 Divider()
                                 Text("Physisch (laut Drobo)").font(.subheadline).foregroundStyle(.secondary)
-                                BelegungsBalken(belegt: k.benutzt, gesamt: k.gesamtGeschuetzt, stand: nil, warnung: k.freiAnteil < 0.05 ? .red : (k.freiAnteil < 0.10 ? .orange : nil))
+                                BelegungsBalken(belegt: k.benutzt, gesamt: k.gesamtGeschuetzt, stand: nil, warnung: warnFarbe(k, a))
                                 Text("Physisch frei: \(groesseText(k.frei)) (\(Int((k.freiAnteil * 100).rounded())) %)").font(.callout)
                                 if let v = vol, v.gesamt > v.belegt, k.frei < v.gesamt - v.belegt {
                                     Hinweis(symbol: "exclamationmark.triangle.fill", text: "Die Drobo hat physisch weniger Platz frei, als das Volume anzeigt. Maßgeblich ist der physische Wert: Die Drobo meldet dem Mac mehr Speicher, als die Festplatten tatsächlich fassen.")
@@ -133,6 +148,7 @@ struct UebersichtAnsicht: View {
                             }
                         }
                         Karte(titel: "Einhängung") {
+                            if let nz = a.eintrag.netz { Zeile(name: "Adresse", wert: nz.host) }
                             if a.eingehaengt {
                                 Zeile(name: "Ort", wert: a.ort)
                                 Button { m.imFinderOeffnen() } label: { Label("Im Finder öffnen", systemImage: "folder") }.keyboardShortcut("o", modifiers: .command)
@@ -163,6 +179,13 @@ struct UebersichtAnsicht: View {
     }
 }
 
+/// Warnfarbe des physischen Fuellstands: Schwellen der Drobo (Seite 30, DroboPro gelb 85 / rot 95 Prozent belegt), sonst die festen 90 / 95 Prozent.
+func warnFarbe(_ k: DroboKapazitaet, _ a: DroboAnsicht) -> Color? {
+    let belegt = 1 - k.freiAnteil
+    if let n = a.netz { return belegt * 100 >= Double(n.rotProzent) ? .red : (belegt * 100 >= Double(n.gelbProzent) ? .orange : nil) }
+    return k.freiAnteil < 0.05 ? .red : (k.freiAnteil < 0.10 ? .orange : nil)
+}
+
 /// Aushaengen / Zum Schreiben neu: gleiche Knoepfe in Uebersicht und Volume.
 struct AktionsZeile: View {
     @EnvironmentObject var m: DroboModell
@@ -173,6 +196,8 @@ struct AktionsZeile: View {
             if a.eingehaengt {
                 Button { m.aushaengen() } label: { Label("Aushängen", systemImage: "eject") }.keyboardShortcut("e", modifiers: .command)
                 if a.nurlesen { Button { rwFrage = true } label: { Label("Zum Schreiben neu", systemImage: "pencil") } }
+            } else if !a.verbunden {
+                Text(a.eintrag.netz != nil ? "Nicht erreichbar. Die Aktionen sind verfügbar, sobald die DroboPro im Netzwerk gefunden wird." : "Nicht angeschlossen. Die Aktionen sind verfügbar, sobald die Drobo angeschlossen ist.").font(.callout).foregroundStyle(.secondary)
             } else if a.verbunden {
                 Button { m.einhaengen(schreiben: false) } label: { Label("Einhängen (nur lesen)", systemImage: "externaldrive.badge.plus") }
                 Button { rwFrage = true } label: { Label("Zum Schreiben einhängen", systemImage: "pencil") }
@@ -200,16 +225,19 @@ struct VolumeAnsicht: View {
                 VStack(alignment: .leading, spacing: 14) {
                     Text(a.eintrag.name).font(.largeTitle).accessibilityAddTraits(.isHeader)
                     Karte(titel: "Zugriff") {
-                        Zeile(name: "Freigabe", wert: a.freigabe == .schreiben ? String(localized: "Schreiben erlaubt") : (a.freigabe == .nurlesen ? String(localized: "nur lesen") : String(localized: "noch nicht eingerichtet")))
+                        if a.eintrag.netz == nil { Zeile(name: "Freigabe", wert: a.freigabe == .schreiben ? String(localized: "Schreiben erlaubt") : (a.freigabe == .nurlesen ? String(localized: "nur lesen") : String(localized: "noch nicht eingerichtet"))) }
                         AktionsZeile(a: a, rwFrage: $rwFrage)
-                        Button { m.zugriffPruefen() } label: { Label("Festplattenzugriff prüfen", systemImage: "checkmark.shield") }.disabled(!a.verbunden || a.eingehaengt || m.arbeit != nil)
+                        if a.eintrag.netz == nil { Button { m.zugriffPruefen() } label: { Label("Festplattenzugriff prüfen", systemImage: "checkmark.shield") }.disabled(!a.verbunden || a.eingehaengt || m.arbeit != nil) }
                     }
                     Karte(titel: "Sicherungen der Verwaltungsdaten") {
                         Text("Vor jedem Einhängen zum Schreiben wird automatisch gesichert. Aufbewahrt werden \(m.einstellungen.sicherungAnzahl) Sicherungen in \(m.einstellungen.sicherungOrt.isEmpty ? String(localized: "(noch kein Ort gewählt)") : m.einstellungen.sicherungOrt).").font(.callout).foregroundStyle(.secondary)
                         if a.sicherungen.isEmpty { Text("Noch keine Sicherung.") }
                         ForEach(a.sicherungen, id: \.self) { Text(sicherungsZeit($0)).font(.callout.monospacedDigit()) }
-                        Button { m.pruefen() } label: { Label("Jetzt prüfen", systemImage: "stethoscope") }.disabled(!a.verbunden || a.eingehaengt || m.arbeit != nil)
+                        if a.eintrag.netz == nil { Button { m.pruefen() } label: { Label("Jetzt prüfen", systemImage: "stethoscope") }.disabled(!a.verbunden || a.eingehaengt || m.arbeit != nil) }
                     }
+                    if a.eintrag.netz != nil {
+                        Hinweis(symbol: "info.circle", text: "Prüfen, Zurückspielen und Wegsichern gibt es für Netzwerk-Drobos noch nicht. Vor dem Einhängen zum Schreiben wird die Sicherung der Verwaltungsdaten angelegt.", farbe: .blue)
+                    } else {
                     Karte(titel: "Sicherung zurückspielen") {
                         Text("Stellt die gesicherten Verwaltungsdaten wieder her. Nur bei ausgehängtem Laufwerk. Zuerst gibt es einen Probelauf, der nichts schreibt.").font(.callout).foregroundStyle(.secondary)
                         if a.sicherungen.isEmpty { Text("Noch keine Sicherung.") } else {
@@ -234,6 +262,7 @@ struct VolumeAnsicht: View {
                         Button { m.wegsichern(quelle: quelle, ziel: ziel) } label: { Label("Wegsichern", systemImage: "arrow.down.doc") }
                             .disabled(quelle.isEmpty || ziel.isEmpty || !a.eingehaengt || m.arbeit != nil)
                         if !m.wegsichernBericht.isEmpty { Text(m.wegsichernBericht).font(.callout).textSelection(.enabled) }
+                    }
                     }
                 }.padding(20)
                 .onAppear { if m.restoreAuswahl.isEmpty || !a.sicherungen.contains(m.restoreAuswahl) { m.restoreAuswahl = a.sicherungen.first ?? "" } }

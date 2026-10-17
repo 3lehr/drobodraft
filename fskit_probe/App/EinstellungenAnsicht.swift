@@ -51,11 +51,11 @@ struct EinstellungenAnsicht: View {
                     HStack {
                         Text(d.name)
                         Spacer()
-                        Picker("Rolle von \(d.name)", selection: Binding(get: { d.rolle }, set: { r in
+                        if d.netz != nil { Text("Netzwerk (iSCSI)").foregroundStyle(.secondary) } else { Picker("Rolle von \(d.name)", selection: Binding(get: { d.rolle }, set: { r in
                             if let i = m.einstellungen.drobos.firstIndex(where: { $0.uuid == d.uuid }) { m.einstellungen.drobos[i].rolle = r; m.einstellungenSpeichern() } })) {
                             Text("Arbeitsvolume").tag(Rolle.arbeitsvolume)
                             Text("Time Machine (nur anzeigen)").tag(Rolle.timemachine)
-                        }.labelsHidden().frame(maxWidth: 260)
+                        }.labelsHidden().frame(maxWidth: 260) }
                         if m.einstellungen.drobos.count > 1 {
                             Button(role: .destructive) { m.einstellungen.drobos.removeAll { $0.uuid == d.uuid }; m.einstellungenSpeichern() } label: { Image(systemName: "minus.circle") }
                                 .accessibilityLabel("\(d.name) entfernen")

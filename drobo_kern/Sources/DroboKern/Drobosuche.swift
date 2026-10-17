@@ -1,6 +1,7 @@
 import Foundation
 
-public struct LanDrobo: Equatable { public var host: String; public var luns: [NetzLun] }
+public struct LanDrobo: Equatable { public var host: String; public var luns: [NetzLun]
+    public init(host: String, luns: [NetzLun]) { self.host = host; self.luns = luns } }
 public struct SuchErgebnis: Equatable { public var usb: [ErkannteDrobo]; public var lan: [LanDrobo]; public var lanFehler: String? }
 
 /// "Drobos suchen": USB (bestehende Erkennung) und LAN (ueber den Hilfsdienst, danach je Fund die Volumes). Nichts wird uebernommen; der Aufrufer bietet an.

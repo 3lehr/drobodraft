@@ -19,8 +19,16 @@ struct DroboAnsicht: Equatable {
     var sicherungen: [String] = []
     var belegungVH: Belegung?      // aus dem Volume-Header, auch ohne Einhaengung
     var hw: DroboStatus?           // Status der Drobo selbst (Dext), nil = kein Treiber/keine Daten
+    var netz: NetzInfo?            // Netzwerk-Drobo: Name und Schwellen aus den Statusseiten
+    var netzStand: Date?           // Netzwerk-Drobo: wann der Status zuletzt gelesen wurde
+    var netzFehler: String?        // Netzwerk-Drobo: warum der Status nicht gelesen werden konnte
 
     var zustandText: String {
+        if eintrag.netz != nil {
+            if !verbunden { return String(localized: "Nicht erreichbar") }
+            if !eingehaengt { return String(localized: "Verbunden, nicht eingehängt") }
+            return nurlesen ? String(localized: "Eingehängt, nur lesen") : String(localized: "Eingehängt, schreiben")
+        }
         if eintrag.rolle == .timemachine { return verbunden ? String(localized: "Time-Machine-Ziel, angeschlossen") : String(localized: "Time-Machine-Ziel, nicht angeschlossen") }
         if !verbunden { return String(localized: "Nicht angeschlossen") }
         if !eingehaengt { return String(localized: "Angeschlossen, nicht eingehängt") }
@@ -84,6 +92,15 @@ final class DroboModell: ObservableObject {
     /// Angeschlossene Drobos (SCSI-Hersteller "Drobo"), die noch nicht eingerichtet sind.
     @Published var erkannte: [ErkannteDrobo] = []
     private var waechter: [AbziehWaechter] = []
+    /// Netzwerk-Drobos: letzter Leseversuch je UUID (die DroboPro bedient nur eine Verbindung; nicht dauernd anklopfen, nicht waehrend sie eingehaengt ist).
+    private var netzVersuch: [String: Date] = [:]
+    @Published var netzTreffer: [NetzLun] = []
+    @Published var netzSucheLaeuft = false
+    /// "Drobos suchen": im LAN gefundene, noch nicht eingerichtete Drobos (USB-Funde stehen in `erkannte`).
+    @Published var lanErkannte: [LanDrobo] = []
+    @Published var sucheLaeuft = false
+    @Published var sucheInfo: String?
+    @Published var netzSucheFehler: String?
     private var timer: Timer?
     private var vorher: [String: DroboAnsicht.Stufe] = [:]
     private var vorherSchwere: [String: Schweregrad] = [:]
@@ -106,13 +123,14 @@ final class DroboModell: ObservableObject {
     func starten() {
         anmeldeStart = SMAppService.mainApp.status == .enabled
         aktualisieren()
+        drobosSuchen()
         timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in Task { @MainActor in self?.aktualisieren(freigabe: false) } }
         waechterNeu()
     }
 
     func waechterNeu() {
         waechter.forEach { $0.stop() }
-        waechter = einstellungen.drobos.filter { $0.rolle == .arbeitsvolume }.map { d in
+        waechter = einstellungen.drobos.filter { $0.rolle == .arbeitsvolume && $0.netz == nil }.map { d in
             let w = AbziehWaechter(uuid: d.uuid, ablage: ablage) { [weak self] ereignis in
                 Task { @MainActor in
                     guard let self else { return }
@@ -127,12 +145,32 @@ final class DroboModell: ObservableObject {
     func aktualisieren(freigabe: Bool = true) {
         let ds = einstellungen.drobos
         let alt = drobos
+        let jetzt = Date()
+        let netzLesen = Set(ds.filter { d in d.netz != nil && (freigabe || jetzt.timeIntervalSince(netzVersuch[d.uuid] ?? .distantPast) > 60) }.map { $0.uuid })
+        for u in netzLesen { netzVersuch[u] = jetzt }
         Task.detached { [ablage] in
             var neu: [String: DroboAnsicht] = [:]
             var zugriff: Bool?
             for d in ds {
                 var k = Kern(uuid: d.uuid); k.ablage = ablage
                 var a = DroboAnsicht(eintrag: d)
+                if let nz = d.netz {            // Netzwerk-Drobo: eigener Weg, kein Geraeteknoten
+                    let v = alt[d.uuid]
+                    (a.hw, a.netz, a.netzStand, a.netzFehler) = (v?.hw, v?.netz, v?.netzStand, v?.netzFehler)
+                    if let e = netzEinhaengung(lun: nz.lun) {      // eingehaengt: keine zweite Sitzung oeffnen
+                        a.verbunden = true; a.eingehaengt = true; a.nurlesen = e.nurlesen; a.ort = e.ort; a.treiber = "iSCSI"
+                        var s = statfs()
+                        if statfs(e.ort, &s) == 0 { a.gesamt = UInt64(s.f_blocks) * UInt64(s.f_bsize); a.belegt = a.gesamt - UInt64(s.f_bfree) * UInt64(s.f_bsize) }
+                    } else if netzLesen.contains(d.uuid) {
+                        do { let (st, info) = try netzStatusLesen(host: nz.host); (a.hw, a.netz, a.netzStand, a.netzFehler) = (st, info, Date(), nil) }
+                        catch { (a.hw, a.netzFehler) = (nil, Self.fehlerText(error)) }
+                    }
+                    a.verbunden = a.verbunden || (a.hw != nil && a.netzFehler == nil)
+                    a.merker = ablage.merker(d.uuid)
+                    a.sicherungen = eigeneSicherungen(ort: ablage.einstellungen().sicherungOrt, uuid: d.uuid).reversed()
+                    neu[d.uuid] = a
+                    continue
+                }
                 if let z = try? k.zustand(mitFreigabe: freigabe) {
                     switch z.verbindung {
                     case .nichtAngeschlossen: break
@@ -243,7 +281,18 @@ final class DroboModell: ObservableObject {
         return "\(e)"
     }
 
+    /// Netzwerk-Drobo einhaengen (ueber den Hilfsdienst); Schreiben nur mit Metadaten-Sicherung (der Kern lehnt sonst ab).
+    func netzEinhaengen(_ nz: NetzZiel, schreiben: Bool) {
+        let e = einstellungen
+        ausfuehren(schreiben ? "Zum Schreiben einhängen" : "Einhängen") { [ablage] in
+            try iscsiEinhaengen(host: nz.host, lun: nz.lun, schreiben: schreiben, ziel: nil, ort: nil, sicherung: schreiben ? (e.sicherungOrt, e.sicherungAnzahl) : nil,
+                                meldung: { ablage.protokoll("Netzwerk-Drobo: \($0)") })
+            return nil
+        }
+    }
+
     func einhaengen(schreiben: Bool) {
+        if let nz = aktuell?.eintrag.netz { return netzEinhaengen(nz, schreiben: schreiben) }
         let u = auswahl, ort = einstellungen.einhaengeort
         let k = kern(u)
         ausfuehren(schreiben ? "Zum Schreiben einhängen" : "Einhängen") {
@@ -253,6 +302,10 @@ final class DroboModell: ObservableObject {
     }
 
     func aushaengen() {
+        if let nz = aktuell?.eintrag.netz {
+            ausfuehren("Aushängen") { [ablage] in try iscsiAushaengen(ort: iscsiOrt(nz.lun)); ablage.protokoll("Netzwerk-Drobo ausgehängt"); return nil }
+            return
+        }
         let k = kern(auswahl)
         ausfuehren("Aushängen") {
             if let p = try k.aushaengen(), !p.ok { return String(localized: "Das Laufwerk ist ausgehängt. Die Prüfung nach dem Schreiben hat Auffälligkeiten gefunden: ") + p.probleme.joined(separator: "; ") }
@@ -261,6 +314,15 @@ final class DroboModell: ObservableObject {
     }
 
     func neuZumSchreiben() {
+        if let nz = aktuell?.eintrag.netz {
+            let e = einstellungen
+            ausfuehren("Zum Schreiben neu einhängen") { [ablage] in
+                try iscsiAushaengen(ort: iscsiOrt(nz.lun))
+                try iscsiEinhaengen(host: nz.host, lun: nz.lun, schreiben: true, ziel: nil, ort: nil, sicherung: (e.sicherungOrt, e.sicherungAnzahl), meldung: { ablage.protokoll("Netzwerk-Drobo: \($0)") })
+                return nil
+            }
+            return
+        }
         let u = auswahl, ort = einstellungen.einhaengeort; let k = kern(u)
         ausfuehren("Zum Schreiben neu einhängen") {
             try k.aushaengen()
@@ -273,7 +335,7 @@ final class DroboModell: ObservableObject {
 
     /// Laufwerk der Tempo-Ansicht: gewählte, sonst die in der Seitenleiste gewählte Drobo.
     var tempoZiel: DroboAnsicht? { drobos[tempoUUID] ?? aktuell }
-    var tempoStartbar: Bool { arbeit == nil && tempoZiel.map { $0.eingehaengt && $0.eintrag.rolle == .arbeitsvolume } == true }
+    var tempoStartbar: Bool { arbeit == nil && tempoZiel.map { $0.eingehaengt && $0.eintrag.rolle == .arbeitsvolume && $0.eintrag.netz == nil } == true }
     func tempoZielWaehlen() { if drobos[tempoUUID] == nil || tempoUUID.isEmpty { tempoUUID = auswahl } }
 
     func tempoStoppen() { tempoStopp.setzen() }
@@ -394,6 +456,60 @@ final class DroboModell: ObservableObject {
         einstellungen.drobos.removeAll { $0.uuid == e.uuid }
         einstellungen.drobos.append(DroboEintrag(uuid: e.uuid, name: e.name.isEmpty ? "Drobo" : e.name))
         if auswahl.isEmpty { auswahl = e.uuid }
+        einstellungenSpeichern()
+    }
+
+    // MARK: Drobos suchen (USB + lokales Netzwerk), nichts wird ohne Zustimmung uebernommen
+
+    func drobosSuchen() {
+        guard !sucheLaeuft else { return }
+        sucheLaeuft = true; sucheInfo = nil
+        let bekannt = Set(einstellungen.drobos.map { $0.uuid })
+        let ausnehmen = Set(drobos.values.filter { $0.eingehaengt }.compactMap { $0.eintrag.netz?.host })     // eingehaengte DroboPro: keine zweite Sitzung
+        Task.detached {
+            let r = DroboKern.drobosSuchen(ausnehmen: ausnehmen)
+            await MainActor.run {
+                self.sucheLaeuft = false
+                self.erkannte = r.usb.filter { !bekannt.contains($0.uuid) }
+                self.lanErkannte = r.lan.map { LanDrobo(host: $0.host, luns: $0.luns.filter { !bekannt.contains($0.uuid) }) }.filter { !$0.luns.isEmpty }
+                if let f = r.lanFehler { self.ablage.protokoll("Suche im Netzwerk: \(f)"); self.sucheInfo = String(localized: "Die Suche im lokalen Netzwerk ist nicht möglich. Läuft der Hilfsdienst?") }
+                else if r.usb.isEmpty && r.lan.isEmpty { self.sucheInfo = String(localized: "Keine Drobo gefunden.") }
+                self.aktualisieren()
+            }
+        }
+    }
+
+    func lanHinzufuegen(_ d: LanDrobo) {
+        for (i, l) in d.luns.enumerated() {
+            einstellungen.drobos.removeAll { $0.uuid == l.uuid }
+            einstellungen.drobos.append(DroboEintrag(uuid: l.uuid, name: d.luns.count > 1 ? "DroboPro \(i + 1)" : "DroboPro", netz: NetzZiel(host: d.host, lun: l.lun)))
+        }
+        if let l = d.luns.first { auswahl = l.uuid }
+        lanErkannte.removeAll { $0.host == d.host }
+        einstellungenSpeichern()
+    }
+
+    // MARK: Netzwerk-Drobo per Adresse hinzufuegen (Adresse -> Suche -> Auswahl)
+
+    func netzSuchen(_ adresse: String) {
+        let host = adresse.trimmingCharacters(in: .whitespaces)
+        netzTreffer = []; netzSucheFehler = nil; netzSucheLaeuft = true
+        Task.detached {
+            var treffer: [NetzLun] = []; var fehler: String?
+            do { treffer = try netzEntdecken(host: host) } catch { fehler = Self.fehlerText(error) }
+            await MainActor.run {
+                self.netzSucheLaeuft = false; self.netzTreffer = treffer
+                if let f = fehler { self.ablage.protokoll("Netzwerk-Drobo suchen (\(host)): \(f)"); self.netzSucheFehler = String(localized: "Keine Verbindung zu dieser Adresse. Zulässig sind nur Adressen im privaten Netz, zum Beispiel 192.168.1.20.") }
+                else if treffer.isEmpty { self.netzSucheFehler = String(localized: "Auf dieser Drobo wurde kein eingerichtetes Volume gefunden.") }
+            }
+        }
+    }
+
+    func netzHinzufuegen(host: String, lun: NetzLun, name: String) {
+        let h = host.trimmingCharacters(in: .whitespaces)
+        einstellungen.drobos.removeAll { $0.uuid == lun.uuid }
+        einstellungen.drobos.append(DroboEintrag(uuid: lun.uuid, name: name.isEmpty ? "DroboPro" : name, netz: NetzZiel(host: h, lun: lun.lun)))
+        auswahl = lun.uuid
         einstellungenSpeichern()
     }
 

@@ -24,29 +24,32 @@ struct LaufwerkeAnsicht: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Laufwerke").font(.largeTitle).accessibilityAddTraits(.isHeader)
-                if let h = m.aktuell?.hw { Inhalt(h: h) } else { KeineDaten() }
+                if let h = m.aktuell?.hw { Inhalt(h: h, netz: m.aktuell?.eintrag.netz != nil) } else { KeineDaten(netz: m.aktuell?.eintrag.netz != nil) }
             }.padding(20)
         }
     }
 
     struct KeineDaten: View {
+        var netz = false
         var body: some View {
-            Hinweis(symbol: "info.circle", text: "Keine Statusdaten der Drobo. Schächte, Schutzzustand und Warnungen kommen von einem optionalen Statustreiber (Systemerweiterung), der hier nicht aktiv ist oder noch keine Daten geliefert hat. Das Einhängen und alles andere funktioniert auch ohne.", farbe: .blue)
+            if netz { Hinweis(symbol: "info.circle", text: "Noch keine Statusdaten von der DroboPro. Sie werden beim Start und über „Drobos suchen“ gelesen, nicht während sie eingehängt ist.", farbe: .blue) } else {
+            Hinweis(symbol: "info.circle", text: "Keine Statusdaten der Drobo. Schächte, Schutzzustand und Warnungen kommen von einem optionalen Statustreiber (Systemerweiterung), der hier nicht aktiv ist oder noch keine Daten geliefert hat. Das Einhängen und alles andere funktioniert auch ohne.", farbe: .blue) }
         }
     }
 
     struct Inhalt: View {
         let h: DroboStatus
+        var netz = false
         var body: some View {
             TimelineView(.periodic(from: .now, by: 5)) { ctx in
                 VStack(alignment: .leading, spacing: 14) {
                     zustand(ctx.date)
                     Karte(titel: "Gerät") {
-                        Zeile(name: "Modell", wert: "Drobo \(h.modell)")
+                        Zeile(name: "Modell", wert: h.modell.hasPrefix("Drobo") ? h.modell : "Drobo \(h.modell)")
                         Zeile(name: "Firmware", wert: h.firmware.isEmpty ? "–" : (h.firmware.split(separator: ",").first.map(String.init) ?? h.firmware) + (h.firmwareBuild.map { " (Build \($0))" } ?? ""))
                         Zeile(name: "Aktualisiert", wert: alter(ctx.date))
                         if h.veraltet(jetzt: ctx.date) {
-                            Hinweis(symbol: "clock.badge.exclamationmark", text: "Die Statusdaten sind veraltet. Läuft der Statustreiber noch und ist die Drobo angeschlossen?")
+                            Hinweis(symbol: "clock.badge.exclamationmark", text: netz ? "Die Statusdaten sind nicht mehr aktuell. Sie werden nicht gelesen, solange die DroboPro eingehängt ist; „Drobos suchen“ liest sie neu." : "Die Statusdaten sind veraltet. Läuft der Statustreiber noch und ist die Drobo angeschlossen?")
                         }
                     }
                     if h.meldungen.contains(where: { $0.schwere != .ok }) {
@@ -67,7 +70,7 @@ struct LaufwerkeAnsicht: View {
                         }
                     }
                     Karte(titel: "Schächte") {
-                        ForEach(h.schaechte, id: \.nr) { s in SchachtZeile(s: s) }
+                        ForEach(h.schaechte, id: \.nr) { s in SchachtZeile(s: s, mitFehler: !netz) }
                     }
                 }
             }
@@ -87,6 +90,7 @@ struct LaufwerkeAnsicht: View {
 
 struct SchachtZeile: View {
     let s: Schacht
+    var mitFehler = true
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Text("Schacht \(s.nr)").frame(width: 90, alignment: .leading).fontWeight(.semibold)
@@ -95,7 +99,7 @@ struct SchachtZeile: View {
                 Text(s.modell)
                 Spacer(minLength: 8)
                 Text(groesseText(s.kapazitaet)).monospacedDigit()
-                Text("Fehler: \(s.fehler)").foregroundStyle(s.fehler > 0 ? Color.red : Color.secondary)
+                if mitFehler { Text("Fehler: \(s.fehler)").foregroundStyle(s.fehler > 0 ? Color.red : Color.secondary) }
                 if let t = s.temperatur { Text("\(t) °C") }
             } else { Text("Kein Laufwerk").foregroundStyle(.secondary); Spacer() }
         }
