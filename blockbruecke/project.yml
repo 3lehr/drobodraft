@@ -1,0 +1,39 @@
+name: Blockbruecke
+options:
+  bundleIdPrefix: de.begod.drobo
+  deploymentTarget:
+    macOS: "14.0"
+settings:
+  base:
+    DEVELOPMENT_TEAM: JR9H9Q532P
+    CODE_SIGN_STYLE: Automatic
+targets:
+  BlockbrueckeHost:
+    type: application
+    platform: macOS
+    sources: [Host]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: de.begod.drobo.blockbruecke
+        CODE_SIGN_ENTITLEMENTS: Host/Host.entitlements
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "5.0"
+    dependencies:
+      - target: BlockbrueckeDext
+        embed: true
+  BlockbrueckeDext:
+    type: driver-extension
+    platform: macOS  # xcodegen kennt DriverKit nicht; SDKROOT unten ueberschreibt
+    sources: [Dext]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: de.begod.drobo.blockbruecke.dext
+        PRODUCT_NAME: de.begod.drobo.blockbruecke.dext   # Ordner muss <ID>.dext heissen (dext_probe/AKTIVIERUNG.md)
+        CODE_SIGN_ENTITLEMENTS: $(BB_DEXT_ENT)   # Rotprobe: BB_DEXT_ENT=Dext/Dext.rot.entitlements (tools/bauen.sh rot)
+        BB_DEXT_ENT: Dext/Dext.entitlements
+        INFOPLIST_FILE: Dext/Info.plist
+        SDKROOT: driverkit
+        DRIVERKIT_DEPLOYMENT_TARGET: "23.0"
+        CLANG_CXX_LANGUAGE_STANDARD: gnu++20
+        OTHER_LDFLAGS: "-framework DriverKit -framework SCSIControllerDriverKit"
+        ARCHS: arm64

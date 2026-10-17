@@ -66,8 +66,8 @@ Warum SCSI-Controller statt `IOUserBlockStorageDevice` (Auftrag nannte letzteres
 | `com.apple.developer.driverkit` | Dext | im Profil (B) | erledigt |
 | `…family.scsicontroller` | Dext | im Profil (B) | erledigt (V: deckt virtuellen Controller) |
 | `…transport.usb` + idVendor 6585 | Dext | im Profil (B) | für Blockbrücke **nicht** nötig; Profil-Gruppe ist aber ein Satz („only one group“, B) → V: neue Bundle-ID bekommt dieselbe Gruppe; ob AMFI einen Dext ohne USB-Personality mit diesem Profil annimmt = Messung Schritt 1 |
-| `…userclient-access` = [Dext-ID] | App/Brücke | fehlt, „requires approval“ (B) | **ja, Antrag nötig** |
-| alternativ `…allow-any-userclient-access` | Dext | fehlt | ja; schwächer (jede App) → nicht bevorzugt |
+| `…userclient-access` = [Dext-ID] | App/Brücke | fehlt, „requires approval“ (B) | nur nötig, falls allow-any zur Laufzeit scheitert |
+| `…allow-any-userclient-access` | Dext | **im automatisch erzeugten Profil „DriverKit Team Provisioning Profile: de.begod.drobo.blockbruecke.dext“ enthalten, signiert (B, 2026-10-17T18:40:30+0200)** | kein Antrag für Entwicklung; Schutz dann im Dext selbst (nur Root-Helper akzeptieren, V: Prüfung über `NewUserClient`-Aufrufer) |
 | `com.apple.developer.system-extension.install` | Host-App | vorhanden in DextProbe (V, Probe aktivierte) | – |
 | Provider: `IOUserResources` (kein Gerät) | Personality | V | evtl. kein Transport-Entitlement nötig; Messung Schritt 1 |
 
@@ -110,8 +110,26 @@ An Abbild-LUN (Schritt 3) und DroboPro-LUN (Schritt 5): `diskutil info diskNsM` 
 
 ## Stopp-Punkte des Betreibers (gesammelt)
 
-1. **Entitlement-Antrag** `com.apple.developer.driverkit.userclient-access` (ggf. Gruppe mit `family.scsicontroller` für neue Bundle-ID) bei https://developer.apple.com/contact/request/system-extension/ — Außenwirkung, eigenes Wort nötig.
+1. **Entitlement-Antrag (nur falls allow-any zur Laufzeit von AMFI abgelehnt wird)** `com.apple.developer.driverkit.userclient-access` (ggf. Gruppe mit `family.scsicontroller` für neue Bundle-ID) bei https://developer.apple.com/contact/request/system-extension/ — Außenwirkung, eigenes Wort nötig.
 2. **Systemerweiterung zulassen** (Systemeinstellungen > Anmeldeobjekte & Erweiterungen > Treibererweiterungen, Touch ID/Kennwort) ab Schritt 1.
 3. **Kennwort/sudo:** `diskutil eraseDisk` an echter LUN, `tmutil setdestination/removedestination`, `log show` mit privaten Feldern.
 4. Nur falls Apple ablehnt: SIP-Abschaltung im Wiederherstellungsmodus (Sicherheitsminderung, nicht empfohlen).
 5. Formatieren einer DroboPro-LUN (Testgerät, Freigabe 2026-10-16 deckt Löschen; Wort vor Schritt 5 trotzdem bestätigen).
+
+## Umsetzung Schritt 1 bis vor Aktivierung (2026-10-17T18:40:30+0200)
+
+Gebaut in `blockbruecke/` (eigenes Projekt, 5C-`dext_probe` unberührt): Dext `Blockbruecke` (`IOUserSCSIParallelInterfaceController` auf `IOUserResources`, kein Target, jeder Befehl abgelehnt, Log `Blockbruecke: Start ret=0x…`), Host `BlockbrueckeHost.app` (Aktivieren/Deaktivieren per `OSSystemExtensionRequest`, wie `dext_probe/Host`).
+
+Belege (gemessen, `tools/bauen.sh`):
+- gruen: BUILD SUCCEEDED, `codesign --verify --strict --deep` ok, Dext-Entitlements `driverkit`, `family.scsicontroller`, `allow-any-userclient-access`; Profil automatisch erzeugt, enthält alle drei, ohne neuen Antrag.
+- rot: BUILD SUCCEEDED, Dext-Entitlements nur `driverkit` (Rotprobe).
+- Nicht gemessen: ob AMFI/sysextd zur Laufzeit annehmen (braucht Aktivierung).
+
+### Betreiber-Schritte (Rotprobe zuerst, eicht die Messung)
+1. `blockbruecke/tools/bauen.sh rot` → Pfad `APP …`. App nach `/Applications` kopieren: `ditto <APP> /Applications/BlockbrueckeHost.app`.
+2. `/Applications/BlockbrueckeHost.app` öffnen, „Treiber aktivieren“. Alert „… möchte eine neue Treibererweiterung verwenden“ → Systemeinstellungen öffnen → Allgemein > Anmeldeobjekte & Erweiterungen > Treibererweiterungen (ⓘ) → `de.begod.drobo.blockbruecke.dext` einschalten, Touch ID/Kennwort.
+3. Beleg rot (ohne sudo): `systemextensionsctl list | grep blockbruecke` und `/usr/bin/log show --last 5m --predicate 'eventMessage CONTAINS "blockbruecke" OR eventMessage CONTAINS "Blockbruecke"' --style compact`. Erwartet: kein `Blockbruecke: Start ret=0x0`; amfid/kernelmanagerd-Ablehnung oder kein Matching.
+4. „Treiber deaktivieren“, bestätigen. `tools/bauen.sh gruen`, `ditto` erneut (ersetzt), „Treiber aktivieren“ (Ersetzen = `.replace`), ggf. Schalter erneut.
+5. Beleg gruen (ohne sudo): `systemextensionsctl list | grep blockbruecke` → `[activated enabled]`; `ioreg -l -c IOUserSCSIParallelInterfaceController | grep -E "IOUserClass|Blockbruecke"`; Log-Befehl wie 3 → `Blockbruecke: Start ret=0x0`, `UserInitializeController`, `UserStartController`.
+Kippt den Weg: gruen zeigt dieselbe Ablehnung wie rot (Profil/AMFI) oder `Start ret≠0` (Controller braucht Hardware-Provider).
+Rückbau: „Treiber deaktivieren“, App aus /Applications löschen.

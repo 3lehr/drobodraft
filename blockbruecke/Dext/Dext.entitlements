@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!-- allow-any-userclient-access: Helper (root) oeffnet UserClient ohne App-seitiges userclient-access (Antrag noetig). Team-Profil enthaelt es (2026-10-17). -->
+<dict>
+	<key>com.apple.developer.driverkit</key>
+	<true/>
+	<key>com.apple.developer.driverkit.family.scsicontroller</key>
+	<true/>
+	<key>com.apple.developer.driverkit.allow-any-userclient-access</key>
+	<true/>
+</dict>
+</plist>
