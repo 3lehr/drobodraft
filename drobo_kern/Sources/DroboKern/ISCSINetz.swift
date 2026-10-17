@@ -41,8 +41,27 @@ public func netzLuns(sitzung s: ISCSISitzung) throws -> [NetzLun] {
     }
 }
 
-public func netzEntdecken(host: String) throws -> [NetzLun] {
+/// Weckphase: die DroboPro geht nach Leerlauf in den Standby; der erste Befehl weckt sie, bis sie bereit ist antwortet sie mit CHECK CONDITION (NOT READY) oder gar nicht.
+/// Darum EINE Sitzung offen halten und darin TEST UNIT READY alle `takt` s bis `bis` s wiederholen (Messbefund 2026-10-17: jede neue Sitzung und jeder Abbruch schickt sie zurueck
+/// in den Standby, erst der dritte Versuch gelang). Zeitgrenze je Befehl kommt von der Sitzung (erster 30 s, dann 10 s); bleibt ein TUR ganz ohne Antwort oder ist sie nach `bis` s
+/// nicht bereit, endet es mit `.zeitueberschreitung` (= "reagiert nicht"). `fortschritt` bekommt die vergangenen Sekunden.
+public let weckDauer: TimeInterval = 90
+public func netzAufwecken(sitzung s: ISCSISitzung, bis: TimeInterval = weckDauer, takt: TimeInterval = 2, fortschritt: ((Int) -> Void)? = nil) throws {
+    let start = Date()
+    while true {
+        do { try s.testUnitReady(lun: 0); return }
+        catch let f as ISCSIFehler {
+            guard case .scsi = f else { throw f }            // alles andere (Zeitueberschreitung, Verbindung) ist kein "wacht noch auf"
+            let t = Date().timeIntervalSince(start)
+            if t >= bis { throw ISCSIFehler.zeitueberschreitung("not ready after \(Int(bis)) s") }
+            fortschritt?(Int(t)); Thread.sleep(forTimeInterval: takt)
+        }
+    }
+}
+
+public func netzEntdecken(host: String, aufwecken: Bool = false, fortschritt: ((Int) -> Void)? = nil) throws -> [NetzLun] {
     let s = try netzSitzung(host: host); defer { s.abmelden() }
+    if aufwecken { try netzAufwecken(sitzung: s, fortschritt: fortschritt) }
     return try netzLuns(sitzung: s)
 }
 
@@ -74,8 +93,9 @@ public func netzStatus(sitzung s: ISCSISitzung) throws -> (DroboStatus, NetzInfo
     return (st, info)
 }
 
-public func netzStatusLesen(host: String) throws -> (DroboStatus, NetzInfo) {
+public func netzStatusLesen(host: String, fortschritt: ((Int) -> Void)? = nil) throws -> (DroboStatus, NetzInfo) {
     let s = try netzSitzung(host: host, zeitgrenze: 10); defer { s.abmelden() }
+    try netzAufwecken(sitzung: s, fortschritt: fortschritt)
     return try netzStatus(sitzung: s)
 }
 

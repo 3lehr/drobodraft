@@ -70,9 +70,9 @@ public func helferISCSIFreigabeSetzen(uuid: String, modus: String, maxBytes: UIn
 }
 
 /// LAN-Suche im Hilfsdienst (siehe LanSuche): Adressen mit Drobo-Ziel im eigenen Subnetz.
-public func helferISCSISuche(ausnehmen: Set<String>) throws -> [String] {
+public func helferISCSISuche(ausnehmen: Set<String>, bekannte: Set<String> = []) throws -> [String] {
     var hosts: [String] = []
-    let r = helferRPC(frist: 30) { p, k in p.iscsiSuche(ausnehmen: Array(ausnehmen), reply: { hosts = $0; k([nil]) }) }
+    let r = helferRPC(frist: 60) { p, k in p.iscsiSuche(ausnehmen: Array(ausnehmen), bekannte: Array(bekannte), reply: { hosts = $0; k([nil]) }) }
     if let f = r.fehler { throw Fehler.helfer(f) }
     return hosts
 }

@@ -48,8 +48,8 @@ final class Dienst: NSObject, NSXPCListenerDelegate, DroboHelferProtokoll {
         do { let p = try weiterleitung.port(host: host, port: port); log.notice("iscsiWeiterleitung uid=\(self.uid, privacy: .public) -> lokaler Port \(p, privacy: .public)"); reply(p, nil) }
         catch { log.error("iscsiWeiterleitung uid=\(self.uid, privacy: .public): ABGELEHNT \("\(error)", privacy: .public)"); reply(0, "\(error)") }
     }
-    func iscsiSuche(ausnehmen: [String], reply: @escaping ([String]) -> Void) {
-        let h = LanSuche().suchen(kandidaten: LanSuche.lokaleKandidaten(), ausnehmen: Set(ausnehmen))
+    func iscsiSuche(ausnehmen: [String], bekannte: [String], reply: @escaping ([String]) -> Void) {
+        let h = LanSuche().suchen(kandidaten: LanSuche.lokaleKandidaten(), ausnehmen: Set(ausnehmen), bekannt: Set(bekannte))
         log.notice("iscsiSuche uid=\(self.uid, privacy: .public): \(h.count, privacy: .public) Drobo(s)")
         reply(h)
     }

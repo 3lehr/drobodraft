@@ -24,8 +24,8 @@ public var helferAnforderung: String { anforderung(prefix: Identitaet.prefix, te
     /// Prueft ohne Wirkung, ob der Dienst die Geraeteknoten dieser UUID aendern duerfte (chown auf den bisherigen Eigentuemer). nil = ja, sonst Fehlertext.
     func zugriffPruefen(_ volumeUUID: String, reply: @escaping (String?) -> Void)
     /// Sucht im eigenen IPv4-Subnetz (nur private Bereiche) nach Drobos mit iSCSI-Ziel (IQN-Praefix Data Robotics). `ausnehmen`: Adressen, an denen nicht angeklopft wird
-    /// (eingehaengte DroboPro bedient nur eine Sitzung). Antwort: Adressen.
-    func iscsiSuche(ausnehmen: [String], reply: @escaping ([String]) -> Void)
+    /// (eingehaengte DroboPro bedient nur eine Sitzung). `bekannte`: Adressen eingerichteter Drobos, deren SendTargets-Antwort bis 30 s abgewartet wird (Aufwachen). Antwort: Adressen.
+    func iscsiSuche(ausnehmen: [String], bekannte: [String], reply: @escaping ([String]) -> Void)
     /// Lokaler Loopback-Port, der zu host:port (nur IPv4 im privaten Netz, nur Port 3260) weiterleitet. Grund: das Modul hfsdropro bekommt wegen des Datenschutzes
     /// "Lokales Netzwerk" kein Routing ins LAN, der Dienst nicht (gemessen, Plan DroboPro). Antwort (Port, Fehlertext); Port 0 = Fehler.
     func iscsiWeiterleitung(_ host: String, port: UInt16, reply: @escaping (UInt16, String?) -> Void)

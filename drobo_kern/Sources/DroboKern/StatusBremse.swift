@@ -33,6 +33,15 @@ public final class StatusBremse: @unchecked Sendable {
         }
     }
 
+    /// Weckphase (Suchen/Einhaengen einer schlafenden DroboPro): reserviert die Abfrage, solange sie laeuft (keine zweite Sitzung, die die Weck-Sitzung ersetzte). false = nicht moeglich.
+    /// `NOT READY` waehrend der Phase ist kein Haenger; nur ein Befehl ohne Antwort oder Ablauf der 90 s (`.zeitueberschreitung`) setzt `reagiertNicht`. Danach gilt der Abstand ab jetzt.
+    public func weckenBeginnen() -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        guard _zustand == .bereit, !laeuft else { return false }
+        laeuft = true; return true
+    }
+    public func weckenEnde(_ fehler: Error?) { ergebnis(fehler); lock.lock(); if fehler == nil { letzter = Date() }; lock.unlock() }
+
     /// Nutzer-Aktion "Erneut pruefen": hebt die Pause auf und erlaubt die naechste Abfrage sofort.
     public func erneutPruefen() { lock.lock(); _zustand = .bereit; letzter = nil; lock.unlock() }
 }

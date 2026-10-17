@@ -135,7 +135,7 @@ public final class ISCSISitzung {
     var blockgroessen: [Int: Int] = [:]
     let discovery: Bool
     /// Zeitgrenze der Folgebefehle; Login und erster Befehl laufen mit `ersteZeitgrenze` (Standby-Aufwachen kann Sekunden bis Minuten dauern, Messung 2026-10-17: 0,7 s bis 5,7 s, nach Neustart Minuten).
-    let folgeZeitgrenze: TimeInterval
+    var folgeZeitgrenze: TimeInterval
     public static let ersteZeitgrenzeNetz: TimeInterval = 30
     /// Feste ISID je Mac und Zweck. Messbefund DroboPro 2026-10-17: Login mit gleichem Initiator-Namen und gleicher ISID wird angenommen (ersetzt die alte Sitzung),
     /// ein anderer Name wird mit Status 2/2 abgelehnt (Single-Initiator). Eine zufaellige ISID je Login liess jede abgebrochene Sitzung als Leiche stehen.

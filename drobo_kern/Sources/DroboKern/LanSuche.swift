@@ -10,6 +10,8 @@ public struct LanSuche {
     public var praefix = droboIQNPraefix
     public var verbindungsfrist: TimeInterval = 0.3
     public var parallel = 64
+    /// Zeitgrenze fuer die Antwort auf SendTargets: unbekannte Adressen 3 s, BEKANNTE Drobo-Adressen 30 s (eine schlafende DroboPro antwortet beim Aufwachen spaet).
+    public var bekanntFrist: TimeInterval = 30
     public var pruefung = ISCSIWeiterleitung()
     public init() {}
     /// Nur Tests: anderer Port, Loopback als Kandidat.
@@ -50,14 +52,14 @@ public struct LanSuche {
     }
 
     /// Ist unter `host` ein Ziel mit Drobo-IQN-Praefix? (Discovery-Sitzung, keine LUN-Anmeldung.)
-    func istDrobo(_ host: String) -> Bool {
-        guard let s = try? ISCSISitzung(host: host, port: port, zeitgrenze: 3) else { return false }
+    func istDrobo(_ host: String, frist: TimeInterval = 3) -> Bool {
+        guard let s = try? ISCSISitzung(host: host, port: port, zeitgrenze: frist) else { return false }
         defer { s.abmelden() }
         return ((try? s.ziele()) ?? []).contains { $0.name.hasPrefix(praefix) }
     }
 
     /// Hosts mit Drobo-Ziel. Jeder Kandidat muss die Adresspruefung bestehen; `ausnehmen` wird nicht angesprochen.
-    public func suchen(kandidaten: [String], ausnehmen: Set<String> = []) -> [String] {
+    public func suchen(kandidaten: [String], ausnehmen: Set<String> = [], bekannt: Set<String> = []) -> [String] {
         let ziele = kandidaten.filter { !ausnehmen.contains($0) && pruefung.adressePruefen(host: $0) == nil }
         var treffer: [String] = []; let sperre = NSLock()
         let gruppe = DispatchGroup(), ampel = DispatchSemaphore(value: parallel)
@@ -65,7 +67,7 @@ public struct LanSuche {
             ampel.wait(); gruppe.enter()
             DispatchQueue.global().async {
                 defer { ampel.signal(); gruppe.leave() }
-                if self.offen(h), self.istDrobo(h) { sperre.lock(); treffer.append(h); sperre.unlock() }
+                if self.offen(h), self.istDrobo(h, frist: bekannt.contains(h) ? self.bekanntFrist : 3) { sperre.lock(); treffer.append(h); sperre.unlock() }
             }
         }
         gruppe.wait()

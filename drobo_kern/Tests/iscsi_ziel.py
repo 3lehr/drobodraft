@@ -10,6 +10,7 @@ Fehlerinjektion: --drop-after N (Verbindung beim (N+1). SCSI-Befehl ohne Antwort
 DroboPro-Verhalten (gemessen 2026-10-16): ein WRITE ohne Daten im Command-PDU wird nicht beantwortet, kein R2T, Verbindung nach ~1 s zu (die echte DroboPro
 startet dabei neu); hier Log "ABSTURZ write-ohne-immediate". Abschaltbar mit --tolerate-no-immediate."""
 import argparse, json, os, socket, struct, sys, threading
+import time as zeit
 
 MODESENSE = {  # gemessen an einer DroboPro (Seite 08 ist synthetisch: das Original enthaelt Firmwaredaten)
     0x01: "7a01001808021001000007ffffffff00000000000000000100000000",
@@ -33,7 +34,9 @@ a.add_argument("--iqn", default="iqn.2026-10.local.test:ziel")
 a.add_argument("--drop-after", type=int)
 a.add_argument("--swallow", type=int)
 a.add_argument("--first-delay", type=float, help="erster SCSI-Befehl (ueber alle Verbindungen) wird erst nach S Sekunden beantwortet (Standby-Aufwachen)")
+a.add_argument("--discovery-delay", type=float, help="SendTargets-Antwort erst nach S s (schlafende DroboPro beim Aufwachen)")
 a.add_argument("--hang-after", type=int)
+a.add_argument("--sleep", type=float, help="schlaeft N s: Login geht, jeder SCSI-Befehl bis N s nach dem ersten Normal-Login endet mit NOT READY 02/04/01 (Aufwachen aus dem Standby), danach bereit")
 a.add_argument("--reject-other-initiator", action="store_true")
 a.add_argument("--r2t-chunk", type=int)
 a.add_argument("--max-seg", type=int, default=65536)
@@ -42,7 +45,7 @@ a.add_argument("--tolerate-no-immediate", action="store_true", help="WRITE ohne 
 A = a.parse_args()
 IQN = A.iqn
 loglock = threading.Lock()
-STATE = {"haengt": False, "initiator": None, "befehle": 0}
+STATE = {"haengt": False, "initiator": None, "befehle": 0, "t0": None}
 
 def log(**k):
     with loglock, open(A.log, "a") as f: f.write(json.dumps(k) + "\n")
@@ -105,6 +108,7 @@ def serve(sock):
             h, d = recv_pdu(sock); op = h[0] & 0x3F
             v.cmdsn = struct.unpack(">I", h[24:28])[0] + (0 if h[0] & 0x40 else 1)
             if op == 0x04 and sess == "Discovery":
+                if A.discovery_delay: zeit.sleep(A.discovery_delay)
                 body = f"TargetName={IQN}\0TargetAddress=127.0.0.1:{sock.getsockname()[1]},1\0".encode()
                 v.senden(0x24, 0x80, data=body, itt=struct.unpack(">I", h[16:20])[0], fields={20: b"\xff\xff\xff\xff"})
             elif op == 0x06:
@@ -124,6 +128,7 @@ def login(v):
         h, d = recv_pdu(v.sock); assert h[0] & 0x3F == 0x03
         k = kv(d); itt = struct.unpack(">I", h[16:20])[0]; csg = (h[1] >> 2) & 3
         if "SessionType" in k: v.sessiontype = k["SessionType"]
+        if k.get("SessionType") == "Normal" and STATE["t0"] is None: STATE["t0"] = zeit.monotonic()
         if csg == 0 and "InitiatorName" in k:
             log(ereignis="login", isid=bytes(h[8:14]).hex(), initiator=k["InitiatorName"], sitzung=k.get("SessionType"))
             with loglock:
@@ -157,6 +162,7 @@ def scsi(v, h, imm):
     if A.swallow == v.nbefehle: return
     if A.first_delay and gesamt == 1: import time; time.sleep(A.first_delay)
     op = cdb[0]
+    if A.sleep and STATE["t0"] is not None and zeit.monotonic() - STATE["t0"] < A.sleep: return v.check(itt, 2, 4, 1)   # wacht noch auf
     img = A.image[n] if n < len(A.image) else None
     if op == 0xA0:
         al = struct.unpack(">I", cdb[6:10])[0]

@@ -18,14 +18,16 @@ public let iscsiVorgabeOrt = "/private/tmp/drobo_iscsi_mnt"
 /// Einhaengen ueber den Hilfsdienst: Weiterleitung (Port) holen, Volume-UUID und Partitionsgroesse aus der LUN lesen, Freigabe im Container des iSCSI-Moduls setzen,
 /// `mount -F -t hfsdropro iscsi://127.0.0.1:PORT/IQN/LUN ORT`. Der Ort liegt nie unter $HOME (Spotlight).
 public func iscsiEinhaengen(host: String, lun: Int, schreiben: Bool, ziel: String?, ort: String?, sicherung: (ort: String, anzahl: Int)? = nil, ohneSicherung: Bool = false,
-                            meldung: (String) -> Void) throws {
+                            meldung: (String) -> Void, weckfortschritt: ((Int) -> Void)? = nil) throws {
     let ort = ort ?? "\(iscsiVorgabeOrt)\(lun)"
     guard !ort.hasPrefix(NSHomeDirectory() + "/"), ort != NSHomeDirectory() else { throw Fehler.ortUnterHome(ort) }
     let port = try helferISCSIWeiterleitung(host: host)
     meldung("helper forwards 127.0.0.1:\(port) -> \(host):3260")
     let d = try ISCSISitzung(host: "127.0.0.1", port: port); let ziele = try d.ziele(); d.abmelden()
     guard let iqn = ziel ?? ziele.first?.name else { throw ISCSIFehler.protokoll("target offers no name") }
-    let s = try ISCSISitzung(host: "127.0.0.1", port: port, ziel: iqn, zeitgrenze: 30, zweck: "mount-lun\(lun)")
+    let s = try ISCSISitzung(host: "127.0.0.1", port: port, ziel: iqn, zeitgrenze: 10, ersteZeitgrenze: ISCSISitzung.ersteZeitgrenzeNetz, zweck: "mount-lun\(lun)")
+    do { try netzAufwecken(sitzung: s, fortschritt: weckfortschritt) } catch { s.abmelden(); throw error }    // Weckphase in DERSELBEN Sitzung, danach erst lesen
+    s.folgeZeitgrenze = 30; s.draht.zeitgrenze = 30     // grosse Lesezuege wie bisher
     let teil = try GPT.ersteHFS { try s.lesen(lun: lun, lba: $0, bloecke: $1) }
     guard let p = teil else { s.abmelden(); throw ISCSIFehler.protokoll("LUN \(lun) has no HFS+ partition") }
     let vh = try s.lesen(lun: lun, lba: p.ersterLBA + 2, bloecke: 1)       // Offset 1024 der Partition

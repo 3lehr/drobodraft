@@ -254,6 +254,8 @@ final class ISCSITests: XCTestCase {
         let s = try sitzung(try ziel())
         let (st, info) = try netzStatus(sitzung: s)
         XCTAssertEqual(st.modell, "DroboPro"); XCTAssertEqual(st.schaechte.count, 8); XCTAssertEqual(st.schaechte.filter { $0.belegt }.count, 7)
+        // Betreiberbefund A 2026-10-17: echte Seite-03-Bytes durch den App-Weg (netzStatus) -> Zustand, den GeraetBild liest: Lampe je Schacht (nr 1-basiert), Schacht 7 leer
+        XCTAssertEqual(st.schaechte.map(\.nr), Array(1...8)); XCTAssertEqual(st.schaechte.map(\.farbe), [.gruen, .gruen, .gruen, .gruen, .gruen, .gruen, .leer, .gruen])
         XCTAssertEqual(info, NetzInfo(name: "DroboPro", gelbProzent: 85, rotProzent: 95))
         XCTAssertNotNil(st.kapazitaet); XCTAssertEqual(st.protokoll, "0.11")
         XCTAssertTrue(ereignisse("verschluckt").isEmpty, "alle Seiten mit passender Laenge angefragt")
@@ -408,5 +410,62 @@ extension ISCSITests {
         XCTAssertThrowsError(try s.befehl(lun: 0, cdb: [0x5A, 0x08, 0x3A, 0x03, 0, 0, 0, 0x03, 0x60, 0], lesen: 864), "Gate stoppt 864 vor dem Senden")
         XCTAssertTrue(ereignisse("befehl").isEmpty, "kein Byte erreichte das Ziel")
         XCTAssertEqual(try s.modeSense3A(lun: 0, unterseite: 0x03).count, 581)
+    }
+
+    // MARK: Weckphase (schlafende DroboPro)
+
+    func logins(_ art: String) -> Int { ereignisse("login").filter { $0["sitzung"] as? String == art }.count }
+
+    /// N = 20: EINE Sitzung, TEST UNIT READY alle 2 s bis bereit, danach Status. Das Ziel zaehlt genau einen Normal-Login und keinen Fehler.
+    func testWeckphase20s_EineSitzung_OhneFehler() throws {
+        let s = try sitzung(try ziel(["--sleep", "20"]), zeit: 10, erste: ISCSISitzung.ersteZeitgrenzeNetz)
+        var schritte: [Int] = []
+        let t0 = Date()
+        try netzAufwecken(sitzung: s, fortschritt: { schritte.append($0) })
+        let dauer = Date().timeIntervalSince(t0)
+        XCTAssertGreaterThanOrEqual(dauer, 19.5, "bereit erst nach 20 s"); XCTAssertLessThan(dauer, 24)
+        XCTAssertGreaterThanOrEqual(schritte.count, 8, "Fortschritt alle ~2 s"); XCTAssertEqual(schritte.first, 0)
+        let (st, _) = try netzStatus(sitzung: s)
+        XCTAssertEqual(st.schaechte.count, 8); s.abmelden()
+        XCTAssertEqual(logins("Normal"), 1, "eine Sitzung"); XCTAssertTrue(ereignisse("fehler").isEmpty); XCTAssertTrue(ereignisse("abgelehnt").isEmpty)
+    }
+
+    /// N = 100 > 90: nach 90 s Ende mit Zeitueberschreitung = "reagiert nicht" (Bremse), nicht frueher, nicht spaeter.
+    func testWeckphase100s_NachNeunzigSekundenReagiertNicht() throws {
+        let s = try sitzung(try ziel(["--sleep", "100"]), zeit: 10, erste: ISCSISitzung.ersteZeitgrenzeNetz), b = StatusBremse()
+        XCTAssertTrue(b.weckenBeginnen()); XCTAssertFalse(b.weckenBeginnen(), "nie zwei Weckphasen")
+        let t0 = Date(); var fehler: Error?
+        do { try netzAufwecken(sitzung: s) } catch { fehler = error }
+        let dauer = Date().timeIntervalSince(t0); s.abmelden(); b.weckenEnde(fehler)
+        guard case .zeitueberschreitung? = fehler as? ISCSIFehler else { return XCTFail("erwartet Zeitueberschreitung, war \(String(describing: fehler))") }
+        XCTAssertGreaterThanOrEqual(dauer, 90); XCTAssertLessThan(dauer, 95)
+        XCTAssertEqual(b.zustand, .reagiertNicht); XCTAssertEqual(logins("Normal"), 1)
+    }
+
+    /// Rotprobe: OHNE Weckphase (jeder Versuch eine neue Sitzung samt Statuslesen) -> Fehler und mehrere Logins, wie am Geraet beobachtet.
+    func testOhneWeckphase_MehrereLoginsUndFehler() throws {
+        let port = try ziel(["--sleep", "6"]); var fehler = 0, versuche = 0
+        while versuche < 10 {
+            versuche += 1
+            let s = try sitzung(port, zeit: 10, erste: 30); defer { s.abmelden() }
+            do { _ = try netzStatus(sitzung: s); break } catch { fehler += 1; Thread.sleep(forTimeInterval: 2) }
+        }
+        XCTAssertGreaterThan(fehler, 0); XCTAssertGreaterThan(logins("Normal"), 1, "mehrere Sitzungen")
+    }
+
+    func testBremse_WeckphaseIstKeinHaenger() {
+        let b = StatusBremse()
+        XCTAssertTrue(b.weckenBeginnen()); XCTAssertFalse(b.darfAbfragen(eingehaengt: false), "waehrend der Weckphase keine zweite Abfrage")
+        b.weckenEnde(ISCSIFehler.scsi(status: 2, sense: [])); XCTAssertEqual(b.zustand, .bereit, "NOT READY ist kein Haenger")
+        XCTAssertTrue(b.weckenBeginnen()); b.weckenEnde(nil)
+        XCTAssertFalse(b.darfAbfragen(eingehaengt: false), "gelungene Weckphase: Abstand von 5 min gilt ab jetzt")
+    }
+
+    /// SendTargets-Antwort einer aufwachenden DroboPro kommt spaet: bekannte Adresse 30 s Geduld, unbekannte 3 s.
+    func testSucheBekannteAdresseWartetLaenger() throws {
+        let port = try ziel(["--iqn", "iqn.2005-06.com.datarobotics:drobopro.test.node0", "--discovery-delay", "5"])
+        let such = LanSuche(testPort: port)
+        XCTAssertEqual(such.suchen(kandidaten: ["127.0.0.1"]), [], "unbekannt: nach 3 s aufgegeben")
+        XCTAssertEqual(such.suchen(kandidaten: ["127.0.0.1"], bekannt: ["127.0.0.1"]), ["127.0.0.1"], "bekannt: 30 s Geduld")
     }
 }
