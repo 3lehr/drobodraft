@@ -51,3 +51,28 @@ public func iscsiAushaengen(ort: String) throws {
     let (rc, out) = ausfuehren("/sbin/umount", [ort])
     guard rc == 0 else { throw Fehler.aushaengenFehlgeschlagen(out) }
 }
+
+/// Alle LUNs mit HFS+ einhaengen (je LUN eigener Ort /private/tmp/drobo_iscsi_mnt<N>, Freigabe je Volume-UUID). Bereits eingehaengte werden uebersprungen,
+/// ein Fehler bei einer LUN stoppt die anderen nicht. Rueckgabe: je LUN Fehlertext oder nil.
+@discardableResult
+public func iscsiAlleEinhaengen(host: String, schreiben: Bool, sicherung: (ort: String, anzahl: Int)? = nil, ohneSicherung: Bool = false, meldung: (String) -> Void) throws -> [Int: String?] {
+    var erg: [Int: String?] = [:]
+    for l in try netzLunVerzeichnis(host: host) where l.hatDateisystem {
+        if netzEinhaengung(lun: l.lun) != nil { meldung("LUN \(l.lun): already mounted"); erg[l.lun] = .some(nil); continue }
+        do { try iscsiEinhaengen(host: host, lun: l.lun, schreiben: schreiben, ziel: nil, ort: nil, sicherung: sicherung, ohneSicherung: ohneSicherung, meldung: { meldung("LUN \(l.lun): " + $0) }); erg[l.lun] = .some(nil) }
+        catch { meldung("LUN \(l.lun): \(error)"); erg[l.lun] = "\(error)" }
+    }
+    return erg
+}
+
+/// Alle eingehaengten iSCSI-LUN-Orte (Mount-Tabelle: /private/tmp/drobo_iscsi_mnt<N>).
+public func iscsiEingehaengteLuns() -> [Int] {
+    einhaengungen().values.compactMap { e in
+        let o = e.ort.hasPrefix("/private") ? String(e.ort.dropFirst(8)) : e.ort
+        return o.hasPrefix(iscsiVorgabeOrt) ? Int(o.dropFirst(iscsiVorgabeOrt.count)) : nil
+    }.sorted()
+}
+
+public func iscsiAlleAushaengen(meldung: (String) -> Void) throws {
+    for l in iscsiEingehaengteLuns() { try iscsiAushaengen(ort: iscsiOrt(l)); meldung("LUN \(l): unmounted") }
+}

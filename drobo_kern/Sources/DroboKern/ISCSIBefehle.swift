@@ -19,6 +19,7 @@ extension ISCSISitzung {
         guard let op = cdb.first else { return "empty CDB" }
         let hex = String(format: "0x%02x", op)
         func laenge(_ n: Int) -> String? { cdb.count == n ? nil : "\(hex): CDB length \(cdb.count), expected \(n)" }
+        if op == 0xEA { return lunGroesseVerbot(cdb: cdb, schreiben: schreiben, lesen: lesen) }
         if op != 0x8A && schreiben != 0 { return "\(hex): data-out only allowed for WRITE(16)" }
         if op == 0x8A && lesen != 0 { return "WRITE(16) with read length" }
         switch op {
@@ -45,11 +46,22 @@ extension ISCSISitzung {
         return nil
     }
 
+    /// EINZIGER erlaubter EA-Befehl: LUN-Groesse setzen, `EA 10 00 0F 00 <txn> 21 00 04 00` mit genau 4 Datenbytes (TiB, BE). Alles andere aus der 0xEA-Familie
+    /// (Format 0x02, Neustart, Ausschalten, Firmware ...) bleibt verboten. Die Daten MUESSEN im Command-PDU mitgehen (sonst startet die DroboPro neu, gemessen) -
+    /// das erzwingt `befehl` ueber `immediateAusgehandelt`. Nur diese iSCSI-Sitzung kann EA senden; der USB-/Dext-Weg hat keinen Sendeweg dafuer.
+    static func lunGroesseVerbot(cdb: [UInt8], schreiben: Int, lesen: Int) -> String? {
+        guard cdb.count == 10 else { return "0xea: CDB length \(cdb.count), expected 10" }
+        guard cdb[1] == 0x10, cdb[2] == 0x00, cdb[3] == 0x0F, cdb[4] == 0x00, cdb[6] == 0x21, cdb[7] == 0x00, cdb[8] == 0x04, cdb[9] == 0x00 else { return "0xea: only the LUN size command (EA 10 00 0F 00 txn 21 00 04 00) is allowed" }
+        guard schreiben == 4, lesen == 0 else { return "0xea: LUN size command carries exactly 4 data bytes" }
+        return nil
+    }
+
     /// Einziger Sendeweg. `daten` nur bei WRITE(16); `lesen` = erwartete Datenmenge von Ziel zu Initiator.
     public func befehl(lun: Int, cdb: [UInt8], lesen: Int = 0, daten: [UInt8] = []) throws -> SCSIAntwort {
         if let grund = Self.verbot(cdb: cdb, schreiben: daten.count, lesen: lesen) { throw ISCSIFehler.verboten(grund) }
         // DroboPro-Neustart durch WRITE ohne Immediate-Daten (Messbefund in ISCSI.swift): ohne ausgehandeltes ImmediateData=Yes wird nie ein WRITE gesendet.
-        if cdb.first == 0x8A && !immediateAusgehandelt { throw ISCSIFehler.verboten("WRITE refused: target did not negotiate ImmediateData=Yes") }
+        if cdb.first == 0xEA && !lunGroesseFreigabe { throw ISCSIFehler.verboten("EA refused: LUN size changes are not enabled on this session") }
+        if (cdb.first == 0x8A || cdb.first == 0xEA) && !immediateAusgehandelt { throw ISCSIFehler.verboten("WRITE refused: target did not negotiate ImmediateData=Yes") }
         if discovery { throw ISCSIFehler.verboten("discovery session cannot carry SCSI commands") }
         return try gesichert { try austausch(lun: lun, cdb: cdb, lesen: lesen, daten: daten) }
     }
@@ -142,6 +154,16 @@ extension ISCSISitzung {
     public func modeSense3A(lun: Int, unterseite: UInt8) throws -> [UInt8] {
         let n = Self.modeSenseExakt[unterseite] ?? Self.modeSenseMax
         return try gut(befehl(lun: lun, cdb: [0x5A, 0x08, 0x3A, unterseite, 0, 0, 0, UInt8(n >> 8), UInt8(n & 0xff), 0], lesen: n))
+    }
+
+    /// LUN-Groesse in TiB setzen (DroboPro-Testgeraet, alle LUNs vorher ausgehaengt, Aufrufer prueft das). Antwort roh zurueck (Status, Sense), nichts wird interpretiert.
+    public func lunGroesseSetzen(tib: Int, txn: UInt8 = 1) throws -> SCSIAntwort {
+        guard (1...16).contains(tib) else { throw ISCSIFehler.verboten("LUN size \(tib) TiB outside 1...16") }
+        let inq = try inquiry(lun: 0)
+        guard inq.count >= 32, String(decoding: inq[16..<32], as: UTF8.self).hasPrefix("DroboPro") else { throw ISCSIFehler.verboten("LUN size change only for a DroboPro") }
+        lunGroesseFreigabe = true; defer { lunGroesseFreigabe = false }
+        let d = [UInt8(tib >> 24 & 0xff), UInt8(tib >> 16 & 0xff), UInt8(tib >> 8 & 0xff), UInt8(tib & 0xff)]
+        return try befehl(lun: 0, cdb: [0xEA, 0x10, 0x00, 0x0F, 0x00, txn, 0x21, 0x00, 0x04, 0x00], daten: d)
     }
 
     private func blockgroesse(_ lun: Int) throws -> Int {

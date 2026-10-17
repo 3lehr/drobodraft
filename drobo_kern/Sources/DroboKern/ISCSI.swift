@@ -121,6 +121,8 @@ public final class ISCSISitzung {
     var firstBurst = ISCSISitzung.maxDatenmenge
     /// Ziel hat ImmediateData=Yes ausgehandelt. Ohne das wird NIE geschrieben (siehe Messbefund bei `befehl`).
     var immediateAusgehandelt = false
+    /// Nur waehrend `lunGroesseSetzen` an: sonst weist `befehl` jeden EA-Befehl ab.
+    var lunGroesseFreigabe = false
     public private(set) var login: [String: String] = [:]   // Schluessel der letzten Login-Antwort (Diagnose)
     var tot: ISCSIFehler?
     var blockgroessen: [Int: Int] = [:]

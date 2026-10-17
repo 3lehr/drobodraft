@@ -10,8 +10,10 @@ public struct FormatPlan {
 }
 
 public func iscsiFormat(host: String, port: UInt16 = 3260, ziel: String? = nil, lun: Int, name: String, partitionBytes: UInt64? = nil, ausfuehren zuschreiben: Bool,
-                        arbeitsordner: String, meldung: (String) -> Void) throws {
-    guard lun == 1 else { throw ISCSIFehler.verboten("iscsi-format: only LUN 1 may be formatted (LUN 0 is locked)") }
+                        arbeitsordner: String, eingehaengt: (Int) -> Bool = { netzEinhaengung(lun: $0) != nil }, meldung: (String) -> Void) throws {
+    // Jede LUN der DroboPro (Testgeraet, Betreiber 2026-10-17) darf formatiert werden - nie eine eingehaengte: der Kernel haelt dann Metadaten im Cache.
+    guard lun >= 0 else { throw ISCSIFehler.verboten("iscsi-format: invalid LUN \(lun)") }
+    guard !eingehaengt(lun) else { throw ISCSIFehler.verboten("iscsi-format: LUN \(lun) is mounted, unmount it first") }
     guard !name.isEmpty, !name.contains(":"), name.utf8.count <= 27 else { throw ISCSIFehler.verboten("volume name empty, longer than 27 bytes or containing ':'") }
     let d = try ISCSISitzung(host: host, port: port); let ziele = try d.ziele(); d.abmelden()
     guard let z = ziel ?? ziele.first?.name else { throw ISCSIFehler.protokoll("target offers no name") }

@@ -190,10 +190,10 @@ final class ISCSITests: XCTestCase {
 
     // MARK: Neueinrichtung (iscsi-format)
 
-    func formatiere(_ port: UInt16, lun: Int = 1, ausfuehren: Bool, groesse: UInt64? = nil, _ log: inout [String]) throws {
+    func formatiere(_ port: UInt16, lun: Int = 1, ausfuehren: Bool, groesse: UInt64? = nil, eingehaengt: @escaping (Int) -> Bool = { _ in false }, _ log: inout [String]) throws {
         var m: [String] = []
         defer { log = m }
-        try iscsiFormat(host: "127.0.0.1", port: port, lun: lun, name: "FMTTEST", partitionBytes: groesse, ausfuehren: ausfuehren, arbeitsordner: dir, meldung: { m.append($0) })
+        try iscsiFormat(host: "127.0.0.1", port: port, lun: lun, name: "FMTTEST", partitionBytes: groesse, ausfuehren: ausfuehren, arbeitsordner: dir, eingehaengt: eingehaengt, meldung: { m.append($0) })
     }
 
     func testFormatTrockenlaufSchreibtNichts() throws {
@@ -205,11 +205,22 @@ final class ISCSITests: XCTestCase {
         XCTAssertEqual(try Data(contentsOf: URL(fileURLWithPath: dir + "/lun1.img")).filter { $0 != 0 }.count, 0)
     }
 
-    func testFormatLehntLUN0Ab() throws {
+    /// Betreiber 2026-10-17: jede LUN der DroboPro darf formatiert werden (vorher nur LUN 1).
+    func testFormatTrockenlaufAuchFuerLUN0() throws {
         let port = try ziel(mib: 128)
         var l: [String] = []
-        XCTAssertThrowsError(try formatiere(port, lun: 0, ausfuehren: true, &l)) { guard case ISCSIFehler.verboten = $0 else { return XCTFail("\($0)") } }
-        XCTAssertTrue(log().isEmpty, "LUN 0 abgelehnt, bevor das Ziel kontaktiert wurde")
+        try formatiere(port, lun: 0, ausfuehren: false, &l)
+        XCTAssertTrue(l.contains { $0.hasPrefix("plan: LUN 0") }, "\(l)")
+        XCTAssertTrue(ereignisse("write").isEmpty)
+    }
+
+    /// Eingehaengte LUN: verweigert, bevor das Ziel kontaktiert wird.
+    func testFormatLehntEingehaengteLUNAb() throws {
+        let port = try ziel(mib: 128)
+        var l: [String] = []
+        XCTAssertThrowsError(try formatiere(port, lun: 1, ausfuehren: true, eingehaengt: { $0 == 1 }, &l)) { guard case ISCSIFehler.verboten = $0 else { return XCTFail("\($0)") } }
+        XCTAssertTrue(log().isEmpty, "LUN eingehaengt: Ziel nicht kontaktiert")
+        XCTAssertThrowsError(try formatiere(port, lun: -1, ausfuehren: false, &l))
     }
 
     /// Ergebnis wird vom macOS-Kernel gerichtet: GPT muss sich anhaengen lassen, die Partition muss fsck_hfs -fn bestehen.

@@ -155,17 +155,33 @@ do {
         guard let h = args.first, !h.hasPrefix("-") else { hilfe() }
         print(try helferISCSIWeiterleitung(host: h))
     case "iscsi-mount":
-        guard let h = opt("--host") ?? ProcessInfo.processInfo.environment["DROBO_ISCSI_HOST"], let l = opt("--lun").flatMap(Int.init) else { hilfe() }
+        guard let h = opt("--host") ?? ProcessInfo.processInfo.environment["DROBO_ISCSI_HOST"] else { hilfe() }
         let e = kern.ablage.einstellungen()
+        if flag("--all") {
+            let r = try iscsiAlleEinhaengen(host: h, schreiben: flag("--write"), sicherung: e.sicherungOrt.isEmpty ? nil : (e.sicherungOrt, e.sicherungAnzahl), ohneSicherung: flag("--no-backup"), meldung: { print($0) })
+            if r.values.contains(where: { $0 != nil }) { throw Fehler.eingabe("not every LUN could be mounted (see above)") }
+            break
+        }
+        guard let l = opt("--lun").flatMap(Int.init) else { hilfe() }
         try iscsiEinhaengen(host: h, lun: l, schreiben: flag("--write"), ziel: opt("--target"), ort: opt("--mountpoint"), sicherung: e.sicherungOrt.isEmpty ? nil : (e.sicherungOrt, e.sicherungAnzahl),
                             ohneSicherung: flag("--no-backup"), meldung: { print($0) })
+    case "iscsi-lunsize":     // DroboPro-Testgeraet: LUN-Groesse (TiB) aendern. Trockenlauf ohne --execute; alle Volumes vorher aushaengen.
+        let env = ProcessInfo.processInfo.environment
+        guard let h = env["DROBO_ISCSI_HOST"], !h.isEmpty, let t = opt("--tib").flatMap(Int.init), let w = env["DROBO_TESTDIR"], !w.isEmpty else { throw Fehler.eingabe("set DROBO_ISCSI_HOST and DROBO_TESTDIR, give --tib N") }
+        try iscsiLunGroesse(host: h, port: env["DROBO_ISCSI_PORT"].flatMap { UInt16($0) } ?? 3260, tib: t, ausfuehren: flag("--execute"), sicherungsordner: w + "/lunsize", meldung: { print($0); fflush(stdout) })
+    case "iscsi-luns":      // alle LUNs: Groesse, Schema (Seite 07), HFS+-Partition, Einhaengung
+        guard let h = opt("--host") ?? ProcessInfo.processInfo.environment["DROBO_ISCSI_HOST"] else { hilfe() }
+        let mnt = Set(iscsiEingehaengteLuns())
+        for l in try netzLunVerzeichnis(host: h) { print("LUN \(l.lun): \(l.groesse >> 30) GiB, scheme \(l.schema), " + (l.hatDateisystem ? "HFS+ partition \((l.partitionBytes ?? 0) >> 30) GiB" : "no file system") + (mnt.contains(l.lun) ? ", mounted" : "")) }
     case "iscsi-unmount":
+        if flag("--all") { try iscsiAlleAushaengen(meldung: { print($0) }); break }
         try iscsiAushaengen(ort: opt("--mountpoint") ?? "\(iscsiVorgabeOrt)\(opt("--lun") ?? "1")"); print("unmounted")
     case "iscsi-format":
         let env = ProcessInfo.processInfo.environment
         guard let h = env["DROBO_ISCSI_HOST"], !h.isEmpty else { throw Fehler.eingabe("set DROBO_ISCSI_HOST to the target's address") }
         guard let w = env["DROBO_TESTDIR"], !w.isEmpty else { throw Fehler.eingabe("set DROBO_TESTDIR (work folder for the local HFS+ image, not the startup volume)") }
         guard let l = opt("--lun").flatMap(Int.init), let n = opt("--name") else { hilfe() }
+        if flag("--execute") && opt("--confirm") != String(l) { throw Fehler.eingabe("--execute erases LUN \(l) completely: add --confirm \(l)") }
         try iscsiFormat(host: h, port: env["DROBO_ISCSI_PORT"].flatMap { UInt16($0) } ?? 3260, ziel: opt("--target"), lun: l, name: n,
                         partitionBytes: opt("--partition-gib").flatMap { UInt64($0) }.map { $0 << 30 }, ausfuehren: flag("--execute"), arbeitsordner: w, meldung: { print($0) })
     case "uninstall":
