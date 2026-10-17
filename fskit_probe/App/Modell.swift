@@ -68,8 +68,8 @@ final class DroboModell: ObservableObject {
     @Published var drobos: [String: DroboAnsicht] = [:]
     @Published var protokoll: [Datenablage.Eintrag] = []
     @Published var tempo: [TempoMessung] = []
-    @Published var hilfsdienst = "unbekannt"
-    @Published var festplattenzugriff = "nicht geprüft"
+    @Published var hilfsdienst = String(localized: "unbekannt")
+    @Published var festplattenzugriff = String(localized: "nicht geprüft")
     @Published var modul = ModulStatus(installiert: false, freigeschaltet: false)
     @Published var arbeit: String?
     @Published var meldung: Meldung?

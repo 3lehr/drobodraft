@@ -37,3 +37,8 @@ check-io: all
 	echo "Objekte mit _lifs_dev_pwrite:"; for f in $$(find $(B) -name '*.o'); do nm -u $$f | grep -q '^_lifs_dev_pwrite$$' && echo "  $$f"; done; \
 	echo "pwrite-Aufrufstellen in Apples Quellen (werden per -D umgeleitet):"; grep -n '\bpwrite *(' $(VEN)/*.c | grep -v tester | sed 's/^/  /'; \
 	[ $$bad = 0 ] && echo "check-io: OK, kein anderer Schreibweg" || { echo "check-io: FEHLER"; exit 1; }
+
+# Oberflaechentexte ohne Eintrag in Localizable.xcstrings (fest verdrahtete Texte) finden; Kontrollen des Pruefers zuerst.
+lint-texte:
+	python3 fskit_probe/tools/lint_texte_test.py && python3 fskit_probe/tools/lint_texte.py
+.PHONY: lint-texte
