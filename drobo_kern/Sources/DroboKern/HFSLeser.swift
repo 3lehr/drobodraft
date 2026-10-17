@@ -15,6 +15,8 @@ final class HFSLeser {
     static let forkInfo: [(name: String, off: Int, id: UInt32)] = [("allocation", 112, 6), ("extents", 192, 3), ("catalog", 272, 4), ("attributes", 352, 8), ("startup", 432, 7)]
     let fd: Int32
     let pfad: String
+    /// Alternative Lesequelle (z. B. iSCSI-Partition) statt Datei/Geraet; fd ist dann -1.
+    let quelle: ((UInt64, Int) throws -> [UInt8])?
     var vh: [UInt8] = []
     var blockSize: UInt64 = 0
     var totalBlocks: UInt32 = 0
@@ -22,6 +24,7 @@ final class HFSLeser {
     var forks: [String: HFSFork] = [:]
 
     init(pfad: String) throws {
+        quelle = nil
         self.pfad = pfad
         fd = open(pfad, O_RDONLY)
         if fd < 0 {
@@ -34,14 +37,23 @@ final class HFSLeser {
         guard blockSize >= 512, blockSize & (blockSize - 1) == 0 else { close(fd); throw AppFehler.sicherung("unplausible Blockgroesse \(blockSize)") }
         for (n, o, _) in Self.forkInfo { forks[n] = Self.fork(vh, o) }
     }
-    deinit { close(fd) }
+    /// Lesequelle statt Pfad: `lesen(offset, n)` liefert n Byte ab Offset des Volumes (Partitionsanfang = 0).
+    init(name: String, lesen: @escaping (UInt64, Int) throws -> [UInt8]) throws {
+        pfad = name; fd = -1; quelle = lesen
+        vh = try lesen(1024, 512)
+        guard vh.count == 512, vh[0..<2] == [0x48, 0x2B] || vh[0..<2] == [0x48, 0x58] else { throw AppFehler.sicherung("keine HFS+-Signatur in \(name)") }
+        blockSize = UInt64(be32(vh, 40)); totalBlocks = be32(vh, 44); freeBlocks = be32(vh, 48)
+        guard blockSize >= 512, blockSize & (blockSize - 1) == 0 else { throw AppFehler.sicherung("unplausible Blockgroesse \(blockSize)") }
+        for (n, o, _) in Self.forkInfo { forks[n] = Self.fork(vh, o) }
+    }
+    deinit { if fd >= 0 { close(fd) } }
 
     static func fork(_ b: [UInt8], _ o: Int) -> HFSFork {
         HFSFork(logical: be64(b, o), blocks: be32(b, o + 12),
                 inline: (0..<8).map { Ext(start: be32(b, o + 16 + 8 * $0), anzahl: be32(b, o + 20 + 8 * $0)) }.filter { $0.anzahl > 0 })
     }
 
-    func lies(_ off: UInt64, _ n: Int) throws -> [UInt8] { try rohLies(fd, off, n) }
+    func lies(_ off: UInt64, _ n: Int) throws -> [UInt8] { try quelle?(off, n) ?? rohLies(fd, off, n) }
 
     func mapExtents(_ ext: [Ext], _ fileOff: UInt64, _ size: UInt64) -> UInt64? {
         var blk = fileOff / blockSize
@@ -120,9 +132,9 @@ final class HFSLeser {
 
     /// Volumeende (fuer Alternate-VH bei Ende-1024): Abbilddatei = Dateigroesse, sonst totalBlocks*Blockgroesse; muss dort H+/HX tragen.
     func volumeEnde(partitionsgroesse: UInt64? = nil) throws -> UInt64 {
-        var st = stat(); fstat(fd, &st)
+        var st = stat(); if fd >= 0 { fstat(fd, &st) }
         var kandidaten: [UInt64] = []
-        if st.st_mode & S_IFMT == S_IFREG { kandidaten = [UInt64(st.st_size)] }
+        if fd >= 0, st.st_mode & S_IFMT == S_IFREG { kandidaten = [UInt64(st.st_size)] }
         else { kandidaten = [UInt64(totalBlocks) * blockSize] + (partitionsgroesse.map { [$0] } ?? []) }
         for k in kandidaten where k > 2 * MiB {
             if let a = try? lies(k - 1024, 2), a == [0x48, 0x2B] || a == [0x48, 0x58] { return k }

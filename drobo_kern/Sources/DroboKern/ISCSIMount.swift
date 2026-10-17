@@ -17,7 +17,8 @@ public let iscsiVorgabeOrt = "/private/tmp/drobo_iscsi_mnt"
 
 /// Einhaengen ueber den Hilfsdienst: Weiterleitung (Port) holen, Volume-UUID und Partitionsgroesse aus der LUN lesen, Freigabe im Container des iSCSI-Moduls setzen,
 /// `mount -F -t hfsdropro iscsi://127.0.0.1:PORT/IQN/LUN ORT`. Der Ort liegt nie unter $HOME (Spotlight).
-public func iscsiEinhaengen(host: String, lun: Int, schreiben: Bool, ziel: String?, ort: String?, meldung: (String) -> Void) throws {
+public func iscsiEinhaengen(host: String, lun: Int, schreiben: Bool, ziel: String?, ort: String?, sicherung: (ort: String, anzahl: Int)? = nil, ohneSicherung: Bool = false,
+                            meldung: (String) -> Void) throws {
     let ort = ort ?? "\(iscsiVorgabeOrt)\(lun)"
     guard !ort.hasPrefix(NSHomeDirectory() + "/"), ort != NSHomeDirectory() else { throw Fehler.ortUnterHome(ort) }
     let port = try helferISCSIWeiterleitung(host: host)
@@ -28,6 +29,11 @@ public func iscsiEinhaengen(host: String, lun: Int, schreiben: Bool, ziel: Strin
     let teil = try GPT.ersteHFS { try s.lesen(lun: lun, lba: $0, bloecke: $1) }
     guard let p = teil else { s.abmelden(); throw ISCSIFehler.protokoll("LUN \(lun) has no HFS+ partition") }
     let vh = try s.lesen(lun: lun, lba: p.ersterLBA + 2, bloecke: 1)       // Offset 1024 der Partition
+    var gesichert: String?
+    if schreiben, let si = sicherung, let u = hfsVolumeUUID(vh: vh) {
+        do { gesichert = try netzSicherung(sitzung: s, lun: lun, partition: p, uuid: u, ort: si.ort, anzahl: si.anzahl).ordner } catch { s.abmelden(); throw error }
+        meldung("metadata backup: \(gesichert!)")
+    } else if schreiben && !ohneSicherung { s.abmelden(); throw AppFehler.sicherungOrt("Schreiben ohne Metadaten-Sicherung wird nicht eingehaengt: Sicherungsort fehlt (CLI: drobo backup-location PFAD, oder --no-backup)") }
     s.abmelden()                                                            // vor dem Mount: eine Sitzung zur Zeit (die DroboPro bedient nur eine)
     guard let uuid = hfsVolumeUUID(vh: vh) else { throw ISCSIFehler.protokoll("partition has no HFS+ volume header with a volume ID") }
     let modus = schreiben ? "schreiben" : "nurlesen"

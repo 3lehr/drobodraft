@@ -23,7 +23,7 @@ func hilfe() -> Never {
                                                set up LUN 1 of an iSCSI target (DroboPro test device) with GPT + one HFS+ partition (no journal); dry run without --execute
     drobo iscsi-write-test [--lba N] [--sizes 4096,262144]   write, read back and compare on LUN 1 of a test target; stops at the first error
     drobo iscsi-relay HOST                     ask the helper service for a loopback port that forwards to HOST:3260 (private IPv4 only)
-    drobo iscsi-mount --host H --lun N [--write] [--target IQN] [--mountpoint P]   mount a LUN of a network target through the helper service (read-only unless --write); default mountpoint /private/tmp/drobo_iscsi_mntN
+    drobo iscsi-mount --host H --lun N [--write [--no-backup]] [--target IQN] [--mountpoint P]   mount a LUN (--write backs up the volume metadata first, to the location of "drobo backup-location") of a network target through the helper service (read-only unless --write); default mountpoint /private/tmp/drobo_iscsi_mntN
     drobo iscsi-unmount [--lun N] [--mountpoint P]
     drobo state | log | speed-history | drives
     drobo detect                               list connected Drobos (SCSI vendor "Drobo") that are not set up yet
@@ -149,7 +149,9 @@ do {
         print(try helferISCSIWeiterleitung(host: h))
     case "iscsi-mount":
         guard let h = opt("--host") ?? ProcessInfo.processInfo.environment["DROBO_ISCSI_HOST"], let l = opt("--lun").flatMap(Int.init) else { hilfe() }
-        try iscsiEinhaengen(host: h, lun: l, schreiben: flag("--write"), ziel: opt("--target"), ort: opt("--mountpoint"), meldung: { print($0) })
+        let e = kern.ablage.einstellungen()
+        try iscsiEinhaengen(host: h, lun: l, schreiben: flag("--write"), ziel: opt("--target"), ort: opt("--mountpoint"), sicherung: e.sicherungOrt.isEmpty ? nil : (e.sicherungOrt, e.sicherungAnzahl),
+                            ohneSicherung: flag("--no-backup"), meldung: { print($0) })
     case "iscsi-unmount":
         try iscsiAushaengen(ort: opt("--mountpoint") ?? "\(iscsiVorgabeOrt)\(opt("--lun") ?? "1")"); print("unmounted")
     case "iscsi-format":

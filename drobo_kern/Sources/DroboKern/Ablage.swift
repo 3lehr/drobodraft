@@ -7,8 +7,13 @@ public struct DroboEintrag: Codable, Equatable {
     public var uuid: String
     public var name: String
     public var rolle: Rolle
-    public init(uuid: String, name: String, rolle: Rolle = .arbeitsvolume) { self.uuid = uuid.uppercased(); self.name = name; self.rolle = rolle }
+    /// Gesetzt = Netzwerk-Drobo (DroboPro per iSCSI): Adresse + LUN statt Geraeteknoten; uuid ist dann die Volume-UUID der HFS+-Partition.
+    public var netz: NetzZiel?
+    public init(uuid: String, name: String, rolle: Rolle = .arbeitsvolume, netz: NetzZiel? = nil) { self.uuid = uuid.uppercased(); self.name = name; self.rolle = rolle; self.netz = netz }
 }
+
+public struct NetzZiel: Codable, Equatable { public var host: String; public var lun: Int
+    public init(host: String, lun: Int) { self.host = host; self.lun = lun } }
 
 
 public struct Einstellungen: Codable, Equatable {

@@ -236,4 +236,36 @@ final class ISCSITests: XCTestCase {
         XCTAssertNotNil(uuidDiskutil); XCTAssertEqual(hfsVolumeUUID(vh: vh), uuidDiskutil, "Volume-UUID wie diskutil")
         let (_, nf) = ausfuehren("/usr/sbin/diskutil", ["info", teil]); XCTAssertTrue(nf.contains("Journal:                  Not Journaled") || !nf.contains("Journal:                  Journaled"), nf)
     }
+
+    // MARK: Netzwerk-Drobo (Status, Entdecken, Sicherung)
+
+    func testNetzStatusAusDenSeiten() throws {
+        let s = try sitzung(try ziel())
+        let (st, info) = try netzStatus(sitzung: s)
+        XCTAssertEqual(st.modell, "DroboPro"); XCTAssertEqual(st.schaechte.count, 8); XCTAssertEqual(st.schaechte.filter { $0.belegt }.count, 7)
+        XCTAssertEqual(info, NetzInfo(name: "DroboPro", gelbProzent: 85, rotProzent: 95))
+        XCTAssertNotNil(st.kapazitaet); XCTAssertEqual(st.protokoll, "0.11")
+        XCTAssertTrue(ereignisse("verschluckt").isEmpty, "alle Seiten mit passender Laenge angefragt")
+    }
+
+    func testNetzEntdeckenUndSicherungByteGleich() throws {
+        let port = try ziel(mib: 128)
+        var l: [String] = []
+        try formatiere(port, ausfuehren: true, &l)
+        let s = try sitzung(port)
+        let luns = try netzLuns(sitzung: s)
+        XCTAssertEqual(luns.map { $0.lun }, [1], "LUN 0 hat keine GPT/HFS+-Partition")
+        let img = try Data(contentsOf: URL(fileURLWithPath: dir + "/lun1.img"))
+        let p0 = 2048 * 512
+        XCTAssertEqual(luns[0].uuid, hfsVolumeUUID(vh: [UInt8](img[(p0 + 1024)..<(p0 + 1536)])))
+        let ort = dir + "/sicherung"
+        let teil = try GPT.ersteHFS { try s.lesen(lun: 1, lba: $0, bloecke: $1) }!
+        let r = try netzSicherung(sitzung: s, lun: 1, partition: teil, uuid: luns[0].uuid, ort: ort, anzahl: 2)
+        XCTAssertEqual(sicherungPruefen(ordner: r.ordner), [])
+        let kopf = try Data(contentsOf: URL(fileURLWithPath: r.ordner + "/kopf_1MiB.bin")), ende = try Data(contentsOf: URL(fileURLWithPath: r.ordner + "/ende_1MiB.bin"))
+        XCTAssertEqual(kopf, img[p0..<(p0 + 1 << 20)], "Kopf der Partition byte-gleich")
+        XCTAssertEqual(ende, img[(p0 + Int(teil.bloecke) * 512 - (1 << 20))..<(p0 + Int(teil.bloecke) * 512)], "Ende der Partition byte-gleich")
+        XCTAssertEqual(eigeneSicherungen(ort: ort, uuid: luns[0].uuid).count, 1)
+        XCTAssertThrowsError(try netzSicherung(sitzung: s, lun: 1, partition: teil, uuid: luns[0].uuid, ort: "/private/tmp/gleich-systemplatte", anzahl: 2), "Systemplatte als Sicherungsort abgelehnt")
+    }
 }

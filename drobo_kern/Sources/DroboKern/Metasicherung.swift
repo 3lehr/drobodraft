@@ -69,6 +69,13 @@ public func metadatenSichern(quelle: String, ort: String, uuid: String, anzahl: 
                              freiBytes: UInt64? = nil, jetzt: Date = Date(), vorPruefung: ((String) -> Void)? = nil) throws -> SicherungsErgebnis {
     try sicherungsOrtPruefen(ort, quelle: quelle)
     let v = try HFSLeser(pfad: quelle)
+    return try metadatenSichern(leser: v, quelle: quelle, ort: ort, uuid: uuid, anzahl: anzahl, partitionsgroesse: partitionsgroesse, freiBytes: freiBytes, jetzt: jetzt, vorPruefung: vorPruefung)
+}
+
+/// Wie oben, aber von einer geoeffneten Lesequelle (Geraet, Datei oder iSCSI-Partition). Der Sicherungsort ist vom Aufrufer schon geprueft (`sicherungsOrtPruefen`).
+@discardableResult
+func metadatenSichern(leser v: HFSLeser, quelle: String, ort: String, uuid: String, anzahl: Int, partitionsgroesse: UInt64? = nil,
+                      freiBytes: UInt64? = nil, jetzt: Date = Date(), vorPruefung: ((String) -> Void)? = nil) throws -> SicherungsErgebnis {
     let ende = try v.volumeEnde(partitionsgroesse: partitionsgroesse)
     let alt = try v.lies(ende - 1024, 2)
 

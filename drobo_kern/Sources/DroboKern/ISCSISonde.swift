@@ -28,7 +28,7 @@ public func iscsiSonde(host: String, port: UInt16 = 3260, schreibtest: Bool, sch
     }
     for l in luns { if let p = try? GPT.ersteHFS(lies: { try s.lesen(lun: l, lba: $0, bloecke: $1) }), let vh = try? s.lesen(lun: l, lba: p.ersterLBA + 2, bloecke: 1) {
         z.append("lun \(l) HFS+ partition LBA \(p.ersterLBA)...\(p.letzterLBA) volume UUID \(hfsVolumeUUID(vh: vh) ?? "-")") } }
-    for u in [UInt8]([0x01, 0x02, 0x06, 0x09]) { z.append("3A/\(String(format: "%02x", u)): " + hex(try s.modeSense3A(lun: 0, unterseite: u))) }
+    for u in [UInt8]([0x01, 0x02, 0x06, 0x09, 0x05, 0x30, 0x04, 0x07, 0x03]) { z.append("3A/\(String(format: "%02x", u)): " + hex(try s.modeSense3A(lun: 0, unterseite: u))) }
     if schreibtest {
         guard luns.contains(1) else { z.append("write test skipped: no LUN 1"); return z.joined(separator: "\n") }
         guard leer1 else { z.append("write test skipped: LUN 1 is not empty (partition table or data in the first 8 sectors)"); return z.joined(separator: "\n") }

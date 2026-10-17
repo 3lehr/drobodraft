@@ -7,6 +7,8 @@ public struct SCSIAntwort { public var status: UInt8; public var daten: [UInt8];
 extension ISCSISitzung {
     /// Seiten 0x3A, die bei der DroboPro gemessen antworten (33/35 ohne Antwort an der DroboPro, aber lesend ungefaehrlich -> erlaubt, mit Zeitgrenze).
     public static let modeSenseUnterseiten: Set<UInt8> = [0x01, 0x02, 0x06, 0x08, 0x09, 0x33, 0x35]
+    /// Seiten, die die DroboPro NUR mit genau passender Allokationslaenge beantwortet (gemessen: 04/07 bei 512 keine Antwort, bei 157 ja; Laengen aus drobo-utils/Recon).
+    public static let modeSenseExakt: [UInt8: Int] = [0x03: 0x360, 0x04: 0x9D, 0x05: 0x2A, 0x07: 0x9D, 0x30: 0x0D]
     /// Allokationslaenge 4096 beantwortet die DroboPro nicht (Sitzung haengt) -> Gate begrenzt auf 512.
     public static let modeSenseMax = 512
 
@@ -32,8 +34,10 @@ extension ISCSISitzung {
             if op == 0x88 && lesen > maxDatenmenge { return "READ(16) of \(lesen) bytes exceeds \(maxDatenmenge)" }
         case 0x5A:
             if let f = laenge(10) { return f }
-            if cdb[2] != 0x3A || !modeSenseUnterseiten.contains(cdb[3]) { return "0x5a: only page 0x3A, sub-pages \(modeSenseUnterseiten.sorted())" }
-            if Int(cdb[7]) << 8 | Int(cdb[8]) > modeSenseMax { return "0x5a: allocation length above \(modeSenseMax) is not answered by the DroboPro" }
+            let al = Int(cdb[7]) << 8 | Int(cdb[8])
+            if cdb[2] == 0x3A, let genau = modeSenseExakt[cdb[3]] { return al == genau ? nil : "0x5a: sub-page \(cdb[3]) needs allocation length exactly \(genau)" }
+            if cdb[2] != 0x3A || !modeSenseUnterseiten.contains(cdb[3]) { return "0x5a: only page 0x3A, sub-pages \(modeSenseUnterseiten.union(modeSenseExakt.keys).sorted())" }
+            if al > modeSenseMax { return "0x5a: allocation length above \(modeSenseMax) is not answered by the DroboPro" }
         default: return "opcode \(hex) is not on the allowlist"
         }
         return nil
@@ -134,7 +138,8 @@ extension ISCSISitzung {
     }
 
     public func modeSense3A(lun: Int, unterseite: UInt8) throws -> [UInt8] {
-        try gut(befehl(lun: lun, cdb: [0x5A, 0x08, 0x3A, unterseite, 0, 0, 0, 0x02, 0x00, 0], lesen: Self.modeSenseMax))
+        let n = Self.modeSenseExakt[unterseite] ?? Self.modeSenseMax
+        return try gut(befehl(lun: lun, cdb: [0x5A, 0x08, 0x3A, unterseite, 0, 0, 0, UInt8(n >> 8), UInt8(n & 0xff), 0], lesen: n))
     }
 
     private func blockgroesse(_ lun: Int) throws -> Int {
