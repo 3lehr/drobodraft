@@ -5,7 +5,7 @@ private func hex(_ b: [UInt8]) -> String { b.map { String(format: "%02x", $0) }.
 /// Gegenprobe gegen ein echtes iSCSI-Ziel (DroboPro): Discovery, INQUIRY, LUNs, Kapazitaet, erste 8 Sektoren, Statusseiten 3A. Nur lesend.
 /// `schreibtest`: schreibt EINEN Sektor mit Muster auf LUN 1 bei `schreibtestLBA`, liest zurueck und stellt Nullen wieder her -
 /// nur wenn LUN 1 laut Lesen leer ist (erste 8 Sektoren Nullen, also weder MBR noch GPT); sonst wird nicht geschrieben und das gemeldet.
-public func iscsiSonde(host: String, port: UInt16 = 3260, schreibtest: Bool, schreibtestLBA: UInt64 = 64) throws -> String {
+public func iscsiSonde(host: String, port: UInt16 = 3260, schreibtest: Bool, schreibtestLBA: UInt64 = 64, slotInfo2: Bool = false) throws -> String {
     var z: [String] = []
     let d = try ISCSISitzung(host: host, port: port)
     let ziele = try d.ziele(); d.abmelden()
@@ -29,6 +29,8 @@ public func iscsiSonde(host: String, port: UInt16 = 3260, schreibtest: Bool, sch
     for l in luns { if let p = try? GPT.ersteHFS(lies: { try s.lesen(lun: l, lba: $0, bloecke: $1) }), let vh = try? s.lesen(lun: l, lba: p.ersterLBA + 2, bloecke: 1) {
         z.append("lun \(l) HFS+ partition LBA \(p.ersterLBA)...\(p.letzterLBA) volume UUID \(hfsVolumeUUID(vh: vh) ?? "-")") } }
     for u in [UInt8]([0x01, 0x02, 0x06, 0x09, 0x05, 0x30, 0x04, 0x07, 0x03]) { z.append("3A/\(String(format: "%02x", u)): " + hex(try s.modeSense3A(lun: 0, unterseite: u))) }
+    // SlotInfo2 (Temperatur, Restlebensdauer, Fehler je Schacht): zuletzt und nur auf Wunsch - bleibt die Antwort aus, haengt die Sitzung bis zur Zeitgrenze.
+    if slotInfo2 { let p = try s.modeSense3A(lun: 0, unterseite: 0x35); z.append("3A/35 (\(p.count) bytes): " + hex(p)) }
     if schreibtest {
         guard luns.contains(1) else { z.append("write test skipped: no LUN 1"); return z.joined(separator: "\n") }
         guard leer1 else { z.append("write test skipped: LUN 1 is not empty (partition table or data in the first 8 sectors)"); return z.joined(separator: "\n") }

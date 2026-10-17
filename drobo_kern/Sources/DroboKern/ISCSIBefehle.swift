@@ -6,9 +6,11 @@ public struct SCSIAntwort { public var status: UInt8; public var daten: [UInt8];
 
 extension ISCSISitzung {
     /// Seiten 0x3A, die bei der DroboPro gemessen antworten (33/35 ohne Antwort an der DroboPro, aber lesend ungefaehrlich -> erlaubt, mit Zeitgrenze).
-    public static let modeSenseUnterseiten: Set<UInt8> = [0x01, 0x02, 0x06, 0x08, 0x09, 0x33, 0x35]
+    public static let modeSenseUnterseiten: Set<UInt8> = [0x01, 0x02, 0x06, 0x08, 0x09, 0x33]
     /// Seiten, die die DroboPro NUR mit genau passender Allokationslaenge beantwortet (gemessen: 04/07 bei 512 keine Antwort, bei 157 ja; Laengen aus drobo-utils/Recon).
-    public static let modeSenseExakt: [UInt8: Int] = [0x03: 0x360, 0x04: 0x9D, 0x05: 0x2A, 0x07: 0x9D, 0x30: 0x0D]
+    public static let modeSenseExakt: [UInt8: Int] = [0x03: 0x360, 0x04: 0x9D, 0x05: 0x2A, 0x07: 0x9D, 0x30: 0x0D,
+                                                           // SlotInfo2: Kopf 0xC + 8 Schaechte x 0x6C (Recon §1). ponytail: Laenge fuer die DroboPro noch nicht am Geraet gemessen (offen), 512 antwortet vermutlich nicht
+                                                           0x35: 0xC + 8 * 0x6C]
     /// Allokationslaenge 4096 beantwortet die DroboPro nicht (Sitzung haengt) -> Gate begrenzt auf 512.
     public static let modeSenseMax = 512
 
