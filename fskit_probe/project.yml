@@ -79,6 +79,8 @@ targets:
       - ../drobo_kern/Sources/DroboKern/Medium.swift
       - ../drobo_kern/Sources/DroboKern/Freigabe.swift
       - ../drobo_kern/Sources/DroboKern/Fehler.swift
+      - ../drobo_kern/Sources/DroboKern/ISCSI.swift
+      - ../drobo_kern/Sources/DroboKern/LanSuche.swift
     settings:
       base:
         PRODUCT_NAME: drobohelper

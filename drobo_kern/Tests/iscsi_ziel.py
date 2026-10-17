@@ -22,11 +22,11 @@ MODESENSE = {  # gemessen an einer DroboPro (Seite 08 ist synthetisch: das Origi
     0x30: "7a300900555f00000000000000",
 }
 EXAKT = {0x03: 0x360, 0x05: 0x2A, 0x30: 0x0D}
-IQN = "iqn.2026-10.local.test:ziel"
 a = argparse.ArgumentParser()
 a.add_argument("--image", action="append", required=True)
 a.add_argument("--log", required=True)
 a.add_argument("--port", type=int, default=0)
+a.add_argument("--iqn", default="iqn.2026-10.local.test:ziel")
 a.add_argument("--drop-after", type=int)
 a.add_argument("--swallow", type=int)
 a.add_argument("--r2t-chunk", type=int)
@@ -34,6 +34,7 @@ a.add_argument("--max-seg", type=int, default=65536)
 a.add_argument("--refuse-immediate", action="store_true", help="ImmediateData=No aushandeln (Test des Client-Schutzes)")
 a.add_argument("--tolerate-no-immediate", action="store_true", help="WRITE ohne Immediate-Daten bedienen (Vorgabe: DroboPro-Verhalten, siehe unten)")
 A = a.parse_args()
+IQN = A.iqn
 loglock = threading.Lock()
 
 def log(**k):

@@ -26,8 +26,8 @@ func hilfe() -> Never {
     drobo iscsi-mount --host H --lun N [--write [--no-backup]] [--target IQN] [--mountpoint P]   mount a LUN (--write backs up the volume metadata first, to the location of "drobo backup-location") of a network target through the helper service (read-only unless --write); default mountpoint /private/tmp/drobo_iscsi_mntN
     drobo iscsi-unmount [--lun N] [--mountpoint P]
     drobo state | log | speed-history | drives
-    drobo detect                               list connected Drobos (SCSI vendor "Drobo") that are not set up yet
-    drobo add-drive UUID NAME [timemachine]
+    drobo detect [--usb-only]                  find Drobos: connected via USB (SCSI vendor "Drobo") and in the local network (DroboPro, via the helper service); shows what is not set up yet
+    drobo add-drive UUID NAME [timemachine] [--host H --lun N]   (--host/--lun: network drobo)
     drobo helper grant|release [--uuid U]      diagnostics: call the helper directly (aliases: helfer freigeben|zurueckgeben)
     drobo uninstall                            print how to remove DroboDraft (tools/uninstall.sh)
     Environment: DROBO_UUID, DROBO_FREIGABE, DROBO_DATEN, DROBO_BUNDLE_PREFIX, DROBO_WERKZEUGE. Exit codes: 0 ok, 2 usage, 10-36 see message.
@@ -126,13 +126,20 @@ do {
     case "drives": kern.ablage.einstellungen().drobos.forEach { print("\($0.uuid)  \($0.name)  \($0.rolle.rawValue)") }
     case "detect":
         let bekannt = Set(kern.ablage.einstellungen().drobos.map { $0.uuid })
-        let neu = erkenneDrobos().filter { !bekannt.contains($0.uuid) }
-        if neu.isEmpty { print("No new Drobo found.") }
-        neu.forEach { print("\($0.uuid)  \($0.name)  \($0.modell)  \($0.bsd)   -> drobo add-drive \($0.uuid) \"\($0.name.isEmpty ? "Drobo" : $0.name)\"") }
+        let r = drobosSuchen(lan: !flag("--usb-only"))
+        let neu = r.usb.filter { !bekannt.contains($0.uuid) }
+        if neu.isEmpty && r.lan.isEmpty { print("No new Drobo found.") }
+        neu.forEach { print("USB  \($0.uuid)  \($0.name)  \($0.modell)  \($0.bsd)   -> drobo add-drive \($0.uuid) \"\($0.name.isEmpty ? "Drobo" : $0.name)\"") }
+        for d in r.lan {
+            if d.luns.isEmpty { print("LAN  \(d.host)  (Drobo found, no set-up volume)") }
+            for l in d.luns { print("LAN  \(d.host)  LUN \(l.lun)  \(ByteCountFormatter.string(fromByteCount: Int64(l.partitionBytes), countStyle: .file))  \(l.uuid)\(bekannt.contains(l.uuid) ? "  (known)" : "   -> drobo add-drive \(l.uuid) DroboPro --host \(d.host) --lun \(l.lun)")") }
+        }
+        if let f = r.lanFehler { print("LAN search failed: \(f)") }
     case "add-drive":
         guard args.count >= 2 else { hilfe() }
         var e = kern.ablage.einstellungen(); e.drobos.removeAll { $0.uuid == args[0].uppercased() }
-        e.drobos.append(DroboEintrag(uuid: args[0], name: args[1], rolle: args.count > 2 && args[2] == "timemachine" ? .timemachine : .arbeitsvolume))
+        e.drobos.append(DroboEintrag(uuid: args[0], name: args[1], rolle: args.count > 2 && args[2] == "timemachine" ? .timemachine : .arbeitsvolume,
+                                     netz: opt("--host").flatMap { h in opt("--lun").flatMap(Int.init).map { NetzZiel(host: h, lun: $0) } }))
         kern.ablage.einstellungenSetzen(e); print("ok")
     case "helper":
         guard let a = args.first, a == "grant" || a == "release" else { hilfe() }

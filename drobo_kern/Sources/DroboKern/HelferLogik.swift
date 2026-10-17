@@ -23,6 +23,9 @@ public var helferAnforderung: String { anforderung(prefix: Identitaet.prefix, te
     func ordnerEntfernen(_ volumeUUID: String, reply: @escaping (String?) -> Void)
     /// Prueft ohne Wirkung, ob der Dienst die Geraeteknoten dieser UUID aendern duerfte (chown auf den bisherigen Eigentuemer). nil = ja, sonst Fehlertext.
     func zugriffPruefen(_ volumeUUID: String, reply: @escaping (String?) -> Void)
+    /// Sucht im eigenen IPv4-Subnetz (nur private Bereiche) nach Drobos mit iSCSI-Ziel (IQN-Praefix Data Robotics). `ausnehmen`: Adressen, an denen nicht angeklopft wird
+    /// (eingehaengte DroboPro bedient nur eine Sitzung). Antwort: Adressen.
+    func iscsiSuche(ausnehmen: [String], reply: @escaping ([String]) -> Void)
     /// Lokaler Loopback-Port, der zu host:port (nur IPv4 im privaten Netz, nur Port 3260) weiterleitet. Grund: das Modul hfsdropro bekommt wegen des Datenschutzes
     /// "Lokales Netzwerk" kein Routing ins LAN, der Dienst nicht (gemessen, Plan DroboPro). Antwort (Port, Fehlertext); Port 0 = Fehler.
     func iscsiWeiterleitung(_ host: String, port: UInt16, reply: @escaping (UInt16, String?) -> Void)
@@ -176,6 +179,11 @@ public final class ISCSIWeiterleitung {
     /// nil = erlaubt, sonst Ablehnungsgrund.
     public func zielPruefen(host: String, port: UInt16) -> String? {
         guard port == Self.zielPort else { return "port \(port) not allowed (only \(Self.zielPort))" }
+        return adressePruefen(host: host)
+    }
+
+    /// Nur die Adresse (private IPv4 in kanonischer Schreibweise); die LAN-Suche prueft damit jeden Kandidaten.
+    public func adressePruefen(host: String) -> String? {
         var a = in_addr()
         guard inet_pton(AF_INET, host, &a) == 1 else { return "not an IPv4 literal" }
         let o = withUnsafeBytes(of: a.s_addr) { Array($0) }                       // Netzwerkreihenfolge

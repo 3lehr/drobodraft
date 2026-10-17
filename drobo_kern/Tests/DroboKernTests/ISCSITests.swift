@@ -41,7 +41,7 @@ final class ISCSITests: XCTestCase {
 
     func sitzung(_ port: UInt16, zeit: TimeInterval = 5) throws -> ISCSISitzung {
         let d = try ISCSISitzung(host: "127.0.0.1", port: port, zeitgrenze: zeit)
-        let z = try d.ziele(); XCTAssertEqual(z.first?.name, "iqn.2026-10.local.test:ziel"); d.abmelden()
+        let z = try d.ziele(); XCTAssertNotNil(z.first?.name); d.abmelden()
         return try ISCSISitzung(host: "127.0.0.1", port: port, ziel: z[0].name, zeitgrenze: zeit)
     }
     func muster(_ n: Int, _ seed: UInt8 = 7) -> [UInt8] { (0..<n).map { UInt8(truncatingIfNeeded: $0 &* 31 &+ Int(seed) &+ $0 >> 8) } }
@@ -267,5 +267,48 @@ final class ISCSITests: XCTestCase {
         XCTAssertEqual(ende, img[(p0 + Int(teil.bloecke) * 512 - (1 << 20))..<(p0 + Int(teil.bloecke) * 512)], "Ende der Partition byte-gleich")
         XCTAssertEqual(eigeneSicherungen(ort: ort, uuid: luns[0].uuid).count, 1)
         XCTAssertThrowsError(try netzSicherung(sitzung: s, lun: 1, partition: teil, uuid: luns[0].uuid, ort: "/private/tmp/gleich-systemplatte", anzahl: 2), "Systemplatte als Sicherungsort abgelehnt")
+    }
+
+    // MARK: LAN-Suche
+
+    func testSuchKandidatenGrenzen() {
+        func ip(_ a: UInt32, _ b: UInt32, _ c: UInt32, _ d: UInt32) -> UInt32 { a << 24 | b << 16 | c << 8 | d }
+        let k24 = LanSuche.kandidaten(adresse: ip(192, 168, 178, 53), maske: 0xFFFF_FF00)
+        XCTAssertEqual(k24.count, 253); XCTAssertFalse(k24.contains("192.168.178.53")); XCTAssertFalse(k24.contains("192.168.178.0")); XCTAssertFalse(k24.contains("192.168.178.255"))
+        XCTAssertEqual(k24.first, "192.168.178.1"); XCTAssertEqual(k24.last, "192.168.178.254")
+        XCTAssertEqual(LanSuche.kandidaten(adresse: ip(10, 1, 2, 3), maske: 0xFFFF_0000).count, 1021, "groesseres Netz: /22 um die eigene Adresse, nie mehr als 1024")
+        XCTAssertEqual(LanSuche.kandidaten(adresse: ip(192, 168, 1, 1), maske: 0xFFFF_FFFC), ["192.168.1.2"], "/30")
+        XCTAssertEqual(LanSuche.kandidaten(adresse: ip(192, 168, 1, 1), maske: 0xFFFF_FFFE), [], "/31 hat keine Hosts")
+        XCTAssertLessThanOrEqual(LanSuche.kandidaten(adresse: ip(10, 0, 0, 5), maske: 0).count, 1024)
+    }
+
+    func testLanSucheFindetNurDroboZieleUndNurPrivate() throws {
+        let drobo = try ziel(["--iqn", "iqn.2005-06.com.datarobotics:drobopro.test.node0"])
+        let suche = LanSuche(testPort: drobo)
+        XCTAssertEqual(suche.suchen(kandidaten: ["127.0.0.1"]), ["127.0.0.1"])
+        XCTAssertEqual(suche.suchen(kandidaten: ["127.0.0.1"], ausnehmen: ["127.0.0.1"]), [], "ausgenommene Adresse wird nicht angesprochen")
+        XCTAssertTrue(ereignisse("befehl").isEmpty)
+        var oeffentlich = LanSuche(); oeffentlich.port = drobo; oeffentlich.verbindungsfrist = 0.1
+        XCTAssertEqual(oeffentlich.suchen(kandidaten: ["127.0.0.1", "8.8.8.8", "1.1.1.1"]), [], "Dienst-Init: Loopback und oeffentliche Adressen nie")
+        XCTAssertEqual(suche.suchen(kandidaten: ["127.0.0.2", "8.8.8.8", "example.com"]), [], "nur die erlaubte Adresse wird versucht")
+    }
+
+    func testFremdesIQNIstKeineDrobo() throws {
+        let fremd = try ziel(["--iqn", "iqn.2010-01.com.example:nas"])
+        XCTAssertEqual(LanSuche(testPort: fremd).suchen(kandidaten: ["127.0.0.1"]), [], "Praefix-Filter")
+    }
+
+    func testDrobosSuchenListetFundeOhneUebernahme() throws {
+        let port = try ziel(["--iqn", "iqn.2005-06.com.datarobotics:drobopro.test.node0"], mib: 128)
+        var l: [String] = []; try formatiere(port, ausfuehren: true, &l)
+        let such = LanSuche(testPort: port)
+        let r = drobosSuchen(usbVendor: "KeinHerstellerDerExistiert", lanHosts: { such.suchen(kandidaten: ["127.0.0.1"], ausnehmen: $0) },
+                             lunsFuer: { _ in let s = try self.sitzung(port); defer { s.abmelden() }; return try netzLuns(sitzung: s) })
+        XCTAssertEqual(r.usb, []); XCTAssertNil(r.lanFehler)
+        XCTAssertEqual(r.lan.map { $0.host }, ["127.0.0.1"]); XCTAssertEqual(r.lan.first?.luns.map { $0.lun }, [1])
+        let r2 = drobosSuchen(lan: false, usbVendor: "KeinHerstellerDerExistiert", lanHosts: { _ in XCTFail("LAN nicht verlangt"); return [] })
+        XCTAssertEqual(r2.lan, [])
+        let r3 = drobosSuchen(usbVendor: "KeinHerstellerDerExistiert", lanHosts: { _ in throw ISCSIFehler.verbindung("x") }, lunsFuer: { _ in [] })
+        XCTAssertNotNil(r3.lanFehler)
     }
 }
