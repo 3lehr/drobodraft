@@ -66,13 +66,13 @@ extension DroboModell {
     func alleLunsAushaengen() { ausfuehren("Alle aushängen") { [ablage] in try iscsiAlleAushaengen(meldung: { ablage.protokoll("Netzwerk-Drobo: \($0)") }); return nil } }
 
     /// Formatiert eine LUN neu (alle Daten dieser LUN gehen verloren). Nur DroboPro-Testgeraet; nie eine eingehaengte LUN (Kern verweigert). Arbeitsordner = Sicherungsort (anderes Laufwerk, >= 20 GiB frei).
-    func lunFormatieren(_ lun: Int, name: String) {
+    func lunFormatieren(_ lun: Int, name: String, partitionBytes: UInt64? = nil) {
         guard let nz = aktuell?.eintrag.netz, let u = aktuell?.eintrag.uuid else { return }
         let ort = einstellungen.sicherungOrt
         guard !ort.isEmpty else { meldung = Meldung(titel: "Formatieren nicht möglich", text: String(localized: "Wähle zuerst einen Sicherungsort (anderes Laufwerk als die Drobo und das Startvolume): Beim Formatieren wird dort kurz ein Abbild der neuen Partition aufgebaut (mindestens 20 GB frei).")); return }
         ausfuehren("Formatieren") { [ablage] in
             let port = try helferISCSIWeiterleitung(host: nz.host)
-            try iscsiFormat(host: "127.0.0.1", port: port, lun: lun, name: name, ausfuehren: true, arbeitsordner: ort, meldung: { ablage.protokoll("Formatieren LUN \(lun): \($0)") })
+            try iscsiFormat(host: "127.0.0.1", port: port, lun: lun, name: name, partitionBytes: partitionBytes, ausfuehren: true, arbeitsordner: ort, meldung: { ablage.protokoll("Formatieren LUN \(lun): \($0)") })
             // Neu einlesen (GPT, HFS+-Kopf, Volume-UUID) mit Wiederholung; die Freigabe fuer die neue UUID setzt das Einhaengen. Ohne Ergebnis: Fehler statt stillem Nichts.
             let r = try netzLunNachFormat(host: nz.host, lun: lun)
             await MainActor.run { [weak self] in

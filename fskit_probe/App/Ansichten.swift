@@ -21,6 +21,8 @@ struct HauptAnsicht: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .disabled(m.vorgaenge[m.auswahl] != nil)      // gesperrt: nur diese Drobo, die Seitenleiste bleibt bedienbar
+            .overlay { if let v = m.vorgaenge[m.auswahl] { VorgangsSperre(v: v, weckt: m.weckt[m.auswahl]) } }
         }
         .safeAreaInset(edge: .bottom, spacing: Abstand.keiner) { Statusleiste() }
         .navigationTitle("DroboDraft")

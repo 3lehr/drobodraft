@@ -77,6 +77,21 @@ def blatt_test():
 SCHREIBEND = {"einhaengenSchreiben", "neuSchreiben", "formatieren", "zurueckspielen", "wegsichern"}
 ERLAUBT_IM_SYMBOL = {"hilfe", "erneutPruefen", "einhaengenLesen", "einhaengenSchreiben", "aushaengen", "imFinder", "lunEinhaengenLesen", "lunAushaengen"}
 
+def vorgang_test():
+    """Kritischer Vorgang je Drobo: Zustand, Menueleisten-Zeile; Ende raeumt auf."""
+    p, port, daten = start("beide")
+    try:
+        get = lambda x: holen(port, x); post = lambda x: holen(port, x, True)
+        z0 = get("/zustand"); pruefe(z0["vorgang"] is None and z0["vorgaenge"] == 0, "ohne Vorgang: keine Ueberlagerung")
+        pruefe(not any(r["id"].startswith("v-") for r in get("/symbolmenue")), "ohne Vorgang keine Menueleistenzeile")
+        post("/vorgang?titel=Formatieren"); z = get("/zustand")
+        pruefe(z["vorgang"] == "Formatieren" and z["vorgaenge"] == 1, "Vorgang an der gewaehlten Drobo")
+        zeilen = [r for r in get("/symbolmenue") if r["id"].startswith("v-")]
+        pruefe(len(zeilen) == 1 and "Formatieren" in zeilen[0]["titel"] and zeilen[0]["art"] == "warnung", f"Menueleiste nennt den Vorgang ({[r['titel'] for r in zeilen]})")
+        post("/vorgang?ende=1"); z = get("/zustand")
+        pruefe(z["vorgang"] is None and z["vorgaenge"] == 0, "Ende raeumt auf")
+    finally: beenden(p)
+
 def symbol_test():
     """Menueleisten-Symbol (Zeilen aus dem Modell, Aktionen aus dem Katalog): alle Drobos, freier Platz, Warnungen oben mit Hilfe, Schreiben nur ueber das Blatt,
     Nur-Menueleiste mit Undo, App laeuft nach dem Schliessen aller Fenster weiter."""
@@ -192,6 +207,7 @@ def main():
     finally: beenden(p)
     blatt_test()
     symbol_test()
+    vorgang_test()
     print(f"\n{'ALLES GRUEN' if not fehler else str(len(fehler)) + ' FEHLER'}")
     sys.exit(1 if fehler else 0)
 

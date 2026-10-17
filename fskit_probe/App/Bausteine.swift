@@ -73,6 +73,31 @@ struct WeckHinweis: View {
     }
 }
 
+/// Sperr-Ueberlagerung ueber der Ansicht EINER Drobo waehrend eines kritischen Vorgangs (kein Sheet: Seitenleiste und andere Drobos bleiben bedienbar).
+/// Vorgang, laufende Zeit (unbestimmter Fortschritt), bei der Weckphase die Sekunden, dazu der Hinweis. VoiceOver liest alles als ein Element.
+struct VorgangsSperre: View {
+    let v: Vorgang
+    var weckt: Int?
+    var body: some View {
+        ZStack {
+            Rectangle().fill(.regularMaterial).opacity(0.92)
+            VStack(spacing: Abstand.m) {
+                Label { Text("\(v.titel) – \(v.drobo)").font(.title2.bold()) } icon: { Image(systemName: "hourglass").imageScale(.large) }
+                ProgressView().controlSize(.large).accessibilityHidden(true)
+                TimelineView(.periodic(from: v.start, by: 1)) { t in
+                    let s = max(0, Int(t.date.timeIntervalSince(v.start)))
+                    Text("Läuft seit \(s / 60):\(String(format: "%02d", s % 60)) min").monospacedDigit().foregroundStyle(.secondary)
+                }
+                if let w = weckt { Text("Die DroboPro wacht auf … \(w) s von höchstens \(Int(weckDauer)) s") }
+                Label("Verbindung nicht trennen, den Mac nicht ausschalten oder in den Ruhezustand versetzen.", systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+            }.padding(Abstand.xl)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text("Vorgang läuft: \(v.titel), \(v.drobo). Verbindung nicht trennen, den Mac nicht ausschalten oder in den Ruhezustand versetzen."))
+        .accessibilityAddTraits(.updatesFrequently)
+    }
+}
+
 func groesseText(_ b: UInt64) -> String { ByteCountFormatter.string(fromByteCount: Int64(b), countStyle: .file) }
 
 /// Kennzeichnung "Frühe Alpha": Text + Symbol (nicht nur Farbe).

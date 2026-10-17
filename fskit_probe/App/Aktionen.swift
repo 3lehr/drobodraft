@@ -245,6 +245,7 @@ extension DroboModell {
     /// Warnungen (Platz knapp, reagiert nicht, von anderem Rechner belegt) zuerst, dann je Drobo Zustand, freier Platz und die Aktionen.
     func symbolMenue() -> [SymbolZeile] {
         var z: [SymbolZeile] = []
+        for v in vorgaenge.values.sorted(by: { $0.start < $1.start }) { z.append(SymbolZeile(id: "v-\(v.drobo)", art: .warnung, titel: String(localized: "Vorgang läuft: \(v.titel) – \(v.drobo)"), symbol: "hourglass")) }
         for d in liste {
             let u = d.eintrag.uuid, n = d.eintrag.name
             if d.eintrag.netz != nil, d.bremse != .bereit { z.append(SymbolZeile(id: "w-\(u)", art: .warnung, titel: "\(n): \(d.zustandText)", symbol: "exclamationmark.triangle.fill")) }

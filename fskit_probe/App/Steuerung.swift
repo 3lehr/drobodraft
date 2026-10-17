@@ -73,6 +73,10 @@ final class Steuerung {
             let f: String?
             switch m.blatt { case .schreiben: f = m.schreibenBestaetigen(); case .format(let l): f = m.formatBestaetigen(lun: l, name: q["name"] ?? m.aktuell?.eintrag.netz?.luns?.first { $0.lun == l }?.name ?? "DroboPro"); default: f = String(localized: "Kein Blatt offen.") }
             return json(["ok": f == nil, "fehler": f as Any? ?? NSNull()] as [String: Any])
+        case ("POST", "/vorgang"):   // Pruefung der Sperr-Ueberlagerung ohne Geraet: titel=... setzt einen Vorgang an der gewaehlten Drobo, ende=1 loescht ihn
+            let n = m.einstellungen.drobos.first { $0.uuid == m.auswahl }?.name ?? ""
+            if q["ende"] == "1" { m.vorgaenge[m.auswahl] = nil } else { m.vorgaenge[m.auswahl] = Vorgang(titel: q["titel"] ?? "Formatieren", drobo: n, start: Date()) }
+            return json(["vorgaenge": m.vorgaenge.count])
         case ("POST", "/uhr"): m.uhrVersatz = Double(q["versatz"] ?? "0") ?? 0; return json(["versatz": m.uhrVersatz])
         case ("POST", "/gesichert"): m.blattGesichert = q["an"] == "1"; return json(["gesichert": m.blattGesichert])
         case ("POST", "/undo"): let ok = m.undoManager.canUndo; m.undoManager.undo(); return json(["ok": ok])
@@ -90,7 +94,7 @@ final class Steuerung {
         let e = (try? JSONEncoder().encode(m.einstellungen)).flatMap { try? JSONSerialization.jsonObject(with: $0) } ?? [:]
         return ["abschnitt": m.abschnitt?.rawValue ?? "", "auswahl": m.auswahl, "blatt": m.blatt?.id as Any? ?? NSNull(),
                 "drobos": m.einstellungen.drobos.map { ["uuid": $0.uuid, "name": $0.name, "rolle": $0.rolle.rawValue] },
-                "blatt_art": blattArtText(), "sperre_rest": m.sperreRest(), "gesichert": m.blattGesichert, "bestaetigt": m.bestaetigt.mapValues { "\($0.build.map(String.init) ?? "-")/\($0.anschluss)/\($0.schreibweg)" },
+                "vorgang": m.vorgaenge[m.auswahl]?.titel as Any? ?? NSNull(), "vorgaenge": m.vorgaenge.count, "blatt_art": blattArtText(), "sperre_rest": m.sperreRest(), "gesichert": m.blattGesichert, "bestaetigt": m.bestaetigt.mapValues { "\($0.build.map(String.init) ?? "-")/\($0.anschluss)/\($0.schreibweg)" },
                 "einstellungen": e, "aktivierung_soll": DroboModell.aktivierung(nurMenueleiste: m.einstellungen.nurMenueleiste) == .accessory ? "accessory" : "regular", "kann_undo": m.undoManager.canUndo, "kann_redo": m.undoManager.canRedo, "undo_titel": m.undoManager.undoActionName] as [String: Any]
     }
 

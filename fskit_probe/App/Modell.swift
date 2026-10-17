@@ -73,6 +73,9 @@ enum Blatt: Equatable, Identifiable {
     var id: String { switch self { case .schreiben: return "schreiben"; case .umbenennen(let u): return "umbenennen-\(u)"; case .anleitung: return "anleitung"; case .restore: return "restore"; case .format(let l): return "format-\(l)" } }
 }
 
+/// Kritischer Vorgang an EINER Drobo (Formatieren, Sichern, Einhaengen/Aushaengen, Zurueckspielen, Wecken): Sperr-Ueberlagerung ueber ihrer Ansicht, Mac bleibt wach.
+struct Vorgang: Equatable { var titel: String; var drobo: String; var start: Date }
+
 struct Meldung: Identifiable { let id = UUID(); var titel: String; var text: String }
 
 @MainActor
@@ -87,6 +90,8 @@ final class DroboModell: ObservableObject {
     @Published var festplattenzugriff = String(localized: "nicht geprüft")
     @Published var modul = ModulStatus(installiert: false, freigeschaltet: false)
     @Published var arbeit: String?
+    /// Laufende kritische Vorgaenge je Drobo-UUID (Ueberlagerung, Menueleiste, Warnung beim Beenden).
+    @Published var vorgaenge: [String: Vorgang] = [:]
     @Published var meldung: Meldung?
     /// Rueckgaengig fuer jede Datenaenderung (Drobo-Liste, Namen, Rollen, Einstellungen); ein Manager fuer die ganze App.
     let undoManager = UndoManager()
@@ -206,6 +211,12 @@ final class DroboModell: ObservableObject {
             NSWorkspace.shared.notificationCenter.addObserver(forName: n, object: nil, queue: nil) { [ablage] _ in
                 do { try iscsiAlleAushaengen(meldung: { ablage.protokoll("Netzwerk-Drobo: \($0) (Ruhezustand/Ausschalten)") }) }
                 catch { ablage.protokoll("Netzwerk-Drobo: Aushängen vor Ruhezustand/Ausschalten fehlgeschlagen: \(error)") }
+            }
+        }
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willPowerOffNotification, object: nil, queue: nil) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, let v = self.vorgaenge.values.first else { return }
+                self.mitteilen(String(localized: "Vorgang läuft: \(v.titel)"), String(localized: "Der Mac wird ausgeschaltet, während \(v.drobo) bearbeitet wird. Das kann die Daten beschädigen."))
             }
         }
         aktualisieren()
@@ -376,11 +387,13 @@ final class DroboModell: ObservableObject {
     func ausfuehren(_ was: String, _ arbeitsschritt: @escaping @Sendable () async throws -> String?) {
         guard arbeit == nil else { return }
         arbeit = was
+        let u = auswahl, dn = einstellungen.drobos.first { $0.uuid == u }?.name ?? ""
+        vorgaenge[u] = Vorgang(titel: String(localized: String.LocalizationValue(was)), drobo: dn, start: Date())
         Task.detached {
             var fehler: String?; var info: String?
-            do { info = try await arbeitsschritt() } catch { fehler = Self.fehlerText(error) }
+            do { info = try await mitSchlafsperre("DroboDraft: \(was) \(dn)") { try await arbeitsschritt() } } catch { fehler = Self.fehlerText(error) }
             await MainActor.run {
-                self.arbeit = nil; self.weckt = [:]
+                self.arbeit = nil; self.weckt = [:]; self.vorgaenge[u] = nil
                 if let f = fehler { self.meldung = Meldung(titel: was + " nicht möglich", text: f); self.ablage.protokoll("\(was): \(f)") }
                 else if let i = info { self.meldung = Meldung(titel: was, text: i) }
                 self.aktualisieren()
@@ -589,11 +602,15 @@ final class DroboModell: ObservableObject {
         let fortschritt: [String: (Int) -> Void] = Dictionary(netzDrobos.map { ($0.host, weckFortschritt($0.uuid)) }, uniquingKeysWith: { a, _ in a })
         let bremsenKopie = netzDrobos.map { ($0.host, bremse($0.uuid)) }
         let fehler = NSLock(); nonisolated(unsafe) var weckFehler: [String: Error] = [:]
+        let weckUUIDs = netzDrobos.filter { weckHosts.contains($0.host) }.map(\.uuid)
+        for u in weckUUIDs { vorgaenge[u] = Vorgang(titel: String(localized: "Aufwecken"), drobo: einstellungen.drobos.first { $0.uuid == u }?.name ?? "", start: Date()) }
+        let sperrName = "DroboDraft: Aufwecken " + weckUUIDs.compactMap { u in einstellungen.drobos.first { $0.uuid == u }?.name }.joined(separator: ", ")
         Task.detached {
-            let r = DroboKern.drobosSuchen(ausnehmen: ausnehmen, bekannt: weckHosts, weckfortschritt: { h, s in fortschritt[h]?(s) }, weckfehler: { h, e in fehler.lock(); weckFehler[h] = e; fehler.unlock() })
+            let suche = { DroboKern.drobosSuchen(ausnehmen: ausnehmen, bekannt: weckHosts, weckfortschritt: { h, s in fortschritt[h]?(s) }, weckfehler: { h, e in fehler.lock(); weckFehler[h] = e; fehler.unlock() }) }
+            let r = weckUUIDs.isEmpty ? suche() : await mitSchlafsperre(sperrName) { suche() }
             for (h, b) in bremsenKopie where weckHosts.contains(h) { fehler.lock(); let e = weckFehler[h]; fehler.unlock(); b.weckenEnde(e) }
             await MainActor.run {
-                self.sucheLaeuft = false; self.weckt = [:]
+                self.sucheLaeuft = false; self.weckt = [:]; for u in weckUUIDs { self.vorgaenge[u] = nil }
                 self.sucheBekannt = Set((r.usb.map(\.uuid) + r.lan.flatMap { $0.luns.map(\.uuid) }).filter { bekannt.contains($0) })
                 self.erkannte = r.usb.filter { !bekannt.contains($0.uuid) }
                 self.lanErkannte = r.lan.map { LanDrobo(host: $0.host, luns: $0.luns.filter { !bekannt.contains($0.uuid) }) }.filter { !$0.luns.isEmpty }
@@ -705,7 +722,7 @@ final class DroboModell: ObservableObject {
     }
 
     /// Bestaetigen im Formatblatt (immer volles Blatt, Sperre, Namenspruefung).
-    func formatBestaetigen(lun: Int, name: String) -> String? {
+    func formatBestaetigen(lun: Int, name: String, partitionBytes: UInt64? = nil) -> String? {
         guard blatt == .format(lun) else { return String(localized: "Kein Blatt offen.") }
         let n = name.trimmingCharacters(in: .whitespaces)
         let r = sperreRest(); if r > 0 { return String(localized: "Gesperrt, noch \(r) s.") }
@@ -715,7 +732,7 @@ final class DroboModell: ObservableObject {
         #if DEBUG
         if DemoDaten.art != nil { return nil }
         #endif
-        lunFormatieren(lun, name: n)
+        lunFormatieren(lun, name: n, partitionBytes: partitionBytes)
         return nil
     }
 

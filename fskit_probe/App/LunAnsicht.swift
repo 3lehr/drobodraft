@@ -51,6 +51,7 @@ struct FormatBlatt: View {
     @Environment(\.dismiss) private var dismiss
     let lun: Int
     @State private var name = ""
+    @State private var tib = 0      // 0 = ganze virtuelle Festplatte, sonst Partitionsgroesse in TiB
 
     var eintrag: LunEintrag? { m.aktuell?.luns.first { $0.lun == lun } }
     var bisher: String { m.aktuell?.eintrag.netz?.luns?.first { $0.lun == lun }?.name ?? String(localized: "Volume \(lun + 1)") }
@@ -70,13 +71,21 @@ struct FormatBlatt: View {
                 }
             }
             Text("Die virtuelle Festplatte wird mit einem leeren Dateisystem (Mac OS Extended) neu angelegt.").foregroundStyle(.secondary)
+            Picker("Partitionsgröße", selection: $tib) {
+                Text("Ganze virtuelle Festplatte").tag(0)
+                ForEach([2, 4, 8].filter { UInt64($0) << 40 < (eintrag?.groesse ?? 0) }, id: \.self) { Text("\($0) TiB").tag($0) }
+            }
+            Zeile(name: "Format", wert: "Mac OS Extended (HFS+)")
+            Text("DroboDraft kann nur dieses Format einhängen; die Drobo erkennt freien Platz nur bei HFS+.").font(.callout).foregroundStyle(.secondary)
+            Text("Die Schutzstufe (eine oder zwei Platten dürfen ausfallen) ist eine Einstellung der Drobo und lässt sich hier nicht ändern.").font(.callout).foregroundStyle(.secondary)
+            Label("Formatieren läuft auf diesem Mac. Mac und Verbindung müssen bis zum Ende bestehen.", systemImage: "info.circle").font(.callout).foregroundStyle(.secondary)
             ErprobtBlock(aktion: .formatieren, gesichert: $m.blattGesichert)
             TextField("Neuer Name", text: $name).textFieldStyle(.roundedBorder)
             if !gueltig { Label("Der Name darf nicht leer sein, keinen Doppelpunkt enthalten und höchstens 27 Zeichen lang sein.", systemImage: "info.circle").font(.callout).foregroundStyle(.secondary) }
             HStack(alignment: .top) {
                 Spacer()
                 Button("Abbrechen") { dismiss() }.keyboardShortcut(.defaultAction)
-                SperrKnopf(titel: "Formatieren", freigegeben: gueltig && freigegeben, rolle: .destructive) { m.formatBestaetigen(lun: lun, name: name) }
+                SperrKnopf(titel: "Formatieren", freigegeben: gueltig && freigegeben, rolle: .destructive) { m.formatBestaetigen(lun: lun, name: name, partitionBytes: tib == 0 ? nil : UInt64(tib) << 40) }
             }
         }
         .padding().frame(minWidth: Mass.blattMin, idealWidth: Mass.blattBreit)

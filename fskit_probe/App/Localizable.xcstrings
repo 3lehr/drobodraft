@@ -7984,6 +7984,294 @@
           }
         }
       }
+    },
+    "Partitionsgröße": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Partitionsgröße"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Partition size"
+          }
+        }
+      }
+    },
+    "Ganze virtuelle Festplatte": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ganze virtuelle Festplatte"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whole virtual disk"
+          }
+        }
+      }
+    },
+    "%lld TiB": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld TiB"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld TiB"
+          }
+        }
+      }
+    },
+    "Format": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Format"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Format"
+          }
+        }
+      }
+    },
+    "DroboDraft kann nur dieses Format einhängen; die Drobo erkennt freien Platz nur bei HFS+.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboDraft kann nur dieses Format einhängen; die Drobo erkennt freien Platz nur bei HFS+."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboDraft can only mount this format; the Drobo only recognises free space with HFS+."
+          }
+        }
+      }
+    },
+    "Die Schutzstufe (eine oder zwei Platten dürfen ausfallen) ist eine Einstellung der Drobo und lässt sich hier nicht ändern.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Schutzstufe (eine oder zwei Platten dürfen ausfallen) ist eine Einstellung der Drobo und lässt sich hier nicht ändern."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The protection level (one or two drives may fail) is a setting of the Drobo and cannot be changed here."
+          }
+        }
+      }
+    },
+    "Formatieren läuft auf diesem Mac. Mac und Verbindung müssen bis zum Ende bestehen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Formatieren läuft auf diesem Mac. Mac und Verbindung müssen bis zum Ende bestehen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Formatting runs on this Mac. The Mac and the connection must stay up until it is finished."
+          }
+        }
+      }
+    },
+    "Aufwecken": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aufwecken"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waking up"
+          }
+        }
+      }
+    },
+    "Läuft seit %lld:%@ min": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Läuft seit %lld:%@ min"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Running for %lld:%@ min"
+          }
+        }
+      }
+    },
+    "Verbindung nicht trennen, den Mac nicht ausschalten oder in den Ruhezustand versetzen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbindung nicht trennen, den Mac nicht ausschalten oder in den Ruhezustand versetzen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Do not disconnect, do not switch off the Mac and do not put it to sleep."
+          }
+        }
+      }
+    },
+    "Vorgang läuft: %@, %@. Verbindung nicht trennen, den Mac nicht ausschalten oder in den Ruhezustand versetzen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorgang läuft: %@, %@. Verbindung nicht trennen, den Mac nicht ausschalten oder in den Ruhezustand versetzen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Operation in progress: %@, %@. Do not disconnect, do not switch off the Mac and do not put it to sleep."
+          }
+        }
+      }
+    },
+    "%@ – %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ – %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ – %@"
+          }
+        }
+      }
+    },
+    "Vorgang läuft: %@ – %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorgang läuft: %@ – %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Operation in progress: %@ – %@"
+          }
+        }
+      }
+    },
+    "Vorgang läuft: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorgang läuft: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Operation in progress: %@"
+          }
+        }
+      }
+    },
+    "Der Mac wird ausgeschaltet, während %@ bearbeitet wird. Das kann die Daten beschädigen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Mac wird ausgeschaltet, während %@ bearbeitet wird. Das kann die Daten beschädigen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Mac is being switched off while %@ is being worked on. This can damage the data."
+          }
+        }
+      }
+    },
+    "Vorgang läuft — trotzdem beenden?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorgang läuft — trotzdem beenden?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Operation in progress — quit anyway?"
+          }
+        }
+      }
+    },
+    "%@ an %@ ist noch nicht fertig. Wenn du jetzt beendest, kann die Drobo oder ihr Volume beschädigt werden.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ an %@ ist noch nicht fertig. Wenn du jetzt beendest, kann die Drobo oder ihr Volume beschädigt werden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ on %@ is not finished yet. If you quit now, the Drobo or its volume may be damaged."
+          }
+        }
+      }
+    },
+    "Trotzdem beenden": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trotzdem beenden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quit anyway"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
