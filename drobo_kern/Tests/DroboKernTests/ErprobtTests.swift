@@ -79,6 +79,26 @@ final class ErprobtTests: XCTestCase {
         XCTAssertEqual(a("utun3", .andere), .iscsiUnbekannt)
         XCTAssertEqual(a(nil, .wlan), .iscsiUnbekannt, "keine Schnittstelle im Teilnetz")
     }
+    /// Sicherheitsbefund 2026-10-17: zwei Schnittstellen im selben Teilnetz (WLAN en0 + Kabel en8); die Route fuehrt ueber en8, die App meldete "WLAN" (erste Teilnetz-Uebereinstimmung).
+    /// Echte Maschine, ohne Paket: `route -n get` (reine Routenabfrage) ist die Wahrheit, die App muss dieselbe Schnittstelle nennen.
+    func testSchnittstelleZu_FolgtDerRoute_NichtDemErstenTeilnetzTreffer() throws {
+        let host = "192.168.178.90"
+        guard schnittstelleZu(host: "192.168.178.53") != nil || true, let aus = routeSchnittstelle(host) else { throw XCTSkip("kein route-Ergebnis") }
+        XCTAssertEqual(schnittstelleZu(host: host), aus, "Route sagt \(aus)")
+        XCTAssertNotEqual(schnittstelleZu(host: "127.0.0.1"), "en0"); XCTAssertEqual(anschlussNetz(host: "127.0.0.1"), .iscsiUnbekannt, "Loopback ist nie WLAN oder Kabel")
+    }
+    private func routeSchnittstelle(_ host: String) -> String? {
+        let (rc, out) = ausfuehren("/sbin/route", ["-n", "get", host]); guard rc == 0 else { return nil }
+        return out.split(separator: "\n").first { $0.contains("interface:") }.map { $0.split(separator: ":")[1].trimmingCharacters(in: .whitespaces) }
+    }
+    func testQuelladresseZuSchnittstelle_ZweiSchnittstellenImSelbenTeilnetz() {
+        let liste = [("en0", "192.168.178.53"), ("en8", "192.168.178.189"), ("lo0", "127.0.0.1")]
+        XCTAssertEqual(schnittstelleFuerQuelle("192.168.178.189", liste), "en8")
+        XCTAssertEqual(schnittstelleFuerQuelle("127.0.0.1", liste), "lo0")
+        XCTAssertNil(schnittstelleFuerQuelle("10.9.9.9", liste))
+        func a(_ q: String) -> Anschluss { anschlussNetz(host: "192.168.178.90", schnittstelle: { _ in schnittstelleFuerQuelle(q, liste) }, art: { $0 == "en0" ? .wlan : ($0 == "en8" ? .kabel : .andere) }) }
+        XCTAssertEqual(a("192.168.178.189"), .iscsiKabel); XCTAssertEqual(a("127.0.0.1"), .iscsiUnbekannt); XCTAssertEqual(a("10.9.9.9"), .iscsiUnbekannt)
+    }
     func testSchnittstelleZu_Loopback_UndUngueltigeAdresse() {
         XCTAssertEqual(schnittstelleZu(host: "127.0.0.1"), "lo0")
         XCTAssertNil(schnittstelleZu(host: "kein-host"))

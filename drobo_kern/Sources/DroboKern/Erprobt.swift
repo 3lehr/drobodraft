@@ -67,21 +67,40 @@ public func erprobt(modell: String, build: Int?, anschluss: Anschluss, aktion: E
 
 public enum SchnittstellenArt: Equatable { case wlan, kabel, andere }
 
-/// BSD-Name (en0) der IPv4-Schnittstelle, in deren Teilnetz `host` liegt; nil = keine (Route ginge ueber ein Gateway oder Adresse ungueltig).
+/// BSD-Name (en8) der Schnittstelle, ueber die die ROUTE zu `host` laeuft (nicht die erste mit passendem Teilnetz: Kabel und WLAN koennen im selben Teilnetz liegen, die Route
+/// waehlt eine). Ermittlung ohne Paket: UDP-Socket zu host:3260 `connect`en (Routenwahl im Kernel), Quelladresse per getsockname, Quelladresse -> Schnittstelle (getifaddrs).
+/// Loopback liefert lo0 (nie WLAN/Kabel). nil = unbekannt (ungueltige Adresse, keine Route).
 public func schnittstelleZu(host: String) -> String? {
-    var a = in_addr(); guard inet_pton(AF_INET, host, &a) == 1 else { return nil }
-    var liste: UnsafeMutablePointer<ifaddrs>?; guard getifaddrs(&liste) == 0, let start = liste else { return nil }
+    var a = sockaddr_in(); a.sin_len = UInt8(MemoryLayout<sockaddr_in>.size); a.sin_family = sa_family_t(AF_INET); a.sin_port = UInt16(3260).bigEndian
+    guard inet_pton(AF_INET, host, &a.sin_addr) == 1 else { return nil }
+    let fd = socket(AF_INET, SOCK_DGRAM, 0); guard fd >= 0 else { return nil }
+    defer { close(fd) }
+    let rc = withUnsafePointer(to: &a) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { connect(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) } }
+    guard rc == 0 else { return nil }
+    var q = sockaddr_in(), n = socklen_t(MemoryLayout<sockaddr_in>.size)
+    let gs = withUnsafeMutablePointer(to: &q) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { getsockname(fd, $0, &n) } }
+    guard gs == 0 else { return nil }
+    var buf = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN)); guard inet_ntop(AF_INET, &q.sin_addr, &buf, socklen_t(INET_ADDRSTRLEN)) != nil else { return nil }
+    return schnittstelleFuerQuelle(String(cString: buf), lokaleAdressen())
+}
+
+/// (Schnittstelle, IPv4-Adresse) aller Schnittstellen.
+func lokaleAdressen() -> [(String, String)] {
+    var liste: UnsafeMutablePointer<ifaddrs>?; guard getifaddrs(&liste) == 0, let start = liste else { return [] }
     defer { freeifaddrs(liste) }
-    var p: UnsafeMutablePointer<ifaddrs>? = start
+    var out: [(String, String)] = []; var p: UnsafeMutablePointer<ifaddrs>? = start
     while let i = p?.pointee {
         defer { p = i.ifa_next }
-        guard let ad = i.ifa_addr, let mk = i.ifa_netmask, ad.pointee.sa_family == sa_family_t(AF_INET) else { continue }
-        let ip = ad.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { $0.pointee.sin_addr.s_addr }
-        let mask = mk.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { $0.pointee.sin_addr.s_addr }
-        if ip & mask == a.s_addr & mask { return String(cString: i.ifa_name) }
+        guard let ad = i.ifa_addr, ad.pointee.sa_family == sa_family_t(AF_INET) else { continue }
+        var sin = ad.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { $0.pointee }
+        var buf = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN)); guard inet_ntop(AF_INET, &sin.sin_addr, &buf, socklen_t(INET_ADDRSTRLEN)) != nil else { continue }
+        out.append((String(cString: i.ifa_name), String(cString: buf)))
     }
-    return nil
+    return out
 }
+
+/// Name der Schnittstelle, die `quelle` (IPv4-Text) traegt; nil = keine.
+public func schnittstelleFuerQuelle(_ quelle: String, _ liste: [(String, String)]) -> String? { liste.first { $0.1 == quelle }?.0 }
 
 /// WLAN oder Kabel laut SystemConfiguration (Typ der Schnittstelle); alles andere (Loopback, VPN, Bruecke) = andere.
 public func schnittstellenArt(bsd: String) -> SchnittstellenArt {
