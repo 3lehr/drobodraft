@@ -29,7 +29,7 @@ struct HauptAnsicht: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) { Statusleiste() }
+        .safeAreaInset(edge: .bottom, spacing: Abstand.keiner) { Statusleiste() }
         .navigationTitle("DroboDraft")
         .sheet(isPresented: $anleitung) { SpotlightAnleitung() }
         .onReceive(NotificationCenter.default.publisher(for: .schreibenFrage)) { _ in rwFrage = true }
@@ -38,7 +38,7 @@ struct HauptAnsicht: View {
             if let u = m.umbenennenUUID { UmbenennenBlatt(uuid: u, name: m.einstellungen.drobos.first { $0.uuid == u }?.name ?? "") }
         }
         .alert(item: $m.meldung) { Alert(title: Text(LocalizedStringKey($0.titel)), message: Text($0.text), dismissButton: .default(Text("OK"))) }
-        .overlay(alignment: .top) { if let a = m.arbeit { Label("\(a) …", systemImage: "hourglass").padding(8).background(.regularMaterial, in: Capsule()).padding(.top, 8) } }
+        .overlay(alignment: .top) { if let a = m.arbeit { Label("\(a) …", systemImage: "hourglass").padding(Abstand.s).background(.regularMaterial, in: Capsule()).padding(.top, Abstand.s) } }
     }
 }
 
@@ -51,7 +51,7 @@ struct Statusleiste: View {
         let zugriffProblem = m.festplattenzugriff == String(localized: "fehlt")
         let modulProblem = !m.modul.installiert || !m.modul.freigeschaltet
         if dienstProblem || zugriffProblem || modulProblem {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: Abstand.s) {
                 if dienstProblem {
                     zeile(String(localized: "Der Hilfsdienst ist nicht bereit (\(m.hilfsdienst)). Er hängt die Drobo ein. Wählen Sie „Einrichten“ und bestätigen Sie in den Systemeinstellungen.")) { Button("Einrichten") { m.dienstRegistrieren() } }
                 }
@@ -64,14 +64,14 @@ struct Statusleiste: View {
                     zeile(String(localized: "Das Treibermodul ist nicht freigeschaltet. Schalten Sie es in den Systemeinstellungen unter Allgemein, Anmeldeobjekte & Erweiterungen, Dateisystem-Erweiterungen ein.")) { EmptyView() }
                 }
             }
-            .padding(.horizontal, 16).padding(.vertical, 8).frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal).padding(.vertical, Abstand.s).frame(maxWidth: .infinity, alignment: .leading)
             .background(.bar)
             .accessibilityElement(children: .contain).accessibilityLabel("Hinweise zur Einrichtung")
         }
     }
 
     func zeile<B: View>(_ text: String, @ViewBuilder knopf: () -> B) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Abstand.s) {
             Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Color.orange).accessibilityHidden(true)
             Text(text).font(.callout).fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 8)
@@ -116,7 +116,7 @@ struct VolumeAnsicht: View {
     var body: some View {
         ScrollView {
             if let a = m.aktuell, a.eintrag.rolle == .arbeitsvolume {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: Abstand.l) {
                     Text(a.eintrag.name).font(.largeTitle).accessibilityAddTraits(.isHeader)
                     Karte(titel: "Zugriff") {
                         if a.eintrag.netz == nil { Zeile(name: "Freigabe", wert: a.freigabe == .schreiben ? String(localized: "Schreiben erlaubt") : (a.freigabe == .nurlesen ? String(localized: "nur lesen") : String(localized: "noch nicht eingerichtet"))) }
@@ -158,10 +158,10 @@ struct VolumeAnsicht: View {
                         if !m.wegsichernBericht.isEmpty { Text(m.wegsichernBericht).font(.callout).textSelection(.enabled) }
                     }
                     }
-                }.padding(20)
+                }.padding()
                 .onAppear { if m.restoreAuswahl.isEmpty || !a.sicherungen.contains(m.restoreAuswahl) { m.restoreAuswahl = a.sicherungen.first ?? "" } }
                 .sheet(isPresented: $restoreFrage) { RestoreBestaetigung() }
-            } else { Text("Für ein Time-Machine-Ziel gibt es hier nichts einzustellen.").padding(20) }
+            } else { Text("Für ein Time-Machine-Ziel gibt es hier nichts einzustellen.").padding() }
         }
     }
 }
@@ -171,7 +171,7 @@ struct ProtokollAnsicht: View {
     var body: some View {
         VStack(alignment: .leading) {
             Text("Protokoll").font(.largeTitle).accessibilityAddTraits(.isHeader).padding([.top, .horizontal], 20)
-            if m.protokoll.isEmpty { Text("Noch keine Einträge.").padding(20).foregroundStyle(.secondary) }
+            if m.protokoll.isEmpty { Text("Noch keine Einträge.").padding().foregroundStyle(.secondary) }
             List(Array(m.protokoll.reversed().enumerated()), id: \.offset) { _, e in
                 VStack(alignment: .leading) { Text(e.text); Text(zeitLesbar(e.zeit)).font(.caption).foregroundStyle(.secondary) }.accessibilityElement(children: .combine)
             }
@@ -185,7 +185,7 @@ struct SchreibenBestaetigung: View {
     @EnvironmentObject var m: DroboModell
     @Environment(\.dismiss) private var dismiss
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: Abstand.l) {
             Text("Zum Schreiben einhängen?").font(.title2).accessibilityAddTraits(.isHeader)
             Text("Vorher wird eine Sicherung der Verwaltungsdaten des Laufwerks angelegt. Ohne gelungene Sicherung wird nicht zum Schreiben eingehängt.")
             if m.spotlightHinweisNoetig { Hinweis(symbol: "magnifyingglass", text: "Spotlight ist für die Drobo noch nicht ausgeschlossen (empfohlen, siehe Anleitung in den Einstellungen).") }
@@ -207,7 +207,7 @@ struct SchreibenBestaetigung: View {
                     else if m.aktuell?.eingehaengt == true { m.neuZumSchreiben() } else { m.einhaengen(schreiben: true) }
                 }.disabled(m.einstellungen.sicherungOrt.isEmpty)
             }
-        }.padding(24).frame(width: 480)
+        }.padding().frame(minWidth: Mass.blattMin, idealWidth: Mass.blatt)
     }
 }
 
@@ -221,7 +221,7 @@ struct BelegungsBalken: View {
     let belegt: UInt64, gesamt: UInt64, stand: String?
     var warnung: Color?
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: Abstand.s) {
             ProgressView(value: Double(belegt), total: Double(max(gesamt, 1))) { Text("Belegt") }
                 .tint(warnung)
                 .accessibilityValue("\(groesseText(belegt)) / \(groesseText(gesamt))")
@@ -236,7 +236,7 @@ struct RestoreBestaetigung: View {
     @EnvironmentObject var m: DroboModell
     @Environment(\.dismiss) private var dismiss
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: Abstand.l) {
             Text("Sicherung wirklich zurückspielen?").font(.title2).accessibilityAddTraits(.isHeader)
             Hinweis(symbol: "exclamationmark.triangle.fill", text: "Alles, was seit dieser Sicherung auf die Drobo geschrieben wurde, geht verloren. Das lässt sich nicht rückgängig machen.", farbe: .red)
             Text(m.restoreProbeText).font(.callout.monospaced())
@@ -245,6 +245,6 @@ struct RestoreBestaetigung: View {
                 Button("Abbrechen") { dismiss() }.keyboardShortcut(.defaultAction)
                 Button("Zurückspielen", role: .destructive) { dismiss(); m.restoreAusfuehren() }
             }
-        }.padding(24).frame(width: 520)
+        }.padding().frame(minWidth: Mass.blattMin, idealWidth: Mass.blattBreit)
     }
 }

@@ -10,10 +10,10 @@ struct DrobosFindenAnsicht: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: Abstand.l) {
                 Text("Drobos finden").font(.largeTitle).accessibilityAddTraits(.isHeader)
                 Text("Die App sucht angeschlossene Drobos (USB) und DroboPros im lokalen Netzwerk. Gefundene Drobos werden erst nach „Hinzufügen“ übernommen.").foregroundStyle(.secondary)
-                HStack(spacing: 12) {
+                HStack(spacing: Abstand.m) {
                     Button { m.drobosSuchen() } label: { Label(m.sucheLaeuft ? "Suche läuft …" : "Suchen", systemImage: "magnifyingglass") }
                         .disabled(m.sucheLaeuft).keyboardShortcut("f", modifiers: .command)
                     if m.sucheLaeuft { ProgressView().controlSize(.small).accessibilityLabel("Suche läuft …") }
@@ -51,7 +51,7 @@ struct DrobosFindenAnsicht: View {
                     Hinweis(symbol: "questionmark.circle", text: "Noch keine neue Drobo gefunden. Prüfen Sie, ob die Drobo eingeschaltet und per USB oder im selben Netzwerk verbunden ist, und wählen Sie „Suchen“. Sie können die Adresse einer DroboPro auch unten eingeben.", farbe: .blue)
                 }
                 PerAdresseHinzufuegen()
-            }.padding(20)
+            }.padding()
         }
     }
 }

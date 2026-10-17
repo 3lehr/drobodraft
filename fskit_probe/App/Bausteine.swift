@@ -21,14 +21,14 @@ struct Karte<Inhalt: View>: View {
     let titel: LocalizedStringKey
     @ViewBuilder var inhalt: () -> Inhalt
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Abstand.s) {
             Text(titel).font(.headline).accessibilityAddTraits(.isHeader)
             inhalt()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.primary.opacity(0.18), lineWidth: 1))
+        .padding()
+        .background(.background.secondary, in: RoundedRectangle(cornerRadius: Radius.karte))
+        .overlay(RoundedRectangle(cornerRadius: Radius.karte).stroke(Color.primary.opacity(0.18), lineWidth: 1))
     }
 }
 
@@ -52,8 +52,8 @@ struct Hinweis: View {
     var farbe: Color = .orange
     var body: some View {
         Label { Text(text).fixedSize(horizontal: false, vertical: true) } icon: { Image(systemName: symbol).foregroundStyle(farbe) }
-            .padding(10).frame(maxWidth: .infinity, alignment: .leading)
-            .background(farbe.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+            .padding().frame(maxWidth: .infinity, alignment: .leading)
+            .background(farbe.opacity(0.12), in: RoundedRectangle(cornerRadius: Radius.klein))
             .accessibilityElement(children: .combine)
     }
 }
@@ -64,7 +64,7 @@ func groesseText(_ b: UInt64) -> String { ByteCountFormatter.string(fromByteCoun
 struct FruehAlphaAbzeichen: View {
     var body: some View {
         Label("Frühe Alpha", systemImage: "hammer.fill").font(.caption.bold())
-            .padding(.horizontal, 8).padding(.vertical, 3)
+            .padding(.horizontal, Abstand.s).padding(.vertical, Abstand.xxs)
             .background(Color.orange.opacity(0.2), in: Capsule())
             .overlay(Capsule().stroke(Color.orange, lineWidth: 1))
             .accessibilityLabel("Frühe Alpha, Version 0.1.0")
@@ -74,7 +74,7 @@ struct FruehAlphaAbzeichen: View {
 struct SpotlightAnleitung: View {
     @Environment(\.dismiss) private var dismiss
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Abstand.m) {
             Text("Spotlight und Time Machine für die Drobo ausschließen").font(.title2).accessibilityAddTraits(.isHeader)
             Text("Beim Schreiben legt Spotlight eigene Dateien auf der Drobo an und liest sie dauernd. Das bremst und verändert das Laufwerk. Der Ausschluss ist freiwillig; die App ändert dazu nichts an den Systemeinstellungen.")
             Text("1. Systemeinstellungen öffnen, Siri & Spotlight, Spotlight-Datenschutz.")
@@ -82,6 +82,6 @@ struct SpotlightAnleitung: View {
             Text("3. Für Time Machine: Systemeinstellungen, Allgemein, Time Machine, Optionen, die Drobo zur Liste der ausgeschlossenen Objekte hinzufügen.")
             Text("Wenn beides erledigt ist, in den Einstellungen den Hinweis ausschalten.").foregroundStyle(.secondary)
             HStack { Spacer(); Button("Schließen") { dismiss() }.keyboardShortcut(.defaultAction) }
-        }.padding(24).frame(width: 520)
+        }.padding().frame(minWidth: Mass.blattMin, idealWidth: Mass.blattBreit)
     }
 }

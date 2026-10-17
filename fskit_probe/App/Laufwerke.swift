@@ -32,10 +32,10 @@ struct LaufwerkeAnsicht: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: Abstand.l) {
                 Text("Laufwerke").font(.largeTitle).accessibilityAddTraits(.isHeader)
                 if let h = m.aktuell?.hw { Inhalt(h: h, netz: m.aktuell?.eintrag.netz != nil) } else { KeineDaten(netz: m.aktuell?.eintrag.netz != nil) }
-            }.padding(20)
+            }.padding()
         }
     }
 
@@ -52,7 +52,7 @@ struct LaufwerkeAnsicht: View {
         var netz = false
         var body: some View {
             TimelineView(.periodic(from: .now, by: 5)) { ctx in
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: Abstand.l) {
                     zustand(ctx.date)
                     Karte(titel: "Gerät") {
                         Zeile(name: "Modell", wert: h.modell.hasPrefix("Drobo") ? h.modell : "Drobo \(h.modell)")
@@ -102,9 +102,9 @@ struct SchachtZeile: View {
     let s: Schacht
     var mitFehler = true
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Text("Schacht \(s.nr)").frame(width: 90, alignment: .leading).fontWeight(.semibold)
-            Label { Text(s.farbe.wort) } icon: { Image(systemName: s.farbe.symbol).foregroundStyle(s.farbe.farbe) }.frame(width: 110, alignment: .leading)
+        HStack(alignment: .firstTextBaseline, spacing: Abstand.m) {
+            Text("Schacht \(s.nr)").frame(minWidth: Mass.schachtNr, alignment: .leading).fontWeight(.semibold)
+            Label { Text(s.farbe.wort) } icon: { Image(systemName: s.farbe.symbol).foregroundStyle(s.farbe.farbe) }.frame(minWidth: Mass.lampeText, alignment: .leading)
             if s.belegt {
                 Text(s.modell)
                 Spacer(minLength: 8)

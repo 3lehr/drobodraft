@@ -28,8 +28,8 @@ struct LunKarte: View {
     func zeile(_ l: LunEintrag) -> some View {
         let mount = a.lunEingehaengt[l.lun]
         let zustand = mount.map { $0 ? String(localized: "Eingehängt, nur lesen") : String(localized: "Eingehängt, schreiben") } ?? (l.hatDateisystem ? String(localized: "Nicht eingehängt") : String(localized: "Kein Dateisystem"))
-        return HStack(alignment: .firstTextBaseline, spacing: 10) {
-            VStack(alignment: .leading, spacing: 1) {
+        return HStack(alignment: .firstTextBaseline, spacing: Abstand.m) {
+            VStack(alignment: .leading, spacing: Abstand.haar) {
                 Text(l.hatDateisystem ? name(l) : String(localized: "Volume \(l.lun + 1)")).fontWeight(.semibold)
                 Text("\(zustand), \(groesseText(l.partitionBytes ?? l.groesse))").font(.caption).foregroundStyle(.secondary)
             }
@@ -64,7 +64,7 @@ struct FormatBlatt: View {
     var gueltig: Bool { let n = name.trimmingCharacters(in: .whitespaces); return !n.isEmpty && !n.contains(":") && n.utf8.count <= 27 }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: Abstand.l) {
             Text("Volume \(lun + 1) formatieren?").font(.title2).accessibilityAddTraits(.isHeader)
             Hinweis(symbol: "exclamationmark.triangle.fill", text: "Alle Daten dieser virtuellen Festplatte gehen verloren. Das lässt sich nicht rückgängig machen.", farbe: .red)
             Text("Größe der virtuellen Festplatte: \(groesseText(groesse)). Sie wird mit einem leeren Dateisystem (Mac OS Extended) neu angelegt.").foregroundStyle(.secondary)
@@ -75,7 +75,7 @@ struct FormatBlatt: View {
                 Button("Abbrechen") { dismiss() }.keyboardShortcut(.defaultAction)
                 Button("Formatieren", role: .destructive) { dismiss(); m.lunFormatieren(lun, name: name.trimmingCharacters(in: .whitespaces)) }.disabled(!gueltig)
             }
-        }.padding(24).frame(width: 520)
+        }.padding().frame(minWidth: Mass.blattMin, idealWidth: Mass.blattBreit)
     }
 }
 
@@ -87,7 +87,7 @@ struct UmbenennenBlatt: View {
     @State private var name: String
     init(uuid: String, name: String) { self.uuid = uuid; _name = State(initialValue: name) }
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: Abstand.l) {
             Text("Drobo umbenennen").font(.title2).accessibilityAddTraits(.isHeader)
             Text("Der Name gilt nur in dieser App.").foregroundStyle(.secondary)
             TextField("Name", text: $name).textFieldStyle(.roundedBorder).onSubmit { speichern() }
@@ -96,7 +96,7 @@ struct UmbenennenBlatt: View {
                 Button("Abbrechen") { dismiss() }
                 Button("Speichern") { speichern() }.keyboardShortcut(.defaultAction).disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
             }
-        }.padding(24).frame(width: 420)
+        }.padding().frame(minWidth: Mass.blattMin, idealWidth: Mass.blattSchmal)
     }
     func speichern() { m.umbenennen(uuid, name: name); dismiss() }
 }

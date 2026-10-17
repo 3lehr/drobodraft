@@ -10,8 +10,8 @@ struct UebersichtAnsicht: View {
     var body: some View {
         ScrollView {
             if let a = m.aktuell {
-                VStack(alignment: .leading, spacing: 14) {
-                    HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: Abstand.l) {
+                    HStack(spacing: Abstand.m) {
                         ZustandPunkt(stufe: a.stufe, gesamt: a.hwZustand)
                         Text(a.eintrag.name).font(.largeTitle).accessibilityAddTraits(.isHeader)
                         Spacer()
@@ -20,12 +20,12 @@ struct UebersichtAnsicht: View {
                     }
                     Text(a.zustandText).font(.title3).foregroundStyle(.secondary)
                     if a.eintrag.netz != nil && a.bremse == .reagiertNicht {
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: Abstand.s) {
                             Hinweis(symbol: "exclamationmark.triangle.fill", text: "Die DroboPro reagiert nicht mehr auf Befehle, obwohl sie im Netzwerk erreichbar ist. Meist leuchten dann alle Schachtlampen rot und die Platten sind still. Bitte neu starten: Drobo über den Knopf ausschalten, das Netzkabel ziehen, ein bis zwei Minuten warten, wieder einstecken und einschalten. Danach kann es bis zu 30 Minuten dauern, bis alle Lampen grün leuchten. In dieser Zeit keine Platten ziehen oder umstecken.", farbe: .red)
                             Button("Erneut prüfen") { m.erneutPruefen(a.eintrag.uuid) }
                         }
                     } else if a.eintrag.netz != nil && a.bremse == .anderemRechner {
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: Abstand.s) {
                             Hinweis(symbol: "desktopcomputer.trianglebadge.exclamationmark", text: "Diese DroboPro wird gerade von einem anderen Rechner benutzt. Die App fragt erst wieder, wenn Sie „Erneut prüfen“ wählen.")
                             Button("Erneut prüfen") { m.erneutPruefen(a.eintrag.uuid) }
                         }
@@ -36,25 +36,25 @@ struct UebersichtAnsicht: View {
                         Hinweis(symbol: "clock.arrow.circlepath", text: "Dieses Laufwerk ist als Time-Machine-Ziel eingetragen. Die App zeigt nur den Anschluss; macOS verwaltet das Laufwerk und die App hängt es nie selbst ein.", farbe: .blue)
                     }
                     if let h = a.hw, let g = a.hwZustand {
-                        let geraet = VStack(spacing: 6) {
+                        let geraet = VStack(spacing: Abstand.s) {
                             DroboGeraet(h: h, g: g, mitFehler: a.eintrag.netz == nil)
                             if let p = g.belegtProzent { Text("Physisch belegt: \(p) %").font(.callout).foregroundStyle(.secondary) }
                             #if DEBUG
                             // Demo: Popover laesst sich ohne Klick nicht fotografieren -> Einzelheiten des Schachts DROBO_DEMO_SCHACHT stehen darunter
-                            if let n = DemoDaten.schacht { SchachtDetail(nr: n, s: h.schaechte.first { $0.nr == n }, mitFehler: a.eintrag.netz == nil).background(.background.secondary, in: RoundedRectangle(cornerRadius: 8)) }
+                            if let n = DemoDaten.schacht { SchachtDetail(nr: n, s: h.schaechte.first { $0.nr == n }, mitFehler: a.eintrag.netz == nil).background(.background.secondary, in: RoundedRectangle(cornerRadius: Radius.klein)) }
                             #endif
                         }
                         let zustand = ZustandsSpalte(g: g, gelb: a.netz?.gelbProzent ?? 85, rot: a.netz?.rotProzent ?? 95)
                         ViewThatFits(in: .horizontal) {   // breites Geraet (8 senkrechte Schaechte): Spalte rutscht darunter
-                            HStack(alignment: .top, spacing: 24) { geraet; zustand }
-                            VStack(alignment: .leading, spacing: 14) { geraet; zustand }
+                            HStack(alignment: .top, spacing: Abstand.xl) { geraet; zustand }
+                            VStack(alignment: .leading, spacing: Abstand.l) { geraet; zustand }
                         }
                     } else if a.eintrag.rolle != .timemachine {
                         LaufwerkeAnsicht.KeineDaten(netz: a.eintrag.netz != nil)
                     }
                     if a.eintrag.rolle != .timemachine {
                         if m.festplattenzugriff == String(localized: "fehlt") && a.eintrag.netz == nil {
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: Abstand.s) {
                                 Hinweis(symbol: "lock.trianglebadge.exclamationmark", text: "Der Hilfsdienst darf nicht auf das Laufwerk zugreifen. Ohne Festplattenvollzugriff lässt sich die Drobo nicht einhängen.", farbe: .red)
                                 Button("Systemeinstellungen öffnen") { m.festplattenzugriffOeffnen() }
                             }
@@ -83,18 +83,18 @@ struct UebersichtAnsicht: View {
                         }
                         Details(a: a)
                         if m.spotlightHinweisNoetig {
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: Abstand.s) {
                                 Hinweis(symbol: "magnifyingglass", text: "Spotlight ist für die Drobo nicht ausgeschlossen. Beim Schreiben bremst das und verändert das Laufwerk. Der Ausschluss ist freiwillig.")
                                 Button("Anleitung") { anleitung = true }
                             }
                         }
                     }
-                }.padding(20)
+                }.padding()
             } else {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: Abstand.m) {
                     Text("Keine Drobo eingerichtet. Mit „Drobos finden“ sucht die App angeschlossene Drobos und DroboPros im lokalen Netzwerk.")
                     Button { finden() } label: { Label("Drobos finden", systemImage: "magnifyingglass") }
-                }.padding(20)
+                }.padding()
             }
         }
     }
@@ -105,7 +105,7 @@ struct ZustandsSpalte: View {
     let g: Gesamtzustand
     let gelb: Int, rot: Int
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Abstand.m) {
             Label { Text(g.schlagzeile.text).font(.title2.bold()) } icon: { Image(systemName: g.symbol).foregroundStyle(g.farbe).imageScale(.large) }
                 .accessibilityElement(children: .combine).accessibilityLabel("\(g.stufeWort): \(g.schlagzeile.text)").accessibilityAddTraits(.isHeader)
             if let t = g.platzText(gelb: gelb, rot: rot) { Text(t) }
@@ -120,15 +120,15 @@ struct Aufteilung: View {
     let g: Gesamtzustand
     var body: some View {
         let summe = Double(max(g.belegt + g.frei + g.reserviert, 1))
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: Abstand.s) {
             Text("Aufteilung").font(.headline).accessibilityAddTraits(.isHeader)
             GeometryReader { p in
-                HStack(spacing: 2) {
+                HStack(spacing: Abstand.xxs) {
                     Rectangle().fill(Color.blue).frame(width: p.size.width * Double(g.belegt) / summe)
                     Rectangle().fill(Color.gray.opacity(0.55)).frame(width: p.size.width * Double(g.frei) / summe)
                     Rectangle().fill(Color.orange.opacity(0.7)).frame(width: p.size.width * Double(g.reserviert) / summe)
-                }.clipShape(RoundedRectangle(cornerRadius: 4))
-            }.frame(height: 12).accessibilityHidden(true)
+                }.clipShape(RoundedRectangle(cornerRadius: Radius.rechteck))
+            }.frame(minHeight: Mass.aufteilungHoehe).accessibilityHidden(true)
             zeile("Belegt", g.belegt, Color.blue, "square.fill")
             zeile("Frei", g.frei, Color.gray, "square")
             if g.reserviert > 0 { zeile("Für Schutz reserviert", g.reserviert, Color.orange, "square.lefthalf.filled") }
@@ -145,7 +145,7 @@ struct Details: View {
     @State private var auf = false
     var body: some View {
         DisclosureGroup("Details", isExpanded: $auf) {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: Abstand.s) {
                 let vol: (belegt: UInt64, gesamt: UInt64, stand: String?)? = a.eingehaengt && a.gesamt > 0 ? (a.belegt, a.gesamt, nil) : a.belegungVH.map { ($0.belegt, $0.gesamt, $0.zeit) }
                 if let v = vol {
                     Text("Volume (laut Dateisystem)").font(.subheadline).foregroundStyle(.secondary)
@@ -158,7 +158,7 @@ struct Details: View {
                     Zeile(name: "Modell", wert: h.modell.hasPrefix("Drobo") ? h.modell : "Drobo \(h.modell)")
                     Zeile(name: "Firmware", wert: h.firmware.isEmpty ? "–" : (h.firmware.split(separator: ",").first.map(String.init) ?? h.firmware) + (h.firmwareBuild.map { " (Build \($0))" } ?? ""))
                 }
-            }.padding(.top, 6)
+            }.padding(.top, Abstand.s)
         }
     }
 }

@@ -7,7 +7,7 @@ struct BogenForm: Shape {
     var animatableData: Double { get { bis } set { bis = newValue } }
     func path(in r: CGRect) -> Path {
         var p = Path()
-        p.addArc(center: CGPoint(x: r.midX, y: r.midY), radius: min(r.width, r.height) / 2 - 12,
+        p.addArc(center: CGPoint(x: r.midX, y: r.midY), radius: min(r.width, r.height) / 2 - Mass.bogenRand,
                  startAngle: .degrees(135), endAngle: .degrees(135 + 270 * min(max(bis, 0), 1)), clockwise: false)
         return p
     }
@@ -22,21 +22,22 @@ struct Rundinstrument: View {
     /// Zeitpunkt der angezeigten Messung (ISO), nil = live oder noch nie gemessen. Alte Werte einer getrennten Drobo duerfen nicht wie aktuelle aussehen.
     var stand: String?
     @Environment(\.accessibilityReduceMotion) private var wenigBewegung
+    @ScaledMetric(relativeTo: .body) private var instrument = Mass.instrument
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: Abstand.s) {
             ZStack {
-                BogenForm(bis: 1).stroke(Color.secondary.opacity(0.4), style: StrokeStyle(lineWidth: 16, lineCap: .round))
+                BogenForm(bis: 1).stroke(Color.secondary.opacity(0.4), style: StrokeStyle(lineWidth: Mass.bogenLinie, lineCap: .round))
                 BogenForm(bis: (wert ?? 0) / max(skala, 1))
-                    .stroke(aktiv ? Color.accentColor : Color.primary.opacity(0.75), style: StrokeStyle(lineWidth: 16, lineCap: .round))
+                    .stroke(aktiv ? Color.accentColor : Color.primary.opacity(0.75), style: StrokeStyle(lineWidth: Mass.bogenLinie, lineCap: .round))
                     .animation(wenigBewegung ? nil : .linear(duration: 0.25), value: wert)
-                VStack(spacing: 0) {
-                    Text(wert.map { String(format: $0 < 10 ? "%.1f" : "%.0f", $0) } ?? "–").font(.system(size: 42, weight: .semibold, design: .rounded)).monospacedDigit()
+                VStack(spacing: Abstand.keiner) {
+                    Text(wert.map { String(format: $0 < 10 ? "%.1f" : "%.0f", $0) } ?? "–").font(.system(.largeTitle, design: .rounded).weight(.semibold)).monospacedDigit()
                     Text("MB/s").font(.callout).foregroundStyle(.secondary)
                 }
             }
-            .frame(width: 190, height: 190)
-            HStack { Text("0"); Spacer(); Text(String(format: "%.0f", skala)) }.font(.caption.monospacedDigit()).foregroundStyle(.secondary).frame(width: 150)
+            .frame(minWidth: instrument, minHeight: instrument)
+            HStack { Text("0"); Spacer(); Text(String(format: "%.0f", skala)) }.font(.caption.monospacedDigit()).foregroundStyle(.secondary).frame(minWidth: Mass.instrumentSkala)
             Text(titel).font(.headline)
             if let s = stand { Text("Gemessen: \(zeitLesbar(s))").font(.caption).foregroundStyle(.secondary) }
         }
@@ -65,10 +66,10 @@ struct TempoAnsicht: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: Abstand.l) {
                 Text("Tempo").font(.largeTitle).accessibilityAddTraits(.isHeader)
                 Karte(titel: "Messung") {
-                    HStack(alignment: .firstTextBaseline, spacing: 24) {
+                    HStack(alignment: .firstTextBaseline, spacing: Abstand.xl) {
                         Picker("Laufwerk", selection: $m.tempoUUID) {
                             ForEach(m.liste.filter { $0.eintrag.rolle == .arbeitsvolume }, id: \.eintrag.uuid) { d in Text("\(d.eintrag.name), \(d.zustandText)").tag(d.eintrag.uuid) }
                         }.frame(maxWidth: 380)
@@ -76,7 +77,7 @@ struct TempoAnsicht: View {
                             ForEach(1...5, id: \.self) { Text("\($0) GB").tag($0) }
                         }.frame(maxWidth: 200)
                     }.disabled(m.tempoLaeuft)
-                    HStack(alignment: .top, spacing: 36) {
+                    HStack(alignment: .top, spacing: Abstand.xxl) {
                         Rundinstrument(titel: "Schreiben", wert: m.tempoSchreibenLive ?? letzte.schreiben, skala: m.tempoSkala, aktiv: m.tempoPhase == "schreiben", stand: m.tempoSchreibenLive == nil ? stand("schreiben") : nil)
                         Rundinstrument(titel: "Lesen", wert: m.tempoLesenLive ?? letzte.lesen, skala: m.tempoSkala, aktiv: m.tempoPhase == "lesen", stand: m.tempoLesenLive == nil ? stand("lesen") : nil)
                     }.frame(maxWidth: .infinity)
@@ -96,7 +97,7 @@ struct TempoAnsicht: View {
                     modusHinweis
                 }
                 Karte(titel: "Reicht die Drobo für Video?") {
-                    HStack(spacing: 24) {
+                    HStack(spacing: Abstand.xl) {
                         Picker("Ansicht", selection: $sicht) {
                             Text("Reicht es?").tag(TempoSicht.reicht); Text("Wie schnell?").tag(TempoSicht.wieSchnell)
                         }.pickerStyle(.segmented).labelsHidden().frame(maxWidth: 280)
@@ -128,7 +129,7 @@ struct TempoAnsicht: View {
                         }.accessibilityElement(children: .combine)
                     }
                 }
-            }.padding(20)
+            }.padding()
         }
         .onAppear { m.tempoZielWaehlen() }
         .onChange(of: m.tempoLaeuft) { _, laeuft in if !laeuft { basis = letzte.schreiben != nil ? .schreiben : .lesen } }

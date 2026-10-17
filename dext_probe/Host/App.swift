@@ -33,10 +33,10 @@ struct DextProbeApp: App {
     @StateObject private var a = Activator()
     var body: some Scene {
         WindowGroup {
-            VStack(spacing: 12) {
+            VStack {
                 Text(a.status)
                 Button("Dext aktivieren") { a.activate() }
-            }.padding(24)
+            }.padding()
             .onAppear { if CommandLine.arguments.contains("--activate") { a.activate() } }  // Kopflauf: DextProbeHost --activate
         }
     }

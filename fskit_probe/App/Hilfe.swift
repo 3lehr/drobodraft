@@ -4,7 +4,7 @@ import SwiftUI
 struct HilfeAnsicht: View {
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: Abstand.l) {
                 Text("DroboDraft Hilfe").font(.largeTitle).accessibilityAddTraits(.isHeader)
                 Hinweis(symbol: "hammer.fill", text: "Frühe Alpha: Funktionen ändern sich noch. Nicht für den Dauerbetrieb und nicht für Daten ohne Zweitkopie gedacht.")
                 Karte(titel: "Installation") {
@@ -31,7 +31,7 @@ struct HilfeAnsicht: View {
                 Karte(titel: "Spotlight und Time Machine") {
                     Text("Spotlight läuft nach unseren Messungen nicht in den Einhängeort unter /Volumes hinein. Wer ganz sicher gehen will, schließt die Drobo in den Systemeinstellungen bei Spotlight und Time Machine aus. Das ist freiwillig; die App ändert dazu nichts.")
                 }
-            }.padding(24)
+            }.padding()
         }
         .frame(minWidth: 520, minHeight: 520)
     }

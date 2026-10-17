@@ -28,24 +28,24 @@ struct DroboGeraet: View {
     var lage: GeraeteLage { .von(modell: h.modell, schaechte: anzahl) }
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: Abstand.s) {
             if lage == .gestapelt {
                 ForEach(1...anzahl, id: \.self) { n in
                     SchachtFeld(nr: n, s: h.schaechte.first { $0.nr == n }, mitFehler: mitFehler, lage: lage, offen: $offen)
                 }
             } else {
-                HStack(alignment: .top, spacing: 6) {   // Reihenfolge = Schachtnummer, auch fuer VoiceOver
+                HStack(alignment: .top, spacing: Abstand.s) {   // Reihenfolge = Schachtnummer, auch fuer VoiceOver
                     ForEach(1...anzahl, id: \.self) { n in
                         SchachtFeld(nr: n, s: h.schaechte.first { $0.nr == n }, mitFehler: mitFehler, lage: lage, offen: $offen)
                     }
                 }
             }
-            FuellLeiste(g: g).padding(.top, 4)
+            FuellLeiste(g: g).padding(.top, Abstand.xs)
         }
-        .padding(12)
-        .frame(width: lage == .gestapelt ? 334 : CGFloat(anzahl) * 56 + 6 * CGFloat(anzahl - 1) + 24)
-        .background(RoundedRectangle(cornerRadius: 14).fill(Color(white: 0.14)))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.3), lineWidth: 1))
+        .padding(Abstand.m)
+        .frame(width: lage == .gestapelt ? Mass.geraetStapelBreite : CGFloat(anzahl) * Mass.schachtBreite + Mass.schachtLuecke * CGFloat(anzahl - 1) + Mass.geraetRand)
+        .background(RoundedRectangle(cornerRadius: Radius.geraet).fill(Farbe.geraetGehaeuse))
+        .overlay(RoundedRectangle(cornerRadius: Radius.geraet).stroke(Color.white.opacity(0.3), lineWidth: 1))
         .environment(\.colorScheme, .dark)   // Geraet bleibt dunkel, auch im hellen Modus; Systemfarben passen sich an
         .accessibilityElement(children: .contain)
         .accessibilityLabel(String(localized: "Drobo mit \(anzahl) Schächten"))
@@ -81,23 +81,23 @@ struct SchachtFeld: View {
         let beschreibung = schachtBeschreibung(nr: nr, s: s, mitFehler: mitFehler)
         Button { offen = nr } label: {
             if lage == .gestapelt {
-                HStack(spacing: 8) {
-                    Text("\(nr)").font(.callout.bold().monospacedDigit()).foregroundStyle(.white).frame(width: 16)
-                    platte.frame(height: 30)
-                    HStack(spacing: 4) {
+                HStack(spacing: Abstand.s) {
+                    Text("\(nr)").font(.callout.bold().monospacedDigit()).foregroundStyle(.white).frame(minWidth: Mass.schachtNummerBreite)
+                    platte.frame(minHeight: Mass.plateStapelHoehe)
+                    HStack(spacing: Abstand.xs) {
                         Lampe(f: farbe)
                         Text(farbe.wortText).font(.caption).foregroundStyle(.white).fixedSize(horizontal: false, vertical: true)
-                    }.frame(width: 110, alignment: .leading)
+                    }.frame(minWidth: Mass.lampeText, alignment: .leading)
                 }
                 .contentShape(Rectangle())
             } else {
-                VStack(spacing: 4) {
+                VStack(spacing: Abstand.xs) {
                     Text("\(nr)").font(.callout.bold().monospacedDigit()).foregroundStyle(.white)
-                    platte.frame(width: 44, height: 150).overlay(Text(kapText).font(.callout).monospacedDigit().foregroundStyle(.white).fixedSize().rotationEffect(.degrees(-90)))
+                    platte.frame(minWidth: Mass.plateSenkrechtBreite, minHeight: Mass.plateSenkrechtHoehe).overlay(Text(kapText).font(.callout).monospacedDigit().foregroundStyle(.white).fixedSize().rotationEffect(.degrees(-90)))
                     Lampe(f: farbe)   // Spalte = Einschub = Lampe = Wort: alle auf derselben Mittelachse
-                    Text(farbe.wortText).font(.caption2).foregroundStyle(.white).multilineTextAlignment(.center).frame(width: 56, height: 28, alignment: .top)
+                    Text(farbe.wortText).font(.caption2).foregroundStyle(.white).multilineTextAlignment(.center).frame(minWidth: Mass.schachtBreite, minHeight: Mass.lampeWortHoehe, alignment: .top)
                 }
-                .frame(width: 56)
+                .frame(minWidth: Mass.schachtBreite)
                 .contentShape(Rectangle())
             }
         }
@@ -114,8 +114,8 @@ extension SchachtFeld {
     /// Einschub-Blende; im Stapel steht die Kapazitaet darin, bei senkrechten Einschueben legt der Aufrufer den gedrehten Text darueber.
     var platte: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 5).fill(Color.white.opacity(belegt ? 0.14 : 0.04))
-            RoundedRectangle(cornerRadius: 5).strokeBorder(Color.white.opacity(0.35), style: StrokeStyle(lineWidth: 1, dash: belegt ? [] : [3, 3]))
+            RoundedRectangle(cornerRadius: Radius.platte).fill(Color.white.opacity(belegt ? 0.14 : 0.04))
+            RoundedRectangle(cornerRadius: Radius.platte).strokeBorder(Color.white.opacity(0.35), style: StrokeStyle(lineWidth: 1, dash: belegt ? [] : [3, 3]))
             if lage == .gestapelt { Text(kapText).font(.callout).foregroundStyle(.white).monospacedDigit() }
         }
     }
@@ -126,7 +126,7 @@ struct SchachtDetail: View {
     let s: Schacht?
     let mitFehler: Bool
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Abstand.s) {
             Text("Schacht \(nr)").font(.headline).accessibilityAddTraits(.isHeader)
             if let s, s.belegt {
                 Zeile(name: "Lampe", wert: s.farbe.wortText)
@@ -139,7 +139,7 @@ struct SchachtDetail: View {
                 // Netzwerk-Drobo (DroboPro): Seite 0x35 antwortet nie (Messbefund 2026-10-17) -> keine Zusatzfelder und kein Platzhalter, Zeilen entfallen
                 if mitFehler && s.temperatur == nil && s.restleben == nil { Text("Die Drobo meldet für diese Festplatte keine Temperatur und keine Restlebensdauer.").font(.callout).foregroundStyle(.secondary) }
             } else { Text("Kein Laufwerk eingesetzt.").foregroundStyle(.secondary) }
-        }.padding(14).frame(width: 300)
+        }.padding().frame(minWidth: Mass.popoverMin, idealWidth: Mass.popover)
     }
 }
 
@@ -157,7 +157,7 @@ struct Lampe: View {
                 }
             } else { Image(systemName: f.symbol).foregroundStyle(f.farbe == .secondary ? Color.white.opacity(0.75) : f.farbe) }
         }
-        .imageScale(.large).frame(width: 22, height: 22).accessibilityHidden(true)
+        .imageScale(.large).frame(minWidth: Mass.lampe, minHeight: Mass.lampe).accessibilityHidden(true)
     }
 }
 
@@ -165,9 +165,9 @@ struct Lampe: View {
 struct FuellLeiste: View {
     let g: Gesamtzustand
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Abstand.s) {
             ForEach(0..<10, id: \.self) { i in
-                Circle().fill(i < g.ledAnzahl ? Color(red: 0.30, green: 0.64, blue: 1.0) : Color.white.opacity(0.18)).frame(width: 12, height: 12)
+                Circle().fill(i < g.ledAnzahl ? Farbe.fuellLed : Color.white.opacity(0.18)).frame(minWidth: Mass.ledPunkt, minHeight: Mass.ledPunkt)
             }
         }
         .frame(maxWidth: .infinity)

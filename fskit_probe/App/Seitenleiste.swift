@@ -29,7 +29,7 @@ struct Seitenleiste: View {
                     Button { m.auswahl = d.eintrag.uuid; if abschnitt == .finden { abschnitt = .uebersicht } } label: {
                         HStack {
                             ZustandPunkt(stufe: d.stufe, gesamt: d.hwZustand)
-                            VStack(alignment: .leading, spacing: 1) { Text(d.eintrag.name); Text(zeile).font(.caption).foregroundStyle(.secondary) }
+                            VStack(alignment: .leading, spacing: Abstand.haar) { Text(d.eintrag.name); Text(zeile).font(.caption).foregroundStyle(.secondary) }
                             Spacer()
                         }.contentShape(Rectangle())
                     }
@@ -55,7 +55,7 @@ struct Seitenleiste: View {
                 Label(LocalizedStringKey(a.rawValue), systemImage: a.symbol).fontWeight(gewaehlt ? .bold : .regular)
                 Spacer()
                 if a == .finden && m.sucheLaeuft { ProgressView().controlSize(.small).accessibilityLabel("Suche läuft …") }
-                if neu > 0 { Text("\(neu) neu").font(.caption.bold()).padding(.horizontal, 7).padding(.vertical, 2).background(Color.accentColor.opacity(0.25), in: Capsule()) }
+                if neu > 0 { Text("\(neu) neu").font(.caption.bold()).padding(.horizontal, Abstand.s).padding(.vertical, Abstand.xxs).background(Color.accentColor.opacity(0.25), in: Capsule()) }
             }.contentShape(Rectangle())
         }
         .buttonStyle(.plain)
