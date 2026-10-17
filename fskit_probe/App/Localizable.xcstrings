@@ -8288,6 +8288,54 @@
           }
         }
       }
+    },
+    "Aufwecken nicht möglich": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aufwecken nicht möglich"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waking up not possible"
+          }
+        }
+      }
+    },
+    "Es läuft gerade ein anderer Vorgang.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Es läuft gerade ein anderer Vorgang."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Another operation is running right now."
+          }
+        }
+      }
+    },
+    "Die App fragt diese Drobo gerade ab. Versuche es in einigen Sekunden noch einmal.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die App fragt diese Drobo gerade ab. Versuche es in einigen Sekunden noch einmal."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The app is querying this Drobo right now. Try again in a few seconds."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -133,20 +133,29 @@ final class DroboModell: ObservableObject {
     private func bremse(_ uuid: String) -> StatusBremse { if let b = bremsen[uuid] { return b }; let b = StatusBremse(); bremsen[uuid] = b; return b }
     /// Aktion "Aufwecken": Weckphase (eine Sitzung, TEST UNIT READY bis 90 s) und danach Status lesen, als Vorgang mit Sperre und Schlafsperre. Kein 0xEA, kein Schreiben.
     func aufwecken() {
-        #if DEBUG
-        guard DemoDaten.art == nil else { return }   // Demo fasst kein Netz an
-        #endif
         guard let nz = aktuell?.eintrag.netz, let u = aktuell?.eintrag.uuid else { return }
+        guard arbeit == nil else { meldung = Meldung(titel: "Aufwecken nicht möglich", text: String(localized: "Es läuft gerade ein anderer Vorgang.")); return }   // sonst bliebe die Abfrage unten reserviert
         let b = bremse(u); b.erneutPruefen()      // eine bewusste Handlung hebt die "reagiert nicht"-Pause auf
-        guard b.weckenBeginnen() else { return }
-        let fp = weckFortschritt(u)
+        guard b.weckenBeginnen() else {
+            ablage.protokoll("Aufwecken \(nz.host): nicht gestartet, eine andere Abfrage dieser Drobo läuft noch")
+            meldung = Meldung(titel: "Aufwecken nicht möglich", text: String(localized: "Die App fragt diese Drobo gerade ab. Versuche es in einigen Sekunden noch einmal.")); return
+        }
+        let fp = weckFortschritt(u), ablage = ablage
+        #if DEBUG
+        let demo = DemoDaten.art != nil     // Demo: gleicher Ablauf, aber ohne Netz (ein Fortschrittsschritt, eine Sekunde)
+        #else
+        let demo = false
+        #endif
+        ablage.protokoll("Aufwecken \(nz.host): gestartet")
         ausfuehren("Aufwecken") { [weak self] in
             do {
+                if demo { fp(0); try await Task.sleep(for: .seconds(1)); b.weckenEnde(nil); ablage.protokoll("Aufwecken \(nz.host): beendet (Demo)"); return String(localized: "Die DroboPro ist wach und antwortet.") }
                 let (st, info) = try netzStatusLesen(host: nz.host, fortschritt: fp)
                 b.weckenEnde(nil)
+                ablage.protokoll("Aufwecken \(nz.host): beendet, die DroboPro antwortet")
                 await MainActor.run { if var a = self?.drobos[u] { (a.hw, a.netz, a.netzStand, a.netzFehler, a.verbunden, a.bremse) = (st, info, Date(), nil, true, .bereit); self?.drobos[u] = a } }
                 return String(localized: "Die DroboPro ist wach und antwortet.")
-            } catch { b.weckenEnde(error); throw error }
+            } catch { b.weckenEnde(error); ablage.protokoll("Aufwecken \(nz.host): beendet mit Fehler: \(error)"); throw error }
         }
     }
     func erneutPruefen(_ uuid: String) { bremse(uuid).erneutPruefen(); aktualisieren(freigabe: true) }
@@ -607,7 +616,10 @@ final class DroboModell: ObservableObject {
 
     // MARK: Drobos suchen (USB + lokales Netzwerk), nichts wird ohne Zustimmung uebernommen
 
+    /// Zaehler der Suchlaeufe seit Start (Pruefung: nach dem Start hoechstens einer, weitere nur auf Knopf/Aktion).
+    var sucheZaehler = 0
     func drobosSuchen() {
+        sucheZaehler += 1
         #if DEBUG
         guard DemoDaten.art == nil else { return }   // Demo fasst kein Netz und kein Geraet an
         #endif
@@ -615,15 +627,21 @@ final class DroboModell: ObservableObject {
         sucheLaeuft = true; sucheInfo = nil
         let bekannt = Set(einstellungen.drobos.map { $0.uuid })
         let bekannteHosts = Set(einstellungen.drobos.compactMap { $0.netz?.host })
-        let ausnehmen = Set(drobos.values.filter { $0.eingehaengt }.compactMap { $0.eintrag.netz?.host })     // eingehaengte DroboPro: keine zweite Sitzung
+        // eingehaengte DroboPro: keine zweite Sitzung. Aus der Mount-Tabelle, nicht aus `drobos`: beim Start ist das Woerterbuch noch leer und die Suche weckte/befragte eine eingehaengte DroboPro.
+        let nochNichtGelesen = drobos.values.filter { $0.eingehaengt }.compactMap { $0.eintrag.netz?.host }
+        let mountHosts = iscsiEingehaengteLuns().isEmpty ? [] : einstellungen.drobos.compactMap { $0.netz?.host }
+        let ausnehmen = Set(nochNichtGelesen + mountHosts)
         // Bekannte DroboPros (Adresse eingerichtet): Weckphase beim Treffer; die Abfrage ist dafuer in der Bremse reserviert (keine zweite Sitzung, die die Weck-Sitzung ersetzte)
         let netzDrobos = einstellungen.drobos.compactMap { d in d.netz.map { (uuid: d.uuid, host: $0.host) } }
         let weckHosts = Set(netzDrobos.filter { !ausnehmen.contains($0.host) && bremse($0.uuid).weckenBeginnen() }.map(\.host))
-        let fortschritt: [String: (Int) -> Void] = Dictionary(netzDrobos.map { ($0.host, weckFortschritt($0.uuid)) }, uniquingKeysWith: { a, _ in a })
+        // Die Sperr-Ueberlagerung erscheint erst, wenn die DroboPro wirklich aufwacht (erster Fortschritt), nicht schon waehrend des LAN-Suchlaufs.
+        let namen = Dictionary(einstellungen.drobos.map { ($0.uuid, $0.name) }, uniquingKeysWith: { a, _ in a })
+        let fortschritt: [String: (Int) -> Void] = Dictionary(netzDrobos.map { d in (d.host, { (s: Int) in Task { @MainActor [weak self] in
+            self?.weckt[d.uuid] = s
+            if self?.vorgaenge[d.uuid] == nil { self?.vorgaenge[d.uuid] = Vorgang(titel: String(localized: "Aufwecken"), drobo: namen[d.uuid] ?? "", start: Date()) } } }) }, uniquingKeysWith: { a, _ in a })
         let bremsenKopie = netzDrobos.map { ($0.host, bremse($0.uuid)) }
         let fehler = NSLock(); nonisolated(unsafe) var weckFehler: [String: Error] = [:]
         let weckUUIDs = netzDrobos.filter { weckHosts.contains($0.host) }.map(\.uuid)
-        for u in weckUUIDs { vorgaenge[u] = Vorgang(titel: String(localized: "Aufwecken"), drobo: einstellungen.drobos.first { $0.uuid == u }?.name ?? "", start: Date()) }
         let sperrName = "DroboDraft: Aufwecken " + weckUUIDs.compactMap { u in einstellungen.drobos.first { $0.uuid == u }?.name }.joined(separator: ", ")
         Task.detached {
             let suche = { DroboKern.drobosSuchen(ausnehmen: ausnehmen, bekannt: weckHosts, weckfortschritt: { h, s in fortschritt[h]?(s) }, weckfehler: { h, e in fehler.lock(); weckFehler[h] = e; fehler.unlock() }) }

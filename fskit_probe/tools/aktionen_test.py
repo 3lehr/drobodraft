@@ -108,8 +108,30 @@ def aufwecken_test():
                 pruefe(get("/zustand")["auswahl"] == pro, "Aktion mit Ziel waehlt die DroboPro")
                 post("/vorgang?titel=Formatieren"); pruefe(zeilen() == [], "waehrend eines Vorgangs keine Aufwecken-Zeile")
                 pruefe(not [x for x in get("/aktionen") if x["id"] == "aufwecken"][0]["aktiv"], "waehrend eines Vorgangs nicht aktiv"); post("/vorgang?ende=1")
+                for _ in range(20):      # der Demo-Aufwecken-Vorgang (1 s) laeuft noch
+                    if zeilen(): break
+                    time.sleep(0.5)
                 pruefe(zeilen() == [f"a-aufwecken-{pro}"], "nach dem Vorgang wieder aktiv")
         finally: beenden(p)
+
+def start_und_aufwecken_test():
+    """O: nach dem Start hoechstens EIN Suchlauf (kein Dauerlauf), weitere nur auf Aktion/Knopf. P: Aufwecken zeigt Wirkung (Vorgang) und schreibt Start/Ende ins Protokoll."""
+    p, port, daten = start("beide", extra={"DROBO_DEMO_NICHT_EINGEHAENGT": "1", "DROBO_DEMO_BREMSE": "reagiert"})
+    try:
+        get = lambda x: holen(port, x); post = lambda x: holen(port, x, True)
+        time.sleep(8)      # mehr als zwei Timer-Takte (3 s)
+        pruefe(get("/zustand")["suchlaeufe"] <= 1, f"nach dem Start hoechstens ein Suchlauf ({get('/zustand')['suchlaeufe']})")
+        post("/aktion?id=drobosSuchen"); pruefe(get("/zustand")["suchlaeufe"] == 2, "weiterer Suchlauf nur auf Aktion")
+        time.sleep(5); pruefe(get("/zustand")["suchlaeufe"] == 2, "danach kein weiterer von allein")
+        pro = [d["uuid"] for d in get("/zustand")["drobos"] if d["name"] == "DroboPro"][0]
+        r = post(f"/aktion?id=aufwecken&arg={pro}"); pruefe(r["ok"], f"Aufwecken ausfuehrbar ({r.get('fehler')})")
+        pruefe(get("/zustand")["vorgang"] == "Aufwecken", "Aufwecken laeuft als Vorgang (sichtbare Wirkung)")
+        for _ in range(20):
+            if get("/zustand")["vorgang"] is None: break
+            time.sleep(0.5)
+        pruefe(get("/zustand")["vorgang"] is None, "Vorgang endet")
+        prot = get("/protokoll"); pruefe(any("Aufwecken" in x and "gestartet" in x for x in prot) and any("Aufwecken" in x and "beendet" in x for x in prot), f"Protokoll: Start und Ende ({[x for x in prot if 'Aufwecken' in x]})")
+    finally: beenden(p)
 
 def symbol_test():
     """Menueleisten-Symbol (Zeilen aus dem Modell, Aktionen aus dem Katalog): alle Drobos, freier Platz, Warnungen oben mit Hilfe, Schreiben nur ueber das Blatt,
@@ -228,6 +250,7 @@ def main():
     symbol_test()
     vorgang_test()
     aufwecken_test()
+    start_und_aufwecken_test()
     print(f"\n{'ALLES GRUEN' if not fehler else str(len(fehler)) + ' FEHLER'}")
     sys.exit(1 if fehler else 0)
 
