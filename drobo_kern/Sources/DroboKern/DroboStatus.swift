@@ -14,19 +14,26 @@ public struct Schacht: Equatable {
     public var temperatur: Int?        // nur wenn die Firmware einen Wert liefert (0 = nicht belegt)
     public var restleben: Int?         // nur SSD-Zaehler 0...100
     public var belegt: Bool { farbe != .leer && kapazitaet > 0 }
+    public init(nr: Int, farbe: SchachtFarbe, fehler: Int, modell: String, kapazitaet: UInt64, temperatur: Int?, restleben: Int?) {
+        self.nr = nr; self.farbe = farbe; self.fehler = fehler; self.modell = modell; self.kapazitaet = kapazitaet; self.temperatur = temperatur; self.restleben = restleben
+    }
 }
 
 public struct DroboKapazitaet: Equatable {
     public var frei: UInt64, benutzt: UInt64, gesamtGeschuetzt: UInt64, gesamtUngeschuetzt: UInt64
     /// Anteil physisch frei am geschuetzten Gesamtwert (0...1).
     public var freiAnteil: Double { gesamtGeschuetzt == 0 ? 0 : Double(frei) / Double(gesamtGeschuetzt) }
+    public init(frei: UInt64, benutzt: UInt64, gesamtGeschuetzt: UInt64, gesamtUngeschuetzt: UInt64) {
+        self.frei = frei; self.benutzt = benutzt; self.gesamtGeschuetzt = gesamtGeschuetzt; self.gesamtUngeschuetzt = gesamtUngeschuetzt
+    }
 }
 
 public enum Schweregrad: Int, Comparable { case ok = 0, warnung = 1, kritisch = 2
     public static func < (a: Schweregrad, b: Schweregrad) -> Bool { a.rawValue < b.rawValue } }
 
 /// Statusmeldung: Schluessel ist der Katalogtext (de), die Oberflaeche uebersetzt ihn.
-public struct Meldung: Equatable { public var bit: UInt64; public var text: String; public var schwere: Schweregrad }
+public struct Meldung: Equatable { public var bit: UInt64; public var text: String; public var schwere: Schweregrad
+    public init(bit: UInt64, text: String, schwere: Schweregrad) { self.bit = bit; self.text = text; self.schwere = schwere } }
 
 public struct DroboStatus: Equatable {
     public var zeit: Date
@@ -45,6 +52,12 @@ public struct DroboStatus: Equatable {
     public var schwere: Schweregrad
     /// Nicht gedeutete Werte (Seitenname -> Bytes), nichts wird erraten.
     public var unbelegt: [String: Data]
+
+    public init(zeit: Date, ok: Bool, fehler: String, modell: String, firmware: String, firmwareBuild: Int?, protokoll: String?, schaechte: [Schacht], kapazitaet: DroboKapazitaet?,
+                statusBits: UInt32?, relayout: UInt32?, meldungen: [Meldung], schwere: Schweregrad, unbelegt: [String: Data]) {
+        self.zeit = zeit; self.ok = ok; self.fehler = fehler; self.modell = modell; self.firmware = firmware; self.firmwareBuild = firmwareBuild; self.protokoll = protokoll; self.schaechte = schaechte
+        self.kapazitaet = kapazitaet; self.statusBits = statusBits; self.relayout = relayout; self.meldungen = meldungen; self.schwere = schwere; self.unbelegt = unbelegt
+    }
 
     public func alter(jetzt: Date = Date()) -> TimeInterval { max(0, jetzt.timeIntervalSince(zeit)) }
     /// Der Dext liest alle 60 s; deutlich laenger her = Daten veraltet.

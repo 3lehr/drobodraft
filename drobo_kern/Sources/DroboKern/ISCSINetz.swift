@@ -4,7 +4,8 @@ import Foundation
 /// (Weiterleitung auf 127.0.0.1, siehe HelferLogik.swift); die Funktionen mit `sitzung:` sind rein und gegen das Python-Ziel getestet.
 
 public struct NetzLun: Equatable { public var lun: Int; public var uuid: String; public var partitionBytes: UInt64 }
-public struct NetzInfo: Equatable { public var name: String; public var gelbProzent: Int; public var rotProzent: Int }
+public struct NetzInfo: Equatable { public var name: String; public var gelbProzent: Int; public var rotProzent: Int
+    public init(name: String, gelbProzent: Int, rotProzent: Int) { self.name = name; self.gelbProzent = gelbProzent; self.rotProzent = rotProzent } }
 
 public func iscsiOrt(_ lun: Int) -> String { "\(iscsiVorgabeOrt)\(lun)" }
 
