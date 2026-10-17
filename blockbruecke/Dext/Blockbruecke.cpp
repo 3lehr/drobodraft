@@ -5,6 +5,12 @@
 // Schritt 1: nur Start + Log. Kein Target, keine Daten, kein Netz. Jeder SCSI-Befehl -> abgelehnt (darf nie ankommen, es gibt kein Target).
 #define LOG(fmt, ...) os_log(OS_LOG_DEFAULT, "Blockbruecke: " fmt, ##__VA_ARGS__)
 
+bool Blockbruecke::init()
+{
+    LOG("Controller init");
+    return super::init();
+}
+
 kern_return_t IMPL(Blockbruecke, Start)
 {
     kern_return_t r = Start(provider, SUPERDISPATCH);

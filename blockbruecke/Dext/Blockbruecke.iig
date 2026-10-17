@@ -9,6 +9,7 @@
 class Blockbruecke : public IOUserSCSIParallelInterfaceController
 {
 public:
+    virtual bool init() override;
     virtual kern_return_t Start(IOService *provider) override;
     virtual kern_return_t UserReportHBAHighestLogicalUnitNumber(uint64_t *value) override;
     virtual kern_return_t UserDoesHBASupportSCSIParallelFeature(uint32_t theValue, bool *result) override;

@@ -133,3 +133,18 @@ Belege (gemessen, `tools/bauen.sh`):
 5. Beleg gruen (ohne sudo): `systemextensionsctl list | grep blockbruecke` → `[activated enabled]`; `ioreg -l -c IOUserSCSIParallelInterfaceController | grep -E "IOUserClass|Blockbruecke"`; Log-Befehl wie 3 → `Blockbruecke: Start ret=0x0`, `UserInitializeController`, `UserStartController`.
 Kippt den Weg: gruen zeigt dieselbe Ablehnung wie rot (Profil/AMFI) oder `Start ret≠0` (Controller braucht Hardware-Provider).
 Rückbau: „Treiber deaktivieren“, App aus /Applications löschen.
+
+## Messung Aktivierung v0.1 und Fix v0.2 (2026-10-17T19:06:00+0200)
+
+Rohbefunde (Betreiber klickte, Lesen per `log show`/`ioreg`, ohne sudo):
+- ROT 18:44:32: Dext gestartet, exit nach 391 ms, kein `Blockbruecke: Start` — Rotprobe wie erwartet rot.
+- GRUEN 18:54:15: `taskgated-helper … allowing entitlement(s) for de.begod.drobo.blockbruecke.dext due to provisioning profile` (B: AMFI nimmt Profil mit `allow-any-userclient-access` an). `openat_authenticated_np() failed … (errno 80)` gefolgt von „Loading codeless extension“ und erfolgreichem Spawn — trat auch bei ROT auf, nicht ursächlich (V).
+- Zwei Prozesse 93710/93734 laufen, zwei `IOUserServer` mit `IOAssociatedServices` 0x1000916ad/0x1000916af; diese IDs stehen **nicht** im IOService-Plane. `IOKitDiagnostics` zählt `"IOUserSCSIParallelInterfaceController"=2` Instanzen: Kernelobjekte entstanden, hängen aber an keinem Provider. Keine einzige Logzeile der Dext-Prozesse.
+- Apple-Quelle `IOSCSIParallelFamily` (github apple-oss-distributions, `IOSCSIParallelInterfaceController::start`): kein PCI-Zwang für User-Controller (`provider->open` und Interrupt nur ohne Dext). Also nicht „braucht Hardware“.
+- Muster an diesem Mac (ioreg): alle Apple-Dexts auf `IOUserResources` nutzen `IOClass IOUserService` und legen Unterobjekte über eine verschachtelte Personality an (`IOUserDockChannelSerial` → `"PTY"={"IOClass"="IOUserSerial",…}`).
+
+Ursache (V, stark): Familienklasse direkt als Personality auf `IOUserResources` wird instanziiert, aber nie angehängt/gestartet. Kernel-DK-Meldungen sind in diesem Build stumm (`DKLOG` nur mit Debug-Flag, xnu `IOUserServer.cpp:5854`), daher keine Logzeile vom Kernel.
+
+Fix v0.2 (gebaut, `bauen.sh gruen` PASS, CFBundleVersion 2): Personality `IOClass IOUserService`/`IOUserClass BlockbrueckeWurzel` auf `IOUserResources`; Wurzel ruft `Create(this, "BlockbrueckeController", …)` mit Unterpersonality `IOUserSCSIParallelInterfaceController`/`Blockbruecke`. Logpunkte trennen die Stufen: `Wurzel init` → `Wurzel Start ret` → `Controller init` → `Start ret` → `UserInitializeController` → `UserStartController` → `Wurzel Create(Controller) ret`. `bauen.sh` meldet Build-Fehler jetzt als FAIL (vorher PASS mit alter App).
+
+Betreiber: `ditto <APP aus bauen.sh gruen> /Applications/BlockbrueckeHost.app`, App öffnen, „Treiber aktivieren“ (Ersetzen 1→2), Schalter falls verlangt. Beleg: `/usr/bin/log show --last 5m --predicate 'eventMessage BEGINSWITH "Blockbruecke:"' --style compact` und `ioreg -w0 -t | grep -iE "Blockbruecke|IOUserSCSIParallel"`. Erwartet grün: alle sieben Logzeilen, `ret=0x0`, Controller unter `IOUserResources` > `BlockbrueckeWurzel` sichtbar. Fehlt nach `Wurzel Start` die Zeile `Controller init`, scheitert `Create` im Kernel (ret-Wert steht im Log).

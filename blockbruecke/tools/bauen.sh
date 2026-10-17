@@ -8,7 +8,8 @@ ent=Dext/Dext.entitlements; [ "$art" = rot ] && ent=Dext/Dext.rot.entitlements
 dd=${TMPDIR:-/private/tmp}/blockbruecke-$art
 xcodegen generate -q
 xcodebuild -project Blockbruecke.xcodeproj -scheme BlockbrueckeHost -configuration Debug -derivedDataPath "$dd" \
-  -allowProvisioningUpdates BB_DEXT_ENT="$ent" build | grep -E "error:|\*\* BUILD" || true
+  -allowProvisioningUpdates BB_DEXT_ENT="$ent" build > "$dd.log" 2>&1 || { grep -E "error:" "$dd.log" | sort -u; echo "FAIL build ($dd.log)"; exit 1; }
+echo "** BUILD SUCCEEDED **"
 app="$dd/Build/Products/Debug/BlockbrueckeHost.app"
 dext="$app/Contents/Library/SystemExtensions/de.begod.drobo.blockbruecke.dext.dext"
 codesign --verify --strict --deep "$app"
