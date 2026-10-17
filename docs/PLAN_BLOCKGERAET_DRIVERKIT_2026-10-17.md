@@ -191,3 +191,9 @@ Messung ohne Neustart (mit `--id2`):
 **Weiterbauen (Vorschlag v0.4, nicht gebaut):** Wurzel bleibt `IOUserService` auf `IOUserResources`, trägt in ihrer Personality eine Kennung (z. B. `BlockbrueckeNub = true`) und ruft `RegisterService()`. Zweite Personality: `IOProviderClass IOUserService`, `IOPropertyMatch {BlockbrueckeNub: true}`, `IOClass IOUserSCSIParallelInterfaceController`, `CFBundleIdentifierKernel com.apple.iokit.IOSCSIParallelFamily` → Kernel lädt den Kext, ruft `start` mit echtem Provider (Wurzel) → `fProvider` gesetzt. Erster Messpunkt: Log `UserInitializeController` + Controller im ioreg unter der Wurzel. Erst danach Deaktivieren messen. Offenes Risiko (V): stirbt der Dext **während** Kernel-`super::start`, bleibt `fProvider` NULL; ob dann `didTerminate` läuft, ist aus der Quelle nicht sicher abzulesen → Messung nur unter `--id2`, Prozess nie beenden.
 
 Lehre: Ein DriverKit-`Create` ist kein Ersatz für Matching; „ret=0x0“ beim Anlegen sagt nichts über den Kernel-Start der Familienklasse.
+
+## Wiedereinstieg (2026-10-17T19:58:30+0200)
+
+- Treiber v0.3 (de.begod.drobo.blockbruecke.dext) aktiv, aber leer: IOSCSIParallelFamily nicht geladen, kein Controller (geprüft 2026-10-17T19:58:30+0200). Deaktivieren ist so gefahrlos; Klick in BlockbrueckeHost „Treiber deaktivieren“ steht aus (Betreiber).
+- Nächster Schritt: v0.4 (Nub + Matching statt IOService::Create, eigene Bundle-ID --id2), Test bevorzugt in VM. Invarianten siehe Abschnitt Kernel-Panic.
+- Offen DroboDraft-App: Schachtlampen grau (Ursache unbekannt), Dashboard-Mitschnitt LUN-Größe (en8!), LUN-Befehle 0x0F/0x12/0x13 nur gegen Python-Ziel getestet, Gate zu.
