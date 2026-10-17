@@ -6,6 +6,7 @@ struct EinstellungenAnsicht: View {
     @State private var anleitung = false
     @State private var neuName = ""
     @State private var neuKennung = ""
+    @State private var sicherungsort = ""
 
     func ordnerWaehlen(_ start: String) -> String? {
         let p = NSOpenPanel(); p.canChooseDirectories = true; p.canChooseFiles = false; p.canCreateDirectories = true
@@ -16,26 +17,26 @@ struct EinstellungenAnsicht: View {
     var body: some View {
         Form {
             Section("Einhängen") {
-                Picker("Einhängeort", selection: Binding(get: { m.einstellungen.einhaengeort == vorgabeOrt ? vorgabeOrt : vorgabeVolumes }, set: { m.einstellungen.einhaengeort = $0; m.einstellungenSpeichern() })) {
+                Picker("Einhängeort", selection: Binding(get: { m.einstellungen.einhaengeort == vorgabeOrt ? vorgabeOrt : vorgabeVolumes }, set: { v in m.aendern(String(localized: "Einhängeort ändern")) { $0.einhaengeort = v } })) {
                     Text("Im Finder sichtbar (unter „Orte“)").tag(vorgabeVolumes)
                     Text("Verdeckt (nur über „Im Finder öffnen“)").tag(vorgabeOrt)
                 }
                 Text("Sichtbar: das Laufwerk erscheint wie jedes andere im Finder. Spotlight läuft dort nach Messung nicht hinein. Der Ordner wird vom Hilfsdienst angelegt und beim Aushängen wieder entfernt. Der Ort darf nie im Benutzerordner liegen.").font(.callout).foregroundStyle(.secondary)
-                Picker("Vorgabe beim Einhängen", selection: $m.einstellungen.vorgabeSchreiben) {
+                Picker("Vorgabe beim Einhängen", selection: m.binding(\.vorgabeSchreiben, String(localized: "Vorgabe beim Einhängen ändern"))) {
                     Text("Nur lesen").tag(false)
                     Text("Schreiben").tag(true)
-                }.onChange(of: m.einstellungen.vorgabeSchreiben) { _, _ in m.einstellungenSpeichern() }
+                }
             }
             Section("Sicherung der Verwaltungsdaten") {
                 HStack {
-                    TextField("Sicherungsort", text: $m.einstellungen.sicherungOrt, prompt: Text("noch nicht gewählt")).onSubmit { m.einstellungenSpeichern() }
-                    Button("Wählen …") { if let p = ordnerWaehlen(m.einstellungen.sicherungOrt) { m.einstellungen.sicherungOrt = p; m.einstellungenSpeichern() } }
+                    TextField("Sicherungsort", text: $sicherungsort, prompt: Text("noch nicht gewählt")).onSubmit { m.aendern(String(localized: "Sicherungsort ändern")) { $0.sicherungOrt = sicherungsort } }
+                    Button("Wählen …") { if let p = ordnerWaehlen(m.einstellungen.sicherungOrt) { m.fuehreAus(.sicherungsortWaehlen, arg: p) } }
                 }
-                Stepper("Aufbewahrte Sicherungen: \(m.einstellungen.sicherungAnzahl)", value: $m.einstellungen.sicherungAnzahl, in: 1...20).onChange(of: m.einstellungen.sicherungAnzahl) { _, _ in m.einstellungenSpeichern() }
+                Stepper("Aufbewahrte Sicherungen: \(m.einstellungen.sicherungAnzahl)", value: m.binding(\.sicherungAnzahl, String(localized: "Anzahl der Sicherungen ändern")), in: 1...20)
                 Text("Nicht auf dem Startvolume und nicht auf der Drobo selbst. Ältere Sicherungen werden erst gelöscht, wenn die neue gelungen und geprüft ist.").font(.callout).foregroundStyle(.secondary)
             }
             Section("Spotlight und Time Machine") {
-                Toggle("Ich habe die Drobo bei Spotlight und Time Machine ausgeschlossen", isOn: $m.einstellungen.spotlightAusgeschlossen).onChange(of: m.einstellungen.spotlightAusgeschlossen) { _, _ in m.einstellungenSpeichern() }
+                Toggle("Ich habe die Drobo bei Spotlight und Time Machine ausgeschlossen", isOn: m.binding(\.spotlightAusgeschlossen, String(localized: "Spotlight-Ausschluss ändern")))
                 Text("Freiwillig. Solange das aus ist, weist die App beim Schreiben darauf hin.").font(.callout).foregroundStyle(.secondary)
                 Button("Anleitung …") { anleitung = true }
             }
@@ -44,7 +45,7 @@ struct EinstellungenAnsicht: View {
                 Text("Standard: aus. Die App startet dann beim Anmelden im Hintergrund mit Symbol in der Menüleiste.").font(.callout).foregroundStyle(.secondary)
             }
             Section("Mitteilungen") {
-                Toggle("Mitteilungen bei Anschluss, Trennung und Warnungen", isOn: $m.einstellungen.mitteilungen).onChange(of: m.einstellungen.mitteilungen) { _, _ in m.einstellungenSpeichern() }
+                Toggle("Mitteilungen bei Anschluss, Trennung und Warnungen", isOn: m.binding(\.mitteilungen, String(localized: "Mitteilungen ändern")))
             }
             Section("Drobos") {
                 ForEach(m.einstellungen.drobos, id: \.uuid) { d in
@@ -52,12 +53,12 @@ struct EinstellungenAnsicht: View {
                         Text(d.name)
                         Spacer()
                         if d.netz != nil { Text("Netzwerk (iSCSI)").foregroundStyle(.secondary) } else { Picker("Rolle von \(d.name)", selection: Binding(get: { d.rolle }, set: { r in
-                            if let i = m.einstellungen.drobos.firstIndex(where: { $0.uuid == d.uuid }) { m.einstellungen.drobos[i].rolle = r; m.einstellungenSpeichern() } })) {
+                            m.aendern(String(localized: "Rolle ändern")) { e in if let i = e.drobos.firstIndex(where: { $0.uuid == d.uuid }) { e.drobos[i].rolle = r } } })) {
                             Text("Arbeitsvolume").tag(Rolle.arbeitsvolume)
                             Text("Time Machine (nur anzeigen)").tag(Rolle.timemachine)
-                        }.labelsHidden().frame(maxWidth: 260) }
+                        }.labelsHidden().frame(maxWidth: Mass.rolleAuswahl) }
                         if m.einstellungen.drobos.count > 1 {
-                            Button(role: .destructive) { m.einstellungen.drobos.removeAll { $0.uuid == d.uuid }; m.einstellungenSpeichern() } label: { Image(systemName: "minus.circle") }
+                            Button(role: .destructive) { m.entfernen(d.uuid) } label: { Image(systemName: "minus.circle") }
                                 .accessibilityLabel("\(d.name) entfernen")
                         }
                     }
@@ -71,7 +72,7 @@ struct EinstellungenAnsicht: View {
                     Button("Hinzufügen") {
                         let k = neuKennung.trimmingCharacters(in: .whitespaces)
                         guard !neuName.isEmpty, UUID(uuidString: k) != nil else { m.meldung = Meldung(titel: "Drobo", text: String(localized: "Name und eine gültige Volume-Kennung eingeben.")); return }
-                        m.einstellungen.drobos.append(DroboEintrag(uuid: k, name: neuName)); neuName = ""; neuKennung = ""; m.einstellungenSpeichern()
+                        m.aendern(String(localized: "Drobo hinzufügen")) { $0.drobos.append(DroboEintrag(uuid: k, name: neuName)) }; neuName = ""; neuKennung = ""
                     }
                 }
             }
@@ -85,7 +86,9 @@ struct EinstellungenAnsicht: View {
             }
         }
         .formStyle(.grouped)
-        .frame(minWidth: 560, minHeight: 560)
+        .frame(minWidth: Mass.einstellungenBreiteMin, minHeight: Mass.einstellungenBreiteMin)
+        .onAppear { sicherungsort = m.einstellungen.sicherungOrt }
+        .onChange(of: m.einstellungen.sicherungOrt) { _, n in sicherungsort = n }
         .sheet(isPresented: $anleitung) { SpotlightAnleitung() }
     }
 }
@@ -102,13 +105,13 @@ struct MenueleistenInhalt: View {
                 Picker("Drobo", selection: $m.auswahl) { ForEach(m.liste, id: \.eintrag.uuid) { Text($0.eintrag.name).tag($0.eintrag.uuid) } }
             }
             Divider()
-            Button("Im Finder öffnen") { m.imFinderOeffnen() }.keyboardShortcut("o", modifiers: .command).disabled(!a.eingehaengt)
-            Button("Aushängen") { m.aushaengen() }.keyboardShortcut("e", modifiers: .command).disabled(!a.eingehaengt || m.arbeit != nil)
+            Button("Im Finder öffnen") { m.fuehreAus(.imFinder) }.disabled(!m.aktiv(.imFinder))
+            Button("Aushängen") { m.fuehreAus(.aushaengen) }.disabled(!m.aktiv(.aushaengen))
         }
         Divider()
         Button("Fenster öffnen …") { openWindow(id: "haupt"); NSApp.activate(ignoringOtherApps: true) }
-        SettingsLink { Text("Einstellungen …") }.keyboardShortcut(",", modifiers: .command)
+        SettingsLink { Text("Einstellungen …") }
         Divider()
-        Button("DroboDraft beenden") { NSApp.terminate(nil) }.keyboardShortcut("q", modifiers: .command)
+        Button("DroboDraft beenden") { NSApp.terminate(nil) }
     }
 }

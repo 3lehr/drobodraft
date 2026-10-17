@@ -83,3 +83,48 @@ Siehe Commits auf feature/dropro-iscsi. Abweichungen vom Entwurf oben:
 - Temperatur/Restlebensdauer als Rohwert ohne Einheit (OFFEN: am Gerät eichen).
 - Seite 0x35 an der DroboPro: Gate mit exakter Länge 12 + 8 x 108 = 876; NICHT am Gerät gemessen, weil die DroboPro vom Betreiber eingehängt ist (keine zweite Sitzung).
 - „Volumes“ im Abschnitt Werkzeuge entfällt (es gibt keinen eigenen Volumes-Bildschirm); „Ordner sichern“ öffnet die bisherige Ansicht „Volume“.
+
+## Werkzeug-Prinzip: Umsetzung in der App (2026-10-17T10:00:00+0200)
+Auftrag: Regeln wcag.md (Werkzeug-Prinzip, Maße, Nutzerführung), Wissensknoten 3d76cdf5. Layoutänderungen zuerst als ASCII.
+
+### Menüleiste (neu, alle Einträge aus dem Aktionskatalog `Aktion`, eine Quelle)
+```
+DroboDraft  Bearbeiten  Gehe zu        Drobo                         Volume                         Hilfe
+ Über …      Rückgängig ⌘Z  Übersicht ⌘1   Drobos suchen ⌘F               Einhängen (nur lesen) ⇧⌘E      DroboDraft Hilfe ⌘?
+ ──────      Wiederholen ⇧⌘Z Laufwerke ⌘2  Gefundene Drobo hinzufügen      Zum Schreiben einhängen …  (kein Kürzel)
+ Hilfsdienst             Protokoll ⌘3  ───────────────                 Zum Schreiben neu …        (kein Kürzel)
+ Vollzugriff …           ──────────    Umbenennen … ⇧⌘R                Aushängen ⌘E
+ Einstellungen ⌘,        Tempo ⌘4      Aus der Liste entfernen ⌘⌫      Im Finder öffnen ⌘O
+                         Ordner sichern ⌘5  ─────────────              ─────────────
+                         Drobos finden ⌘6   Erneut prüfen              Alle einhängen / Alle aushängen
+                                                                       Formatieren …              (kein Kürzel)
+                                                                       Festplattenzugriff prüfen · Jetzt prüfen · Probelauf
+                                                                       Zurückspielen …            (kein Kürzel) · Wegsichern
+                                                                       Tempomessung ⌘T · Aktualisieren ⌘R · Sicherungsort wählen …
+```
+Menüeinträge ohne Symbole. Zerstörende Aktionen (Schreib-Einhängen, Formatieren, Zurückspielen) bleiben ohne Kürzel mit Bestätigungsblatt, Abbrechen ist Vorgabe (Entscheidung Betreiber nach dem Vorfall ⌘W).
+
+### Bestätigungsblatt mit „Erprobt mit“ (ein Blatt, kein zweites Popup)
+```
+┌ Zum Schreiben einhängen? ───────────────────────────────────┐
+│ Vorher wird eine Sicherung … angelegt.                      │
+│ ✓ Ihre Drobo entspricht der erprobten: DroboPro · Firmware  │  voller Treffer
+│   22137 · über WLAN.                                        │
+│ ── oder ──────────────────────────────────────────────────  │
+│ ⚠ DroboPro und Firmware erprobt, der Anschluss über Kabel   │  Teiltreffer / kein Treffer
+│   noch nicht.                                               │
+│ Bisher erprobt für diese Aktion:                            │
+│  • Drobo 5C Gen3 · Firmware 50532 · über USB                │
+│  • DroboPro · Firmware 22137 · über WLAN                    │
+│ ☐ Ich habe eine aktuelle Sicherung meiner Daten.            │  gibt die Bestätigung erst frei
+│                          [Abbrechen]  [Zum Schreiben …]     │
+└─────────────────────────────────────────────────────────────┘
+```
+Formatieren zeigt zusätzlich Volume-Nummer, bisherigen Namen, Größe und Partition. Entscheidung im Kern (`erprobt()`), je Merkmal Modell/Firmware/Anschluss; unbekannte Firmware gilt als abweichend; Anschluss zur Laufzeit aus der Schnittstelle der Route (WLAN/Kabel).
+
+### Weitere Entscheidungen
+- Höchstens ein Blatt: `m.blatt` (Enum) statt fünf getrennter `.sheet`.
+- Rückgängig: jede Änderung an Drobo-Liste, Namen, Rollen, Orten, Einstellungen läuft über `aendern(_:_:)` (UndoManager des Modells). Nicht rückgängig machbar bleibt Zerstörendes (Formatieren, Zurückspielen, Einhängen zum Schreiben) und die Anmeldeobjekt-Einstellung (Systemzustand, nicht App-Daten).
+- Zustand wiederherstellen: gewählter Bereich und Drobo in `ansicht.json` im Datenordner.
+- Steuerung per Text: nur Debug-Bau, `DROBO_STEUERUNG=<port>` (127.0.0.1): `/aktionen`, `/menue` (echte Menüleiste), `/zustand`, `/aktion`, `/undo`, `/redo`, `/bild`. Test `fskit_probe/tools/aktionen_test.py`.
+- Grenze: Zeilen-Aktionen (je LUN einhängen, Hinzufügen je Fund) stehen im Menü nur für die Haupt-LUN bzw. den ersten Fund; die Zeilenknöpfe bleiben als Beschleuniger.

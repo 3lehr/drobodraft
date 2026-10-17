@@ -87,7 +87,6 @@ extension DroboModell {
     func umbenennen(_ uuid: String, name: String) {
         let n = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !n.isEmpty, let i = einstellungen.drobos.firstIndex(where: { $0.uuid == uuid }) else { return }
-        einstellungen.drobos[i].name = n
-        ablage.einstellungenSetzen(einstellungen); aktualisieren(freigabe: false)
+        aendern(String(localized: "Drobo umbenennen")) { $0.drobos[i].name = n }
     }
 }

@@ -89,7 +89,6 @@ struct TempoAnsicht: View {
                         Button { m.tempoLaeuft ? m.tempoStoppen() : m.tempoStarten() } label: {
                             Label(m.tempoLaeuft ? "Stopp" : "Messung starten", systemImage: m.tempoLaeuft ? "stop.fill" : "play.fill")
                         }
-                        .keyboardShortcut("t", modifiers: .command)
                         .disabled(!m.tempoLaeuft && !m.tempoStartbar)
                         if m.tempoZyklen > 0 { Text("Durchläufe: \(m.tempoZyklen)").font(.callout).foregroundStyle(.secondary) }
                     }

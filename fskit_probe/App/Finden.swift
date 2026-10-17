@@ -15,7 +15,7 @@ struct DrobosFindenAnsicht: View {
                 Text("Die App sucht angeschlossene Drobos (USB) und DroboPros im lokalen Netzwerk. Gefundene Drobos werden erst nach „Hinzufügen“ übernommen.").foregroundStyle(.secondary)
                 HStack(spacing: Abstand.m) {
                     Button { m.drobosSuchen() } label: { Label(m.sucheLaeuft ? "Suche läuft …" : "Suchen", systemImage: "magnifyingglass") }
-                        .disabled(m.sucheLaeuft).keyboardShortcut("f", modifiers: .command)
+                        .disabled(m.sucheLaeuft)
                     if m.sucheLaeuft { ProgressView().controlSize(.small).accessibilityLabel("Suche läuft …") }
                 }
                 if let i = m.sucheInfo { Hinweis(symbol: "info.circle", text: LocalizedStringKey(i), farbe: .blue) }

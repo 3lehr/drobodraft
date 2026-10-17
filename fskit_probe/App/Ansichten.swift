@@ -4,23 +4,16 @@ import UniformTypeIdentifiers
 
 struct HauptAnsicht: View {
     @EnvironmentObject var m: DroboModell
-    #if DEBUG
-    @State private var abschnitt: Abschnitt? = DemoDaten.seite ?? .uebersicht
-    #else
-    @State private var abschnitt: Abschnitt? = .uebersicht
-    #endif
-    @State private var rwFrage = false
-    @State private var anleitung = false
 
     var body: some View {
         NavigationSplitView {
-            Seitenleiste(abschnitt: $abschnitt)
-                .navigationSplitViewColumnWidth(min: 200, ideal: 240)
+            Seitenleiste(abschnitt: $m.abschnitt)
+                .navigationSplitViewColumnWidth(min: Mass.seitenleisteMin, ideal: Mass.seitenleisteIdeal)
         } detail: {
             Group {
-                switch abschnitt ?? .uebersicht {
-                case .uebersicht: UebersichtAnsicht(rwFrage: $rwFrage, anleitung: $anleitung, finden: { abschnitt = .finden })
-                case .volume: VolumeAnsicht(rwFrage: $rwFrage)
+                switch m.abschnitt ?? .uebersicht {
+                case .uebersicht: UebersichtAnsicht()
+                case .volume: VolumeAnsicht()
                 case .tempo: TempoAnsicht()
                 case .protokoll: ProtokollAnsicht()
                 case .laufwerke: LaufwerkeAnsicht()
@@ -31,11 +24,15 @@ struct HauptAnsicht: View {
         }
         .safeAreaInset(edge: .bottom, spacing: Abstand.keiner) { Statusleiste() }
         .navigationTitle("DroboDraft")
-        .sheet(isPresented: $anleitung) { SpotlightAnleitung() }
-        .onReceive(NotificationCenter.default.publisher(for: .schreibenFrage)) { _ in rwFrage = true }
-        .sheet(isPresented: $rwFrage, onDismiss: { m.schreibenLun = nil }) { SchreibenBestaetigung() }
-        .sheet(isPresented: Binding(get: { m.umbenennenUUID != nil }, set: { if !$0 { m.umbenennenUUID = nil } })) {
-            if let u = m.umbenennenUUID { UmbenennenBlatt(uuid: u, name: m.einstellungen.drobos.first { $0.uuid == u }?.name ?? "") }
+        // Hoechstens EIN Blatt zugleich (Norm): alle Aktionen oeffnen es ueber m.blatt
+        .sheet(item: $m.blatt, onDismiss: { m.schreibenLun = nil }) { b in
+            switch b {
+            case .schreiben: SchreibenBestaetigung()
+            case .umbenennen(let u): UmbenennenBlatt(uuid: u, name: m.einstellungen.drobos.first { $0.uuid == u }?.name ?? "")
+            case .anleitung: SpotlightAnleitung()
+            case .restore: RestoreBestaetigung()
+            case .format(let l): FormatBlatt(lun: l)
+            }
         }
         .alert(item: $m.meldung) { Alert(title: Text(LocalizedStringKey($0.titel)), message: Text($0.text), dismissButton: .default(Text("OK"))) }
         .overlay(alignment: .top) { if let a = m.arbeit { Label("\(a) …", systemImage: "hourglass").padding(Abstand.s).background(.regularMaterial, in: Capsule()).padding(.top, Abstand.s) } }
@@ -84,17 +81,16 @@ struct Statusleiste: View {
 struct AktionsZeile: View {
     @EnvironmentObject var m: DroboModell
     let a: DroboAnsicht
-    @Binding var rwFrage: Bool
     var body: some View {
         HStack {
             if a.eingehaengt {
-                Button { m.aushaengen() } label: { Label("Aushängen", systemImage: "eject") }.keyboardShortcut("e", modifiers: .command)
-                if a.nurlesen { Button { rwFrage = true } label: { Label("Zum Schreiben neu", systemImage: "pencil") } }
+                Button { m.aushaengen() } label: { Label("Aushängen", systemImage: "eject") }
+                if a.nurlesen { Button { m.fuehreAus(.neuSchreiben) } label: { Label("Zum Schreiben neu", systemImage: "pencil") } }
             } else if !a.verbunden {
                 Text(a.eintrag.netz != nil ? "Nicht erreichbar. Die Aktionen sind verfügbar, sobald die DroboPro im Netzwerk gefunden wird." : "Nicht angeschlossen. Die Aktionen sind verfügbar, sobald die Drobo angeschlossen ist.").font(.callout).foregroundStyle(.secondary)
             } else if a.verbunden {
                 Button { m.einhaengen(schreiben: false) } label: { Label("Einhängen (nur lesen)", systemImage: "externaldrive.badge.plus") }
-                Button { rwFrage = true } label: { Label("Zum Schreiben einhängen", systemImage: "pencil") }
+                Button { m.fuehreAus(.einhaengenSchreiben) } label: { Label("Zum Schreiben einhängen", systemImage: "pencil") }
             }
         }.disabled(m.arbeit != nil)
     }
@@ -102,10 +98,6 @@ struct AktionsZeile: View {
 
 struct VolumeAnsicht: View {
     @EnvironmentObject var m: DroboModell
-    @Binding var rwFrage: Bool
-    @State private var quelle = ""
-    @State private var ziel = ""
-    @State private var restoreFrage = false
 
     func waehlen(_ start: String?, _ titel: String) -> String? {
         let p = NSOpenPanel(); p.canChooseDirectories = true; p.canChooseFiles = false; p.prompt = String(localized: "Wählen"); p.message = titel
@@ -120,7 +112,7 @@ struct VolumeAnsicht: View {
                     Text(a.eintrag.name).font(.largeTitle).accessibilityAddTraits(.isHeader)
                     Karte(titel: "Zugriff") {
                         if a.eintrag.netz == nil { Zeile(name: "Freigabe", wert: a.freigabe == .schreiben ? String(localized: "Schreiben erlaubt") : (a.freigabe == .nurlesen ? String(localized: "nur lesen") : String(localized: "noch nicht eingerichtet"))) }
-                        AktionsZeile(a: a, rwFrage: $rwFrage)
+                        AktionsZeile(a: a)
                         if a.eintrag.netz == nil { Button { m.zugriffPruefen() } label: { Label("Festplattenzugriff prüfen", systemImage: "checkmark.shield") }.disabled(!a.verbunden || a.eingehaengt || m.arbeit != nil) }
                     }
                     Karte(titel: "Sicherungen der Verwaltungsdaten") {
@@ -142,25 +134,24 @@ struct VolumeAnsicht: View {
                                 .disabled(m.restoreAuswahl.isEmpty || !a.verbunden || a.eingehaengt || m.arbeit != nil)
                             if !m.restoreProbeText.isEmpty {
                                 Text(m.restoreProbeText).font(.callout.monospaced()).textSelection(.enabled)
-                                Button(role: .destructive) { restoreFrage = true } label: { Label("Zurückspielen …", systemImage: "arrow.uturn.backward") }
+                                Button(role: .destructive) { m.fuehreAus(.zurueckspielen) } label: { Label("Zurückspielen …", systemImage: "arrow.uturn.backward") }
                                     .disabled(m.restoreProbeFuer != m.restoreAuswahl || a.eingehaengt || m.arbeit != nil)
                             }
                         }
                     }
                     Karte(titel: "Ordner wegsichern") {
                         Text("Kopiert einen Ordner von der Drobo auf ein anderes Laufwerk. Nur lesend an der Drobo; bereits gesicherte, unveränderte Dateien werden übersprungen, jede Kopie wird per SHA-256 gegen das Original geprüft.").font(.callout).foregroundStyle(.secondary)
-                        HStack { Text("Quelle:"); Text(quelle.isEmpty ? String(localized: "nicht gewählt") : quelle).lineLimit(1).truncationMode(.middle); Spacer()
-                            Button("Wählen …") { if let p = waehlen(a.ort.isEmpty ? nil : a.ort, String(localized: "Quellordner auf der Drobo")) { quelle = p } }.disabled(!a.eingehaengt) }
-                        HStack { Text("Ziel:"); Text(ziel.isEmpty ? String(localized: "nicht gewählt") : ziel).lineLimit(1).truncationMode(.middle); Spacer()
-                            Button("Wählen …") { if let p = waehlen(nil, String(localized: "Zielordner auf einem anderen Laufwerk")) { ziel = p } } }
-                        Button { m.wegsichern(quelle: quelle, ziel: ziel) } label: { Label("Wegsichern", systemImage: "arrow.down.doc") }
-                            .disabled(quelle.isEmpty || ziel.isEmpty || !a.eingehaengt || m.arbeit != nil)
+                        HStack { Text("Quelle:"); Text(m.wegQuelle.isEmpty ? String(localized: "nicht gewählt") : m.wegQuelle).lineLimit(1).truncationMode(.middle); Spacer()
+                            Button("Wählen …") { if let p = waehlen(a.ort.isEmpty ? nil : a.ort, String(localized: "Quellordner auf der Drobo")) { m.wegQuelle = p } }.disabled(!a.eingehaengt) }
+                        HStack { Text("Ziel:"); Text(m.wegZiel.isEmpty ? String(localized: "nicht gewählt") : m.wegZiel).lineLimit(1).truncationMode(.middle); Spacer()
+                            Button("Wählen …") { if let p = waehlen(nil, String(localized: "Zielordner auf einem anderen Laufwerk")) { m.wegZiel = p } } }
+                        Button { m.fuehreAus(.wegsichern) } label: { Label("Wegsichern", systemImage: "arrow.down.doc") }
+                            .disabled(m.wegQuelle.isEmpty || m.wegZiel.isEmpty || !a.eingehaengt || m.arbeit != nil)
                         if !m.wegsichernBericht.isEmpty { Text(m.wegsichernBericht).font(.callout).textSelection(.enabled) }
                     }
                     }
                 }.padding()
                 .onAppear { if m.restoreAuswahl.isEmpty || !a.sicherungen.contains(m.restoreAuswahl) { m.restoreAuswahl = a.sicherungen.first ?? "" } }
-                .sheet(isPresented: $restoreFrage) { RestoreBestaetigung() }
             } else { Text("Für ein Time-Machine-Ziel gibt es hier nichts einzustellen.").padding() }
         }
     }
@@ -184,10 +175,12 @@ struct ProtokollAnsicht: View {
 struct SchreibenBestaetigung: View {
     @EnvironmentObject var m: DroboModell
     @Environment(\.dismiss) private var dismiss
+    @State private var gesichert = false
     var body: some View {
         VStack(alignment: .leading, spacing: Abstand.l) {
             Text("Zum Schreiben einhängen?").font(.title2).accessibilityAddTraits(.isHeader)
             Text("Vorher wird eine Sicherung der Verwaltungsdaten des Laufwerks angelegt. Ohne gelungene Sicherung wird nicht zum Schreiben eingehängt.")
+            ErprobtBlock(aktion: .schreiben, gesichert: $gesichert)
             if m.spotlightHinweisNoetig { Hinweis(symbol: "magnifyingglass", text: "Spotlight ist für die Drobo noch nicht ausgeschlossen (empfohlen, siehe Anleitung in den Einstellungen).") }
             if m.physischKnapp, let k = m.aktuell?.hw?.kapazitaet {
                 Hinweis(symbol: "externaldrive.badge.exclamationmark", text: "Die Drobo ist physisch fast voll: nur noch \(groesseText(k.frei)) frei (unter 5 %). Schreiben auf eine fast volle Drobo kann scheitern oder sie verlangsamen. Schaffen Sie zuerst Platz oder setzen Sie größere Festplatten ein.", farbe: .red)
@@ -205,7 +198,7 @@ struct SchreibenBestaetigung: View {
                     dismiss()
                     if let l = m.schreibenLun { m.lunEinhaengen(l, schreiben: true) }
                     else if m.aktuell?.eingehaengt == true { m.neuZumSchreiben() } else { m.einhaengen(schreiben: true) }
-                }.disabled(m.einstellungen.sicherungOrt.isEmpty)
+                }.disabled(m.einstellungen.sicherungOrt.isEmpty || !(m.erprobtErgebnis(.schreiben).istErprobt || gesichert))
             }
         }.padding().frame(minWidth: Mass.blattMin, idealWidth: Mass.blatt)
     }

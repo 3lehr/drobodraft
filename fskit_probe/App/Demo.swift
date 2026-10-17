@@ -14,6 +14,16 @@ enum DemoDaten {
     static var schacht: Int? { ProcessInfo.processInfo.environment["DROBO_DEMO_SCHACHT"].flatMap { Int($0) } }
     /// DROBO_DEMO_LAMPEN=1: DroboPro mit allen Lampencodes (gruen, gelb, rot, rot/gruen, rot/gelb, rot/aus, leer, unbekannt 0x42).
     static var lampen: Bool { ProcessInfo.processInfo.environment["DROBO_DEMO_LAMPEN"] != nil }
+    /// DROBO_DEMO_ANSCHLUSS=wlan|kabel: Anschlussart der Demo-DroboPro; DROBO_DEMO_BUILD=n: Firmware-Build (Vorgabe: der erprobte Stand 22137).
+    static var anschluss: Anschluss? { ProcessInfo.processInfo.environment["DROBO_DEMO_ANSCHLUSS"].flatMap { $0 == "wlan" ? .iscsiWLAN : ($0 == "kabel" ? .iscsiKabel : nil) } }
+    static var build: Int? { ProcessInfo.processInfo.environment["DROBO_DEMO_BUILD"].flatMap { Int($0) } }
+    /// DROBO_DEMO_BLATT=schreiben|format:N|anleitung|restore: Blatt (Sheet) beim Start offen (Bildschirmfoto ohne Klick).
+    static var blatt: Blatt? {
+        guard let s = ProcessInfo.processInfo.environment["DROBO_DEMO_BLATT"] else { return nil }
+        if s == "schreiben" { return .schreiben }; if s == "anleitung" { return .anleitung }; if s == "restore" { return .restore }
+        if s.hasPrefix("format:"), let n = Int(s.dropFirst(7)) { return .format(n) }
+        return nil
+    }
     static let uuid5C = "00000000-0000-4000-8000-0000000005C0", uuidPro = "00000000-0000-4000-8000-00000000D0B0"
 
     static func eintraege() -> [DroboEintrag]? {
@@ -27,7 +37,7 @@ enum DemoDaten {
     }
 
     static func status(modell: String, bits: UInt32, schaechte: [Schacht], frei: UInt64, benutzt: UInt64, geschuetzt: UInt64, roh: UInt64) -> DroboStatus {
-        var s = DroboStatus(zeit: Date(), ok: true, fehler: "", modell: modell, firmware: "Apr 16 2021, 00:19:56", firmwareBuild: 50532, protokoll: "0.11", schaechte: schaechte,
+        var s = DroboStatus(zeit: Date(), ok: true, fehler: "", modell: modell, firmware: "Apr 16 2021, 00:19:56", firmwareBuild: build ?? (modell == "Pro" ? 22137 : 50532), protokoll: "0.11", schaechte: schaechte,
                             kapazitaet: DroboKapazitaet(frei: frei, benutzt: benutzt, gesamtGeschuetzt: geschuetzt, gesamtUngeschuetzt: roh), statusBits: bits, relayout: 0, meldungen: [], schwere: .ok, unbelegt: [:])
         s.meldungen = bits & 0x4 != 0 ? [DroboKern.Meldung(bit: 0x4, text: "Speicherplatz wird knapp (gelbe Schwelle erreicht)", schwere: .warnung)] : []
         s.schwere = [s.meldungen.map(\.schwere).max() ?? .ok, schaechte.contains { $0.farbe == .gelb } ? Schweregrad.warnung : .ok].max()!

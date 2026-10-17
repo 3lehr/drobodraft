@@ -33,6 +33,6 @@ struct HilfeAnsicht: View {
                 }
             }.padding()
         }
-        .frame(minWidth: 520, minHeight: 520)
+        .frame(minWidth: Mass.hilfeBreiteMin, minHeight: Mass.hilfeBreiteMin)
     }
 }

@@ -3,9 +3,6 @@ import SwiftUI
 
 struct UebersichtAnsicht: View {
     @EnvironmentObject var m: DroboModell
-    @Binding var rwFrage: Bool
-    @Binding var anleitung: Bool
-    var finden: () -> Void
 
     var body: some View {
         ScrollView {
@@ -15,7 +12,7 @@ struct UebersichtAnsicht: View {
                         ZustandPunkt(stufe: a.stufe, gesamt: a.hwZustand)
                         Text(a.eintrag.name).font(.largeTitle).accessibilityAddTraits(.isHeader)
                         Spacer()
-                        Button { m.umbenennenUUID = a.eintrag.uuid } label: { Label("Umbenennen …", systemImage: "pencil") }.labelStyle(.iconOnly).help("Drobo umbenennen")
+                        Button { m.fuehreAus(.umbenennen) } label: { Label("Umbenennen …", systemImage: "pencil") }.labelStyle(.iconOnly).help("Drobo umbenennen")
                         FruehAlphaAbzeichen()
                     }
                     Text(a.zustandText).font(.title3).foregroundStyle(.secondary)
@@ -62,18 +59,18 @@ struct UebersichtAnsicht: View {
                         if let g = a.merker.offenePruefung {
                             Hinweis(symbol: "exclamationmark.triangle.fill", text: "Vor dem nächsten Einhängen wird geprüft: \(g)", farbe: .red)
                         }
-                        if a.eintrag.netz != nil && !a.luns.isEmpty { LunKarte(a: a, rwFrage: $rwFrage) }
+                        if a.eintrag.netz != nil && !a.luns.isEmpty { LunKarte(a: a) }
                         Karte(titel: "Einhängung") {
                             if let nz = a.eintrag.netz { Zeile(name: "Adresse", wert: nz.host) }
                             if a.eingehaengt {
                                 Zeile(name: "Ort", wert: a.ort)
-                                Button { m.imFinderOeffnen() } label: { Label("Im Finder öffnen", systemImage: "folder") }.keyboardShortcut("o", modifiers: .command)
+                                Button { m.imFinderOeffnen() } label: { Label("Im Finder öffnen", systemImage: "folder") }
                                 Zeile(name: "Treiber", wert: "\(a.treiber) · " + (a.nurlesen ? String(localized: "nur lesen") : String(localized: "schreiben")))
                             } else { Text("Nicht eingehängt.").foregroundStyle(.secondary) }
                             if let t = m.tempo.last(where: { $0.uuid == a.eintrag.uuid }) {
                                 Zeile(name: "Tempo zuletzt", wert: String(format: "%.0f MB/s (%@)", t.mbProSekunde, t.art == "lesen" ? String(localized: "lesen") : String(localized: "schreiben")))
                             }
-                            AktionsZeile(a: a, rwFrage: $rwFrage)
+                            AktionsZeile(a: a)
                         }
                         if let p = a.merker.letztePruefung {
                             Label { Text("Dateisystem zuletzt geprüft: \(zeitLesbar(p.zeit)), \(p.ok ? String(localized: "in Ordnung") : String(localized: "mit Auffälligkeiten"))") } icon: {
@@ -85,7 +82,7 @@ struct UebersichtAnsicht: View {
                         if m.spotlightHinweisNoetig {
                             VStack(alignment: .leading, spacing: Abstand.s) {
                                 Hinweis(symbol: "magnifyingglass", text: "Spotlight ist für die Drobo nicht ausgeschlossen. Beim Schreiben bremst das und verändert das Laufwerk. Der Ausschluss ist freiwillig.")
-                                Button("Anleitung") { anleitung = true }
+                                Button("Anleitung") { m.fuehreAus(.spotlightAnleitung) }
                             }
                         }
                     }
@@ -93,7 +90,7 @@ struct UebersichtAnsicht: View {
             } else {
                 VStack(alignment: .leading, spacing: Abstand.m) {
                     Text("Keine Drobo eingerichtet. Mit „Drobos finden“ sucht die App angeschlossene Drobos und DroboPros im lokalen Netzwerk.")
-                    Button { finden() } label: { Label("Drobos finden", systemImage: "magnifyingglass") }
+                    Button { m.fuehreAus(.geheFinden) } label: { Label("Drobos finden", systemImage: "magnifyingglass") }
                 }.padding()
             }
         }

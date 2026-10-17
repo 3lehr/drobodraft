@@ -35,8 +35,8 @@ struct Seitenleiste: View {
                     }
                     .buttonStyle(.plain)
                     .listRowBackground(gewaehlt ? Color.accentColor.opacity(0.28) : Color.clear)
-                    .contextMenu { Button("Umbenennen …") { m.umbenennenUUID = d.eintrag.uuid } }
-                    .accessibilityAction(named: Text("Umbenennen …")) { m.umbenennenUUID = d.eintrag.uuid }
+                    .contextMenu { Button("Umbenennen …") { m.auswahl = d.eintrag.uuid; m.fuehreAus(.umbenennen) } }
+                    .accessibilityAction(named: Text("Umbenennen …")) { m.auswahl = d.eintrag.uuid; m.fuehreAus(.umbenennen) }
                     .accessibilityLabel("\(d.eintrag.name), \(zeile)")
                     .accessibilityAddTraits(gewaehlt ? [.isSelected, .isButton] : .isButton)
                 }

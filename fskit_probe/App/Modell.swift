@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 import DroboKern
 import Foundation
 import ServiceManagement
@@ -66,13 +67,19 @@ final class StoppZeichen: @unchecked Sendable {
     func zuruecksetzen() { sperre.lock(); wert = false; sperre.unlock() }
 }
 
+/// Das eine Blatt (Sheet), das hoechstens gleichzeitig offen ist (Norm "ein Sheet"). Aktionen und Knoepfe setzen es ueber das Modell.
+enum Blatt: Equatable, Identifiable {
+    case schreiben, umbenennen(String), anleitung, restore, format(Int)
+    var id: String { switch self { case .schreiben: return "schreiben"; case .umbenennen(let u): return "umbenennen-\(u)"; case .anleitung: return "anleitung"; case .restore: return "restore"; case .format(let l): return "format-\(l)" } }
+}
+
 struct Meldung: Identifiable { let id = UUID(); var titel: String; var text: String }
 
 @MainActor
 final class DroboModell: ObservableObject {
     let ablage = Datenablage()
     @Published var einstellungen: Einstellungen
-    @Published var auswahl: String
+    @Published var auswahl: String { didSet { ansichtSichern() } }
     @Published var drobos: [String: DroboAnsicht] = [:]
     @Published var protokoll: [Datenablage.Eintrag] = []
     @Published var tempo: [TempoMessung] = []
@@ -81,6 +88,13 @@ final class DroboModell: ObservableObject {
     @Published var modul = ModulStatus(installiert: false, freigeschaltet: false)
     @Published var arbeit: String?
     @Published var meldung: Meldung?
+    /// Rueckgaengig fuer jede Datenaenderung (Drobo-Liste, Namen, Rollen, Einstellungen); ein Manager fuer die ganze App.
+    let undoManager = UndoManager()
+    /// Gewaehlter Bereich der Seitenleiste; wird mit der gewaehlten Drobo wiederhergestellt (Datei ansicht.json im Datenordner, nie UserDefaults: die Demo teilt sie sonst mit der echten App).
+    @Published var abschnitt: Abschnitt? { didSet { ansichtSichern() } }
+    @Published var blatt: Blatt?
+    @Published var wegQuelle = ""
+    @Published var wegZiel = ""
     @Published var tempoUUID = ""
     @Published var tempoGB = 1
     @Published var tempoLaeuft = false
@@ -109,9 +123,8 @@ final class DroboModell: ObservableObject {
     /// "Drobos suchen": im LAN gefundene, noch nicht eingerichtete Drobos (USB-Funde stehen in `erkannte`).
     @Published var lanErkannte: [LanDrobo] = []
     @Published var sucheLaeuft = false
-    /// Netzwerk-Drobo: LUN, fuer die das Bestaetigungsblatt "Zum Schreiben einhaengen" gerade gilt (nil = die Haupt-LUN); Eintrag, der umbenannt wird.
+    /// Netzwerk-Drobo: LUN, fuer die das Bestaetigungsblatt "Zum Schreiben einhaengen" gerade gilt (nil = die Haupt-LUN).
     @Published var schreibenLun: Int?
-    @Published var umbenennenUUID: String?
     /// UUIDs, die die letzte Suche fand und die schon eingerichtet sind ("schon hinzugefuegt" in "Drobos finden").
     @Published var sucheBekannt: Set<String> = []
     @Published var sucheInfo: String?
@@ -126,7 +139,22 @@ final class DroboModell: ObservableObject {
         if let es = DemoDaten.eintraege() { e.drobos = es }
         #endif
         einstellungen = e
-        auswahl = e.drobos.first?.uuid ?? ""
+        let z = Self.ansichtLesen(ablage.ordner)
+        auswahl = z?.auswahl.flatMap { a in e.drobos.contains { $0.uuid == a } ? a : nil } ?? e.drobos.first?.uuid ?? ""
+        abschnitt = z?.abschnitt.flatMap(Abschnitt.init(rawValue:)) ?? .uebersicht
+        #if DEBUG
+        if let s = DemoDaten.seite { abschnitt = s }
+        #endif
+    }
+
+    private struct AnsichtZustand: Codable { var abschnitt: String?; var auswahl: String? }
+    private static func ansichtLesen(_ ordner: String) -> AnsichtZustand? {
+        FileManager.default.contents(atPath: ordner + "/ansicht.json").flatMap { try? JSONDecoder().decode(AnsichtZustand.self, from: $0) }
+    }
+    func ansichtSichern() {
+        guard let d = try? JSONEncoder().encode(AnsichtZustand(abschnitt: abschnitt?.rawValue, auswahl: auswahl)) else { return }
+        try? FileManager.default.createDirectory(atPath: ablage.ordner, withIntermediateDirectories: true)
+        try? d.write(to: URL(fileURLWithPath: ablage.ordner + "/ansicht.json"), options: .atomic)
     }
 
     var aktuell: DroboAnsicht? { drobos[auswahl] }
@@ -139,6 +167,10 @@ final class DroboModell: ObservableObject {
     // MARK: Start / Aktualisieren
 
     func starten() {
+        #if DEBUG
+        Steuerung.startenWennGewuenscht(self)
+        if let b = DemoDaten.blatt { DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.blatt = b } }
+        #endif
         anmeldeStart = SMAppService.mainApp.status == .enabled
         // Ruhezustand/Ausschalten: iSCSI-Volumes vorher aushaengen, damit die Sitzungen mit Logout enden (sonst Leichen an der DroboPro). Synchron: danach ist es zu spaet.
         for n in [NSWorkspace.willSleepNotification, NSWorkspace.willPowerOffNotification] {
@@ -169,7 +201,12 @@ final class DroboModell: ObservableObject {
 
     func aktualisieren(freigabe: Bool = true) {
         #if DEBUG
-        if let d = DemoDaten.ansichten() { uebernehmen(d, modul: ModulStatus(installiert: true, freigeschaltet: !DemoDaten.problem), dienst: String(localized: "bereit")); return }
+        if var d = DemoDaten.ansichten() {
+            // Demo folgt den Einstellungen (Umbenennen, Entfernen, Rueckgaengig wirken sichtbar), die Statusdaten bleiben die erfundenen
+            d = d.filter { u, _ in einstellungen.drobos.contains { $0.uuid == u } }
+            for e in einstellungen.drobos where d[e.uuid] != nil { d[e.uuid]?.eintrag = e }
+            uebernehmen(d, modul: ModulStatus(installiert: true, freigeschaltet: !DemoDaten.problem), dienst: String(localized: "bereit")); return
+        }
         #endif
         let ds = einstellungen.drobos
         let alt = drobos
@@ -492,16 +529,17 @@ final class DroboModell: ObservableObject {
     func sicherungsOrtWaehlen() {
         let p = NSOpenPanel(); p.canChooseDirectories = true; p.canChooseFiles = false; p.canCreateDirectories = true
         p.prompt = String(localized: "Wählen"); p.message = String(localized: "Sicherungsort: nicht das Startvolume und nicht die Drobo")
-        if p.runModal() == .OK, let u = p.url { einstellungen.sicherungOrt = u.path; einstellungenSpeichern() }
+        if p.runModal() == .OK, let u = p.url { aendern(String(localized: "Sicherungsort ändern")) { $0.sicherungOrt = u.path } }
     }
 
     /// Erkannte Drobo einrichten (Rolle Arbeitsvolume; Time-Machine-Rolle in den Einstellungen).
     func hinzufuegen(_ e: ErkannteDrobo) {
-        einstellungen.drobos.removeAll { $0.uuid == e.uuid }
-        einstellungen.drobos.append(DroboEintrag(uuid: e.uuid, name: e.name.isEmpty ? "Drobo" : e.name))
+        aendern(String(localized: "Drobo hinzufügen")) {
+            $0.drobos.removeAll { $0.uuid == e.uuid }
+            $0.drobos.append(DroboEintrag(uuid: e.uuid, name: e.name.isEmpty ? "Drobo" : e.name))
+        }
         if auswahl.isEmpty { auswahl = e.uuid }
         sucheBekannt.insert(e.uuid)
-        einstellungenSpeichern()
     }
 
     // MARK: Drobos suchen (USB + lokales Netzwerk), nichts wird ohne Zustimmung uebernommen
@@ -532,12 +570,13 @@ final class DroboModell: ObservableObject {
     func lanHinzufuegen(_ d: LanDrobo) {
         guard let erste = d.luns.first else { return }
         let l = d.luns.map { NetzLunEintrag(lun: $0.lun, uuid: $0.uuid, name: String(localized: "Volume \($0.lun + 1)")) }
-        einstellungen.drobos.removeAll { e in d.luns.contains { $0.uuid == e.uuid } }
-        einstellungen.drobos.append(DroboEintrag(uuid: erste.uuid, name: "DroboPro", netz: NetzZiel(host: d.host, lun: erste.lun, iqn: nil, luns: l)))
+        aendern(String(localized: "Drobo hinzufügen")) {
+            $0.drobos.removeAll { e in d.luns.contains { $0.uuid == e.uuid } }
+            $0.drobos.append(DroboEintrag(uuid: erste.uuid, name: "DroboPro", netz: NetzZiel(host: d.host, lun: erste.lun, iqn: nil, luns: l)))
+        }
         auswahl = erste.uuid
         sucheBekannt.formUnion(d.luns.map(\.uuid))
         lanErkannte.removeAll { $0.host == d.host }
-        einstellungenSpeichern()
     }
 
     // MARK: Netzwerk-Drobo per Adresse hinzufuegen (Adresse -> Suche -> Auswahl)
@@ -561,10 +600,46 @@ final class DroboModell: ObservableObject {
 
     func netzHinzufuegen(host: String, lun: NetzLun, name: String) {
         let h = host.trimmingCharacters(in: .whitespaces)
-        einstellungen.drobos.removeAll { $0.uuid == lun.uuid }
-        einstellungen.drobos.append(DroboEintrag(uuid: lun.uuid, name: name.isEmpty ? "DroboPro" : name, netz: NetzZiel(host: h, lun: lun.lun)))
+        aendern(String(localized: "Drobo hinzufügen")) {
+            $0.drobos.removeAll { $0.uuid == lun.uuid }
+            $0.drobos.append(DroboEintrag(uuid: lun.uuid, name: name.isEmpty ? "DroboPro" : name, netz: NetzZiel(host: h, lun: lun.lun)))
+        }
         auswahl = lun.uuid
-        einstellungenSpeichern()
+    }
+
+    // MARK: Rueckgaengig (jede Datenaenderung der App laeuft hier durch)
+
+    /// Aendert die Einstellungen (Drobo-Liste, Namen, Rollen, Orte ...) und merkt den Vorzustand im UndoManager. Rueckgaengig stellt ihn her und merkt seinerseits "Wiederholen".
+    func aendern(_ name: String, _ f: (inout Einstellungen) -> Void) {
+        var neu = einstellungen; f(&neu); einstellungenSetzen(neu, name)
+    }
+    private func einstellungenSetzen(_ neu: Einstellungen, _ name: String) {
+        let alt = einstellungen
+        guard alt != neu else { return }
+        einstellungen = neu; einstellungenSpeichern()
+        undoManager.registerUndo(withTarget: self) { $0.einstellungenSetzen(alt, name) }
+        undoManager.setActionName(name)
+    }
+    /// Bindung fuer ein Einstellungsfeld, dessen Aenderung rueckgaengig machbar ist.
+    func binding<T>(_ kp: WritableKeyPath<Einstellungen, T>, _ name: String) -> Binding<T> {
+        Binding(get: { self.einstellungen[keyPath: kp] }, set: { v in self.aendern(name) { $0[keyPath: kp] = v } })
+    }
+    func entfernen(_ uuid: String) {
+        guard einstellungen.drobos.count > 1 else { return }
+        aendern(String(localized: "Drobo entfernen")) { $0.drobos.removeAll { $0.uuid == uuid } }
+    }
+
+    // MARK: Erprobt (Hinweis im Bestaetigungsblatt)
+
+    /// Anschluss der gewaehlten Drobo: USB (Geraeteknoten) oder die Schnittstelle der Route zur iSCSI-Adresse (WLAN/Kabel).
+    var anschluss: Anschluss {
+        #if DEBUG
+        if let a = DemoDaten.anschluss, aktuell?.eintrag.netz != nil { return a }   // Demo: Anschluss vorgegeben statt gemessen
+        #endif
+        return aktuell?.eintrag.netz.map { anschlussNetz(host: $0.host) } ?? .usb
+    }
+    func erprobtErgebnis(_ aktion: ErprobtAktion) -> ErprobtErgebnis {
+        return erprobt(modell: aktuell?.hw?.modell ?? "", build: aktuell?.hw?.firmwareBuild, anschluss: anschluss, aktion: aktion)
     }
 
     func einstellungenSpeichern() { ablage.einstellungenSetzen(einstellungen); waechterNeu(); aktualisieren() }
