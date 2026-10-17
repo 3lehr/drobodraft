@@ -1,13 +1,16 @@
 import DroboKern
 import SwiftUI
 
-/// Zustandspunkt: Farbe UND Symbol UND Text (Farbe allein traegt keine Information, WCAG 1.4.1).
+/// Zustandspunkt: Farbe UND Symbol UND (daneben) Text (Farbe allein traegt keine Information, WCAG 1.4.1). Ein Problem der Drobo selbst geht vor dem Verbindungszustand.
 struct ZustandPunkt: View {
     let stufe: DroboAnsicht.Stufe
+    var gesamt: Gesamtzustand?
     var symbol: String {
-        switch stufe { case .aus: return "circle"; case .bereit: return "circle.lefthalf.filled"; case .lesen: return "lock.circle.fill"; case .schreiben: return "pencil.circle.fill"; case .warnung: return "exclamationmark.triangle.fill" }
+        if let g = gesamt, g.stufe != .ok { return g.symbol }
+        switch stufe { case .aus: return "circle"; case .bereit: return "link.circle.fill"; case .lesen: return "lock.circle.fill"; case .schreiben: return "pencil.circle.fill"; case .warnung: return "exclamationmark.triangle.fill" }
     }
     var farbe: Color {
+        if let g = gesamt, g.stufe != .ok { return g.farbe }
         switch stufe { case .aus: return .secondary; case .bereit: return .blue; case .lesen: return .green; case .schreiben: return .orange; case .warnung: return .red }
     }
     var body: some View { Image(systemName: symbol).foregroundStyle(farbe).imageScale(.large).accessibilityHidden(true) }
@@ -56,18 +59,6 @@ struct Hinweis: View {
 }
 
 func groesseText(_ b: UInt64) -> String { ByteCountFormatter.string(fromByteCount: Int64(b), countStyle: .file) }
-
-struct StatusChip: View {
-    let name: String
-    let wert: String
-    let gut: Bool
-    var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: gut ? "checkmark.circle.fill" : "exclamationmark.circle.fill").foregroundStyle(gut ? Color.green : Color.orange).accessibilityHidden(true)
-            Text("\(name): \(wert)").font(.callout)
-        }.accessibilityElement(children: .combine)
-    }
-}
 
 /// Kennzeichnung "Frühe Alpha": Text + Symbol (nicht nur Farbe).
 struct FruehAlphaAbzeichen: View {

@@ -5168,6 +5168,998 @@
           }
         }
       }
+    },
+    "Der Hilfsdienst ist nicht bereit (%@). Er hängt die Drobo ein. Wählen Sie „Einrichten“ und bestätigen Sie in den Systemeinstellungen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Hilfsdienst ist nicht bereit (%@). Er hängt die Drobo ein. Wählen Sie „Einrichten“ und bestätigen Sie in den Systemeinstellungen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The helper service is not ready (%@). It mounts the Drobo. Choose \"Set up\" and confirm in System Settings."
+          }
+        }
+      }
+    },
+    "Der Festplattenvollzugriff fehlt. Ohne ihn lässt sich die Drobo nicht einhängen. Erlauben Sie ihn in den Systemeinstellungen unter Datenschutz & Sicherheit.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Festplattenvollzugriff fehlt. Ohne ihn lässt sich die Drobo nicht einhängen. Erlauben Sie ihn in den Systemeinstellungen unter Datenschutz & Sicherheit."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Full Disk Access is missing. Without it the Drobo cannot be mounted. Allow it in System Settings under Privacy & Security."
+          }
+        }
+      }
+    },
+    "Das Treibermodul ist nicht installiert. Ohne es lässt sich die Drobo nicht einhängen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Treibermodul ist nicht installiert. Ohne es lässt sich die Drobo nicht einhängen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The driver module is not installed. Without it the Drobo cannot be mounted."
+          }
+        }
+      }
+    },
+    "Das Treibermodul ist nicht freigeschaltet. Schalten Sie es in den Systemeinstellungen unter Allgemein, Anmeldeobjekte & Erweiterungen, Dateisystem-Erweiterungen ein.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Treibermodul ist nicht freigeschaltet. Schalten Sie es in den Systemeinstellungen unter Allgemein, Anmeldeobjekte & Erweiterungen, Dateisystem-Erweiterungen ein."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The driver module is not enabled. Turn it on in System Settings under General, Login Items & Extensions, File System Extensions."
+          }
+        }
+      }
+    },
+    "Hinweise zur Einrichtung": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hinweise zur Einrichtung"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Setup notices"
+          }
+        }
+      }
+    },
+    "Drobos finden": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drobos finden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Find Drobos"
+          }
+        }
+      }
+    },
+    "Die App sucht angeschlossene Drobos (USB) und DroboPros im lokalen Netzwerk. Gefundene Drobos werden erst nach „Hinzufügen“ übernommen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die App sucht angeschlossene Drobos (USB) und DroboPros im lokalen Netzwerk. Gefundene Drobos werden erst nach „Hinzufügen“ übernommen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The app looks for connected Drobos (USB) and DroboPros on the local network. Found Drobos are only added after you choose \"Add\"."
+          }
+        }
+      }
+    },
+    "Per USB angeschlossen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Per USB angeschlossen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connected via USB"
+          }
+        }
+      }
+    },
+    "Im Netzwerk": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Im Netzwerk"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On the network"
+          }
+        }
+      }
+    },
+    "DroboPro (%@)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboPro (%@)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboPro (%@)"
+          }
+        }
+      }
+    },
+    "Schon hinzugefügt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schon hinzugefügt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Already added"
+          }
+        }
+      }
+    },
+    "USB": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "USB"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "USB"
+          }
+        }
+      }
+    },
+    "Netzwerk": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Netzwerk"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Network"
+          }
+        }
+      }
+    },
+    "Noch keine neue Drobo gefunden. Prüfen Sie, ob die Drobo eingeschaltet und per USB oder im selben Netzwerk verbunden ist, und wählen Sie „Suchen“. Sie können die Adresse einer DroboPro auch unten eingeben.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch keine neue Drobo gefunden. Prüfen Sie, ob die Drobo eingeschaltet und per USB oder im selben Netzwerk verbunden ist, und wählen Sie „Suchen“. Sie können die Adresse einer DroboPro auch unten eingeben."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No new Drobo found yet. Check that the Drobo is switched on and connected via USB or to the same network, then choose \"Search\". You can also enter the address of a DroboPro below."
+          }
+        }
+      }
+    },
+    "Drobo mit %lld Schächten": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drobo mit %lld Schächten"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drobo with %lld bays"
+          }
+        }
+      }
+    },
+    "Schacht %lld, leer": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schacht %lld, leer"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bay %lld, empty"
+          }
+        }
+      }
+    },
+    "Temperatur %lld": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temperatur %lld"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temperature %lld"
+          }
+        }
+      }
+    },
+    "Restlebensdauer %lld": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restlebensdauer %lld"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remaining life %lld"
+          }
+        }
+      }
+    },
+    "Zeigt Einzelheiten zur Festplatte": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeigt Einzelheiten zur Festplatte"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shows details of the disk"
+          }
+        }
+      }
+    },
+    "Lampe": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lampe"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lamp"
+          }
+        }
+      }
+    },
+    "Kapazität": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kapazität"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capacity"
+          }
+        }
+      }
+    },
+    "Temperatur (Rohwert)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temperatur (Rohwert)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temperature (raw value)"
+          }
+        }
+      }
+    },
+    "Restlebensdauer (Rohwert)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restlebensdauer (Rohwert)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remaining life (raw value)"
+          }
+        }
+      }
+    },
+    "Fehler": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fehler"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Errors"
+          }
+        }
+      }
+    },
+    "Die Drobo meldet für diese Festplatte keine Temperatur und keine Restlebensdauer.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Drobo meldet für diese Festplatte keine Temperatur und keine Restlebensdauer."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Drobo reports no temperature and no remaining life for this disk."
+          }
+        }
+      }
+    },
+    "Kein Laufwerk eingesetzt.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein Laufwerk eingesetzt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No drive inserted."
+          }
+        }
+      }
+    },
+    "Füllstand": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Füllstand"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fill level"
+          }
+        }
+      }
+    },
+    "Per Adresse hinzufügen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Per Adresse hinzufügen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add by address"
+          }
+        }
+      }
+    },
+    "Prüfen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prüfen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check"
+          }
+        }
+      }
+    },
+    "Eine Adresse besteht aus vier Zahlen von 0 bis 255, getrennt durch Punkte.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eine Adresse besteht aus vier Zahlen von 0 bis 255, getrennt durch Punkte."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An address consists of four numbers from 0 to 255, separated by dots."
+          }
+        }
+      }
+    },
+    "Werkzeuge": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Werkzeuge"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tools"
+          }
+        }
+      }
+    },
+    "%lld neu": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld neu"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld new"
+          }
+        }
+      }
+    },
+    "%@, %lld neu": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, %lld neu"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, %lld new"
+          }
+        }
+      }
+    },
+    "Die DroboPro ist nicht erreichbar. Prüfen Sie, ob sie eingeschaltet und mit dem Netzwerk verbunden ist, und wählen Sie links „Drobos finden“.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die DroboPro ist nicht erreichbar. Prüfen Sie, ob sie eingeschaltet und mit dem Netzwerk verbunden ist, und wählen Sie links „Drobos finden“."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The DroboPro cannot be reached. Check that it is switched on and connected to the network, then choose \"Find Drobos\" on the left."
+          }
+        }
+      }
+    },
+    "Physisch belegt: %lld %%": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Physisch belegt: %lld %%"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Physically used: %lld %%"
+          }
+        }
+      }
+    },
+    "Dateisystem zuletzt geprüft: %@, %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dateisystem zuletzt geprüft: %@, %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "File system last checked: %@, %@"
+          }
+        }
+      }
+    },
+    "mit Auffälligkeiten": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "mit Auffälligkeiten"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "with issues"
+          }
+        }
+      }
+    },
+    "Keine Drobo eingerichtet. Mit „Drobos finden“ sucht die App angeschlossene Drobos und DroboPros im lokalen Netzwerk.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Drobo eingerichtet. Mit „Drobos finden“ sucht die App angeschlossene Drobos und DroboPros im lokalen Netzwerk."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Drobo set up. \"Find Drobos\" searches for connected Drobos and DroboPros on the local network."
+          }
+        }
+      }
+    },
+    "Aufteilung": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aufteilung"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Breakdown"
+          }
+        }
+      }
+    },
+    "Alles in Ordnung": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alles in Ordnung"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All good"
+          }
+        }
+      }
+    },
+    "Platz wird knapp": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Platz wird knapp"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Space is running low"
+          }
+        }
+      }
+    },
+    "Platz ist fast aufgebraucht": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Platz ist fast aufgebraucht"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Space is almost used up"
+          }
+        }
+      }
+    },
+    "Kein Schutz vor Festplattenausfall": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein Schutz vor Festplattenausfall"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No protection against disk failure"
+          }
+        }
+      }
+    },
+    "Schutz wird wiederhergestellt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schutz wird wiederhergestellt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protection is being restored"
+          }
+        }
+      }
+    },
+    "Das Dateisystem ist auffällig": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Dateisystem ist auffällig"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The file system shows issues"
+          }
+        }
+      }
+    },
+    "Festplatte in Schacht %lld ersetzen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Festplatte in Schacht %lld ersetzen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replace the disk in bay %lld"
+          }
+        }
+      }
+    },
+    "Schacht %lld durch eine größere Festplatte ersetzen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schacht %lld durch eine größere Festplatte ersetzen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replace the disk in bay %lld with a larger one"
+          }
+        }
+      }
+    },
+    "Festplatte einsetzen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Festplatte einsetzen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Insert a disk"
+          }
+        }
+      }
+    },
+    "Dateien löschen oder eine größere Festplatte einsetzen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dateien löschen oder eine größere Festplatte einsetzen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete files or insert a larger disk"
+          }
+        }
+      }
+    },
+    "Abwarten und die Drobo eingeschaltet lassen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abwarten und die Drobo eingeschaltet lassen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wait and leave the Drobo switched on"
+          }
+        }
+      }
+    },
+    "Das Dateisystem prüfen (links „Ordner sichern“, dann „Jetzt prüfen“)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Dateisystem prüfen (links „Ordner sichern“, dann „Jetzt prüfen“)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check the file system (\"Back up folder\" on the left, then \"Check now\")"
+          }
+        }
+      }
+    },
+    "Noch %@ frei, %lld %% sind belegt. Ab %lld %% meldet die Drobo: Speicherplatz sehr knapp.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch %@ frei, %lld %% sind belegt. Ab %lld %% meldet die Drobo: Speicherplatz sehr knapp."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ still free, %lld %% used. From %lld %% the Drobo reports: space very low."
+          }
+        }
+      }
+    },
+    "Noch %@ frei, %lld %% sind belegt.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch %@ frei, %lld %% sind belegt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ still free, %lld %% used."
+          }
+        }
+      }
+    },
+    "Schutz: aktiv, mindestens eine Festplatte darf ausfallen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schutz: aktiv, mindestens eine Festplatte darf ausfallen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protection: active, at least one disk may fail"
+          }
+        }
+      }
+    },
+    "Schutz: keiner, ein Festplattenausfall würde Daten kosten": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schutz: keiner, ein Festplattenausfall würde Daten kosten"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protection: none, a disk failure would cost data"
+          }
+        }
+      }
+    },
+    "Schutz: wird wiederhergestellt": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schutz: wird wiederhergestellt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Protection: being restored"
+          }
+        }
+      }
+    },
+    "kritisch": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kritisch"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "critical"
+          }
+        }
+      }
+    },
+    "Warnung": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warnung"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "warning"
+          }
+        }
+      }
+    },
+    "Ordner sichern": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ordner sichern"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back up folder"
+          }
+        }
+      }
+    },
+    "Details": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Details"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Details"
+          }
+        }
+      }
+    },
+    "Für Schutz reserviert": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Für Schutz reserviert"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reserved for protection"
+          }
+        }
+      }
+    },
+    "Gemessen: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gemessen: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Measured: %@"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

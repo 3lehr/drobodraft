@@ -8,7 +8,7 @@ import json, re, sys, pathlib
 app = pathlib.Path(__file__).resolve().parent.parent / "App"
 def spez(k): return re.sub(r"%(?:\d+\$)?(?:\.\d+)?(?:lld|ld|d|f|lf|@)", "%@", k)   # alle Platzhalterarten gelten als gleich
 keys = {spez(k) for k in json.load(open(app / "Localizable.xcstrings", encoding="utf-8"))["strings"]}
-muster = re.compile(r'(?:\b(?:Text|Label|Button|Section|Toggle|Picker|LabeledContent|Menu|TextField|SecureField|Link|navigationTitle|accessibilityLabel|accessibilityHint|accessibilityValue|help)\(\s*|String\(localized:\s*|\b(?:text|titel|name|kurz|wort):\s*)"')
+muster = re.compile(r'(?:\b(?:Text|Label|Button|Section|Toggle|Picker|LabeledContent|Menu|TextField|SecureField|Link|navigationTitle|accessibilityLabel|accessibilityHint|accessibilityValue|help)\(\s*|String\(localized:\s*|Zeile\(name:\s*|\b(?:text|titel|kurz|wort):\s*)"')
 
 def literal(z, i):
     """Zeichenkette ab z[i] (hinter dem oeffnenden Anfuehrungszeichen), Interpolation samt verschachtelter Zeichenketten; None = nicht abgeschlossen."""

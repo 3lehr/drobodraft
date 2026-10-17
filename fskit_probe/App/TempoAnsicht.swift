@@ -19,6 +19,8 @@ struct Rundinstrument: View {
     let wert: Double?
     let skala: Double
     let aktiv: Bool
+    /// Zeitpunkt der angezeigten Messung (ISO), nil = live oder noch nie gemessen. Alte Werte einer getrennten Drobo duerfen nicht wie aktuelle aussehen.
+    var stand: String?
     @Environment(\.accessibilityReduceMotion) private var wenigBewegung
 
     var body: some View {
@@ -29,17 +31,18 @@ struct Rundinstrument: View {
                     .stroke(aktiv ? Color.accentColor : Color.primary.opacity(0.75), style: StrokeStyle(lineWidth: 16, lineCap: .round))
                     .animation(wenigBewegung ? nil : .linear(duration: 0.25), value: wert)
                 VStack(spacing: 0) {
-                    Text(wert.map { String(format: "%.0f", $0) } ?? "–").font(.system(size: 42, weight: .semibold, design: .rounded)).monospacedDigit()
+                    Text(wert.map { String(format: $0 < 10 ? "%.1f" : "%.0f", $0) } ?? "–").font(.system(size: 42, weight: .semibold, design: .rounded)).monospacedDigit()
                     Text("MB/s").font(.callout).foregroundStyle(.secondary)
                 }
             }
             .frame(width: 190, height: 190)
             HStack { Text("0"); Spacer(); Text(String(format: "%.0f", skala)) }.font(.caption.monospacedDigit()).foregroundStyle(.secondary).frame(width: 150)
             Text(titel).font(.headline)
+            if let s = stand { Text("Gemessen: \(zeitLesbar(s))").font(.caption).foregroundStyle(.secondary) }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(titel))
-        .accessibilityValue(wert.map { String(localized: "\(Int($0)) Megabyte pro Sekunde") } ?? String(localized: "noch nicht gemessen"))
+        .accessibilityValue((wert.map { String(localized: "\(Int($0)) Megabyte pro Sekunde") } ?? String(localized: "noch nicht gemessen")) + (stand.map { ", " + String(localized: "Gemessen: \(zeitLesbar($0))") } ?? ""))
     }
 }
 
@@ -57,6 +60,7 @@ struct TempoAnsicht: View {
         let l = m.tempo.filter { $0.uuid == ziel?.eintrag.uuid }
         return (l.last(where: { $0.art == "schreiben" })?.mbProSekunde, l.last(where: { $0.art == "lesen" })?.mbProSekunde)
     }
+    func stand(_ art: String) -> String? { m.tempo.last(where: { $0.uuid == ziel?.eintrag.uuid && $0.art == art })?.zeit }
     var tabellenRate: Double? { (basis == .schreiben ? letzte.schreiben : letzte.lesen) }
 
     var body: some View {
@@ -73,8 +77,8 @@ struct TempoAnsicht: View {
                         }.frame(maxWidth: 200)
                     }.disabled(m.tempoLaeuft)
                     HStack(alignment: .top, spacing: 36) {
-                        Rundinstrument(titel: "Schreiben", wert: m.tempoSchreibenLive ?? letzte.schreiben, skala: m.tempoSkala, aktiv: m.tempoPhase == "schreiben")
-                        Rundinstrument(titel: "Lesen", wert: m.tempoLesenLive ?? letzte.lesen, skala: m.tempoSkala, aktiv: m.tempoPhase == "lesen")
+                        Rundinstrument(titel: "Schreiben", wert: m.tempoSchreibenLive ?? letzte.schreiben, skala: m.tempoSkala, aktiv: m.tempoPhase == "schreiben", stand: m.tempoSchreibenLive == nil ? stand("schreiben") : nil)
+                        Rundinstrument(titel: "Lesen", wert: m.tempoLesenLive ?? letzte.lesen, skala: m.tempoSkala, aktiv: m.tempoPhase == "lesen", stand: m.tempoLesenLive == nil ? stand("lesen") : nil)
                     }.frame(maxWidth: .infinity)
                     if m.tempoLaeuft {
                         ProgressView(value: m.tempoAnteil) { Text(m.tempoPhase == "schreiben" ? "Schreibt …" : "Liest …") }
@@ -104,7 +108,7 @@ struct TempoAnsicht: View {
                         }
                     }
                     if let r = tabellenRate {
-                        Text("Grundlage: \(Int(r)) MB/s (\(basis == .schreiben ? String(localized: "Schreiben") : String(localized: "Lesen")))").font(.callout).foregroundStyle(.secondary)
+                        Text("Grundlage: \(Int(r.rounded())) MB/s (\(basis == .schreiben ? String(localized: "Schreiben") : String(localized: "Lesen")))").font(.callout).foregroundStyle(.secondary)
                         FormatTabelle(mbs: r, sicht: sicht, bildrate: bildrate)
                     } else {
                         Text("Noch keine Messung dieser Art. Erst messen, dann zeigt die Tabelle, welche Videoformate die Drobo trägt.").foregroundStyle(.secondary)

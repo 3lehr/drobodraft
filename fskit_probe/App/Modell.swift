@@ -23,6 +23,9 @@ struct DroboAnsicht: Equatable {
     var netzStand: Date?           // Netzwerk-Drobo: wann der Status zuletzt gelesen wurde
     var netzFehler: String?        // Netzwerk-Drobo: warum der Status nicht gelesen werden konnte
 
+    /// Gesamtzustand fuer Uebersicht und Seitenleiste (Kern); Schwellen aus Seite 30 bei der DroboPro, sonst die Vorgabe 85/95 (USB: Seite 30 noch nicht gelesen).
+    var hwZustand: Gesamtzustand? { hw.map { gesamtzustand($0, gelbProzent: netz?.gelbProzent ?? 85, rotProzent: netz?.rotProzent ?? 95, pruefungOK: merker.letztePruefung?.ok) } }
+
     var zustandText: String {
         if eintrag.netz != nil {
             if !verbunden { return String(localized: "Nicht erreichbar") }
@@ -99,6 +102,8 @@ final class DroboModell: ObservableObject {
     /// "Drobos suchen": im LAN gefundene, noch nicht eingerichtete Drobos (USB-Funde stehen in `erkannte`).
     @Published var lanErkannte: [LanDrobo] = []
     @Published var sucheLaeuft = false
+    /// UUIDs, die die letzte Suche fand und die schon eingerichtet sind ("schon hinzugefuegt" in "Drobos finden").
+    @Published var sucheBekannt: Set<String> = []
     @Published var sucheInfo: String?
     @Published var netzSucheFehler: String?
     private var timer: Timer?
@@ -106,7 +111,10 @@ final class DroboModell: ObservableObject {
     private var vorherSchwere: [String: Schweregrad] = [:]
 
     init() {
-        let e = ablage.einstellungen()
+        var e = ablage.einstellungen()
+        #if DEBUG
+        if let es = DemoDaten.eintraege() { e.drobos = es }
+        #endif
         einstellungen = e
         auswahl = e.drobos.first?.uuid ?? ""
     }
@@ -143,6 +151,9 @@ final class DroboModell: ObservableObject {
     }
 
     func aktualisieren(freigabe: Bool = true) {
+        #if DEBUG
+        if let d = DemoDaten.ansichten() { uebernehmen(d, modul: ModulStatus(installiert: true, freigeschaltet: true), dienst: String(localized: "bereit")); return }
+        #endif
         let ds = einstellungen.drobos
         let alt = drobos
         let jetzt = Date()
@@ -376,10 +387,9 @@ final class DroboModell: ObservableObject {
         tempoSpitze = max(tempoSpitze, f.mbProSekunde, tempo.filter { $0.uuid == tempoUUID }.map { $0.mbProSekunde }.max() ?? 0)
     }
 
-    /// Skala der Rundinstrumente: nächste "runde" Zahl über der Spitze, wächst nur.
+    /// Skala der Rundinstrumente: nächste runde Größe (1-2-5) über der Spitze, wächst nur (Kern: tempoSkala).
     var tempoSkala: Double {
-        let h = max(tempoSpitze, tempoSchreibenLive ?? 0, tempoLesenLive ?? 0, tempo.filter { $0.uuid == tempoZiel?.eintrag.uuid }.map { $0.mbProSekunde }.max() ?? 0)
-        return [100.0, 200, 300, 400, 500, 750, 1000, 1500, 2000, 3000, 5000].first { $0 >= h } ?? (h * 1.1).rounded(.up)
+        DroboKern.tempoSkala(spitze: max(tempoSpitze, tempoSchreibenLive ?? 0, tempoLesenLive ?? 0, tempo.filter { $0.uuid == tempoZiel?.eintrag.uuid }.map { $0.mbProSekunde }.max() ?? 0))
     }
 
     func pruefen() {
@@ -456,12 +466,16 @@ final class DroboModell: ObservableObject {
         einstellungen.drobos.removeAll { $0.uuid == e.uuid }
         einstellungen.drobos.append(DroboEintrag(uuid: e.uuid, name: e.name.isEmpty ? "Drobo" : e.name))
         if auswahl.isEmpty { auswahl = e.uuid }
+        sucheBekannt.insert(e.uuid)
         einstellungenSpeichern()
     }
 
     // MARK: Drobos suchen (USB + lokales Netzwerk), nichts wird ohne Zustimmung uebernommen
 
     func drobosSuchen() {
+        #if DEBUG
+        guard DemoDaten.art == nil else { return }   // Demo fasst kein Netz und kein Geraet an
+        #endif
         guard !sucheLaeuft else { return }
         sucheLaeuft = true; sucheInfo = nil
         let bekannt = Set(einstellungen.drobos.map { $0.uuid })
@@ -470,6 +484,7 @@ final class DroboModell: ObservableObject {
             let r = DroboKern.drobosSuchen(ausnehmen: ausnehmen)
             await MainActor.run {
                 self.sucheLaeuft = false
+                self.sucheBekannt = Set((r.usb.map(\.uuid) + r.lan.flatMap { $0.luns.map(\.uuid) }).filter { bekannt.contains($0) })
                 self.erkannte = r.usb.filter { !bekannt.contains($0.uuid) }
                 self.lanErkannte = r.lan.map { LanDrobo(host: $0.host, luns: $0.luns.filter { !bekannt.contains($0.uuid) }) }.filter { !$0.luns.isEmpty }
                 if let f = r.lanFehler { self.ablage.protokoll("Suche im Netzwerk: \(f)"); self.sucheInfo = String(localized: "Die Suche im lokalen Netzwerk ist nicht möglich. Läuft der Hilfsdienst?") }
@@ -485,6 +500,7 @@ final class DroboModell: ObservableObject {
             einstellungen.drobos.append(DroboEintrag(uuid: l.uuid, name: d.luns.count > 1 ? "DroboPro \(i + 1)" : "DroboPro", netz: NetzZiel(host: d.host, lun: l.lun)))
         }
         if let l = d.luns.first { auswahl = l.uuid }
+        sucheBekannt.formUnion(d.luns.map(\.uuid))
         lanErkannte.removeAll { $0.host == d.host }
         einstellungenSpeichern()
     }
@@ -492,6 +508,9 @@ final class DroboModell: ObservableObject {
     // MARK: Netzwerk-Drobo per Adresse hinzufuegen (Adresse -> Suche -> Auswahl)
 
     func netzSuchen(_ adresse: String) {
+        #if DEBUG
+        guard DemoDaten.art == nil else { return }   // Demo fasst kein Netz an
+        #endif
         let host = adresse.trimmingCharacters(in: .whitespaces)
         netzTreffer = []; netzSucheFehler = nil; netzSucheLaeuft = true
         Task.detached {

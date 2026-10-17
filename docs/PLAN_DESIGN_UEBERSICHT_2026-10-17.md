@@ -48,3 +48,38 @@ Wörtlich: „Können wir uns bei Design am Original drobo Layout orientieren, u
 - Je Platte im Bild: Kapazität; bei Zeigen/Antippen/VoiceOver: Modell, Temperatur, Restlebensdauer, Fehlerzähler (Seite 0x35 SlotInfo2, 108 B je Schacht; 5C gemessen, DroboPro mit Länge 512 ohne Antwort → exakte Länge messen wie bei 04/07). Einheiten Temperatur/Lebensdauer laut Recon nur Vermutung → erst am Gerät gegen einen bekannten Wert eichen, bis dahin ohne Einheit anzeigen.
 - Rechts: Aufteilung belegt / frei / für Schutz reserviert (Seite 02), Schutzzustand und eine Handlungsempfehlung.
 - Barrierefreiheit: Bild ist ein zusammenhängendes Element mit Kinder-Elementen je Schacht (VoiceOver liest „Schacht 1, gelb, 16 TB, …“); Tastatur-Fokus je Schacht.
+
+## Ergänzung Betreiber 2 (2026-10-17T07:04:20+0200): Suche und Netzwerksuche zusammenfassen
+Wörtlich: „sollten wir drobo suche und netzwerksuche nicht zusammenfassen, als ein tab in der seiten leiste und dann den inhalt dazu im hauptspalte anzeigen?!“
+Entscheidung: ja. Die Knöpfe „Drobos suchen“ und „Per Adresse hinzufügen …“ verlassen die Seitenleiste; es gibt genau einen Eintrag „Drobos finden“ (en: „Find Drobos“) direkt unter der Drobo-Liste, bei neuen Funden mit Zähler „N neu“. Suche beim App-Start bleibt; nichts wird automatisch übernommen.
+```
+Seitenleiste                   Hauptspalte "Drobos finden"
+┌ Drobos ────────────┐         ┌ Drobos finden ─────────────────────────────┐
+│ ⚠ Drobo 5C         │         │ Die App sucht Drobos (USB) und DroboPros   │
+│   Platz wird knapp │         │ im lokalen Netzwerk. Übernommen wird erst  │
+│ ● DroboPro         │         │ nach „Hinzufügen“.                         │
+│   Verbunden …      │         │ [🔍 Suchen]  (Fortschritt: ⟳ Suche läuft …)│
+│ 🔍 Drobos finden 2 neu│      │ ┌ Per USB angeschlossen ─────────────────┐ │
+├ Ansicht ───────────┤         │ │ Drobo, 70 TB            [Hinzufügen]   │ │
+│ Übersicht          │         │ ├ Im Netzwerk ───────────────────────────┤ │
+│ Laufwerke          │         │ │ DroboPro (192.168.x.y)  [Hinzufügen]   │ │
+│ Protokoll          │         │ ├ Schon hinzugefügt ─────────────────────┤ │
+├ Werkzeuge ─────────┤         │ │ ✓ Drobo 5C, USB                        │ │
+│ Tempo              │         │ └────────────────────────────────────────┘ │
+│ Ordner sichern     │         │ Leer: „Noch keine neue Drobo gefunden …“   │
+└────────────────────┘         │ ┌ Per Adresse hinzufügen ────────────────┐ │
+                               │ │ [192.168.1.20      ] [Prüfen]          │ │
+                               │ │ Treffer: Name [DroboPro] Volume … [Hinzufügen] │
+                               │ └────────────────────────────────────────┘ │
+                               └────────────────────────────────────────────┘
+```
+Barrierefreiheit: jede Zeile ein VoiceOver-Element, Tastatur: Suchen = ⌘F; „Prüfen“ greift erst bei gültiger IPv4 (vier Zahlen 0 bis 255).
+
+## Umsetzungsstand (2026-10-17T07:04:20+0200)
+Siehe Commits auf feature/dropro-iscsi. Abweichungen vom Entwurf oben:
+- Füllstand-Prozent wird abgerundet angezeigt (93 statt 94 % bei 63,54 von 67,79 TB), damit „95 %“ auf dem Schirm genau dann steht, wenn die Rot-Schwelle erreicht ist.
+- Schwellen: DroboPro Seite 30 (85/95); USB-Drobo: Seite 30 noch nicht gelesen, Vorgabe 85/95 plus die Schwellen-Bits der Drobo (0x2/0x4).
+- „Für Schutz reserviert“ = gesamt ungeschützt minus gesamt geschützt (Seite 02): Deutung ungeprüft.
+- Temperatur/Restlebensdauer als Rohwert ohne Einheit (OFFEN: am Gerät eichen).
+- Seite 0x35 an der DroboPro: Gate mit exakter Länge 12 + 8 x 108 = 876; NICHT am Gerät gemessen, weil die DroboPro vom Betreiber eingehängt ist (keine zweite Sitzung).
+- „Volumes“ im Abschnitt Werkzeuge entfällt (es gibt keinen eigenen Volumes-Bildschirm); „Ordner sichern“ öffnet die bisherige Ansicht „Volume“.

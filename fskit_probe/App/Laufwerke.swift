@@ -3,12 +3,14 @@ import SwiftUI
 
 /// Farbe + Wort (Farbe allein trägt keine Information).
 extension SchachtFarbe {
-    var wort: LocalizedStringKey {
+    var wortText: String {
         switch self {
-        case .aus: return "Aus"; case .rot: return "Rot"; case .gelb: return "Gelb"; case .gruen: return "Grün"; case .rotGruen: return "Rot/Grün"
-        case .rotGelb: return "Rot/Gelb"; case .rotAus: return "Rot/Aus"; case .leer: return "Leer"; case .unbekannt: return "Unbekannt"
+        case .aus: return String(localized: "Aus"); case .rot: return String(localized: "Rot"); case .gelb: return String(localized: "Gelb"); case .gruen: return String(localized: "Grün")
+        case .rotGruen: return String(localized: "Rot/Grün"); case .rotGelb: return String(localized: "Rot/Gelb"); case .rotAus: return String(localized: "Rot/Aus")
+        case .leer: return String(localized: "Leer"); case .unbekannt: return String(localized: "Unbekannt")
         }
     }
+    var wort: LocalizedStringKey { LocalizedStringKey(wortText) }
     var farbe: Color {
         switch self { case .gruen: return .green; case .gelb, .rotGelb: return .orange; case .rot, .rotGruen, .rotAus: return .red; default: return .secondary }
     }
@@ -100,7 +102,7 @@ struct SchachtZeile: View {
                 Spacer(minLength: 8)
                 Text(groesseText(s.kapazitaet)).monospacedDigit()
                 if mitFehler { Text("Fehler: \(s.fehler)").foregroundStyle(s.fehler > 0 ? Color.red : Color.secondary) }
-                if let t = s.temperatur { Text("\(t) °C") }
+                if let t = s.temperatur { Text("Temperatur \(t)") }   // Einheit laut Recon nur Vermutung (offen: am Geraet gegen bekannten Wert eichen) -> ohne Einheit
             } else { Text("Kein Laufwerk").foregroundStyle(.secondary); Spacer() }
         }
         .font(.callout)
