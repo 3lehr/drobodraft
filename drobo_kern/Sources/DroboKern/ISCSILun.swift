@@ -69,6 +69,26 @@ public func netzLunVerzeichnis(sitzung s: ISCSISitzung) throws -> [LunEintrag] {
     }
 }
 
+/// Nach einem Format: die LUN neu einlesen (GPT, HFS+-Kopf, Volume-UUID). Die DroboPro braucht nach dem Schreiben einen Moment, darum bis zu `versuche` Anlaeufe im Abstand
+/// `pause`; erst eine LUN MIT Dateisystem gilt. Ohne Erfolg wirft es (nie stilles Nichts: sonst blieb der LUN-Zustand der Ansicht unveraendert).
+public func netzLunNachFormat(host: String, lun: Int, versuche: Int = 4, pause: TimeInterval = 3,
+                              verzeichnis: (String) throws -> [LunEintrag] = { try netzLunVerzeichnis(host: $0) }) throws -> (alle: [LunEintrag], neu: LunEintrag) {
+    var letzter: Error = ISCSIFehler.protokoll("LUN \(lun) has no file system after formatting")
+    for i in 0..<max(versuche, 1) {
+        if i > 0 { Thread.sleep(forTimeInterval: pause) }
+        do { let l = try verzeichnis(host); if let e = l.first(where: { $0.lun == lun }), e.hatDateisystem { return (l, e) } }
+        catch { letzter = error }
+    }
+    throw letzter
+}
+
+/// Eintrag der LUN im gespeicherten Ziel nach dem Format: neue Volume-UUID und neuer Name (die Freigabe fuer die neue UUID setzt das Einhaengen).
+public func netzZielNachFormat(_ nz: NetzZiel, lun: Int, uuid: String, name: String) -> NetzZiel {
+    var n = nz
+    var l = (nz.luns ?? []).filter { $0.lun != lun }; l.append(NetzLunEintrag(lun: lun, uuid: uuid, name: name)); n.luns = l.sorted { $0.lun < $1.lun }
+    return n
+}
+
 public func netzLunVerzeichnis(host: String) throws -> [LunEintrag] {
     let s = try netzSitzung(host: host); defer { s.abmelden() }
     return try netzLunVerzeichnis(sitzung: s)

@@ -468,4 +468,28 @@ extension ISCSITests {
         XCTAssertEqual(such.suchen(kandidaten: ["127.0.0.1"]), [], "unbekannt: nach 3 s aufgegeben")
         XCTAssertEqual(such.suchen(kandidaten: ["127.0.0.1"], bekannt: ["127.0.0.1"]), ["127.0.0.1"], "bekannt: 30 s Geduld")
     }
+
+    // MARK: Nach dem Formatieren: LUN neu einlesen (Betreiberbefund F)
+
+    func testNachFormatZeigtNeueLUNUndIstEinhaengbar() throws {
+        let port = try ziel(mib: 128)
+        let lesen: (String) throws -> [LunEintrag] = { _ in let s = try self.sitzung(port); defer { s.abmelden() }; return try netzLunVerzeichnis(sitzung: s) }
+        XCTAssertThrowsError(try netzLunNachFormat(host: "x", lun: 1, versuche: 2, pause: 0, verzeichnis: lesen), "vor dem Format: keine LUN mit Dateisystem, nie stilles Nichts")
+        var l: [String] = []; try formatiere(port, ausfuehren: true, &l)
+        let r = try netzLunNachFormat(host: "x", lun: 1, versuche: 1, pause: 0, verzeichnis: lesen)
+        XCTAssertTrue(r.neu.hatDateisystem); XCTAssertEqual(r.neu.schema, "GPT"); XCTAssertNotNil(r.neu.partitionBytes)
+        let alt = NetzZiel(host: "x", lun: 1, luns: [NetzLunEintrag(lun: 1, uuid: "ALT", name: "Volume 2"), NetzLunEintrag(lun: 0, uuid: "U0", name: "ARCHIV")])
+        let neu = netzZielNachFormat(alt, lun: 1, uuid: r.neu.uuid!, name: "FMTTEST")
+        XCTAssertEqual(neu.luns?.map(\.lun), [0, 1]); XCTAssertEqual(neu.luns?.last?.name, "FMTTEST"); XCTAssertEqual(neu.luns?.last?.uuid, r.neu.uuid); XCTAssertEqual(neu.luns?.first?.name, "ARCHIV")
+        // einhaengbar = die Pruefungen des Einhaengens (GPT mit HFS+, Volume-ID) bestehen, dieselbe UUID wie im Eintrag
+        let s = try sitzung(port); defer { s.abmelden() }
+        XCTAssertEqual(try netzLuns(sitzung: s).first { $0.lun == 1 }?.uuid, r.neu.uuid)
+    }
+    /// Die DroboPro braucht nach dem Schreiben einen Moment: der alte Einmalversuch (`try?`) liess den Zustand stehen, die Wiederholung holt ihn nach.
+    func testNachFormatWiederholtBisDieLUNAntwortet() throws {
+        var n = 0; let e = LunEintrag(lun: 1, groesse: 1, schema: "GPT", partitionBytes: 1, uuid: "U")
+        let flaky: (String) throws -> [LunEintrag] = { _ in n += 1; if n < 3 { throw ISCSIFehler.zeitueberschreitung("lag") }; return [e] }
+        XCTAssertThrowsError(try netzLunNachFormat(host: "x", lun: 1, versuche: 1, pause: 0, verzeichnis: flaky), "Einmalversuch scheitert")
+        n = 0; XCTAssertEqual(try netzLunNachFormat(host: "x", lun: 1, versuche: 4, pause: 0, verzeichnis: flaky).neu, e); XCTAssertEqual(n, 3)
+    }
 }
