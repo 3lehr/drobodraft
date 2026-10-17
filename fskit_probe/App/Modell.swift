@@ -92,7 +92,16 @@ final class DroboModell: ObservableObject {
     let undoManager = UndoManager()
     /// Gewaehlter Bereich der Seitenleiste; wird mit der gewaehlten Drobo wiederhergestellt (Datei ansicht.json im Datenordner, nie UserDefaults: die Demo teilt sie sonst mit der echten App).
     @Published var abschnitt: Abschnitt? { didSet { ansichtSichern() } }
-    @Published var blatt: Blatt?
+    @Published var blatt: Blatt? { didSet { if blatt != oldValue { blattGeoeffnet() } } }
+    /// Zuletzt bestaetigte Schreib-Kombination je Drobo (Datei bestaetigt.json im Datenordner, bewusst NICHT in den Einstellungen: Rueckgaengig darf sie nicht zuruecksetzen).
+    @Published var bestaetigt: [String: BestaetigteKombination] = [:]
+    /// Kaestchen "Ich habe eine aktuelle Sicherung" und Sperre des offenen Schreib-/Formatblatts; Uhr verstellbar (Steuerung `/uhr`).
+    @Published var blattGesichert = false
+    var blattStart = Date()
+    var blattDauer = 0
+    /// Blattart beim Oeffnen festgehalten (aendert sich nicht, solange das Blatt offen ist).
+    var blattArtOffen: BlattArt = .kurz
+    var uhrVersatz: TimeInterval = 0
     @Published var wegQuelle = ""
     @Published var wegZiel = ""
     @Published var tempoUUID = ""
@@ -142,6 +151,7 @@ final class DroboModell: ObservableObject {
         let z = Self.ansichtLesen(ablage.ordner)
         auswahl = z?.auswahl.flatMap { a in e.drobos.contains { $0.uuid == a } ? a : nil } ?? e.drobos.first?.uuid ?? ""
         abschnitt = z?.abschnitt.flatMap(Abschnitt.init(rawValue:)) ?? .uebersicht
+        bestaetigt = FileManager.default.contents(atPath: ablage.ordner + "/bestaetigt.json").flatMap { try? JSONDecoder().decode([String: BestaetigteKombination].self, from: $0) } ?? [:]
         #if DEBUG
         if let s = DemoDaten.seite { abschnitt = s }
         #endif
@@ -627,6 +637,57 @@ final class DroboModell: ObservableObject {
     func entfernen(_ uuid: String) {
         guard einstellungen.drobos.count > 1 else { return }
         aendern(String(localized: "Drobo entfernen")) { $0.drobos.removeAll { $0.uuid == uuid } }
+    }
+
+    // MARK: Schreib- und Formatblatt: Blattart, Sperre, Bestaetigen
+
+    func jetzt() -> Date { Date().addingTimeInterval(uhrVersatz) }
+    var bestaetigtSchluessel: String { (aktuell?.eintrag.uuid ?? "") + (aktuell?.eintrag.netz.map { "#\(schreibenLun ?? $0.lun)" } ?? "") }
+    /// Volles Blatt mit Sperre oder kurze Zeile (Kern: schreibBlattArt).
+    var schreibBlattArt: BlattArt {
+        DroboKern.schreibBlattArt(erprobt: erprobtErgebnis(.schreiben).istErprobt, zuletzt: bestaetigt[bestaetigtSchluessel], build: aktuell?.hw?.firmwareBuild, anschluss: anschluss, unsauber: aktuell?.merker.offenePruefung != nil)
+    }
+    private func blattGeoeffnet() {
+        blattGesichert = false; blattStart = jetzt()
+        switch blatt { case .schreiben: blattArtOffen = schreibBlattArt; blattDauer = blattArtOffen.sperre; case .format: blattDauer = sperrSekunden; default: blattDauer = 0 }
+    }
+    func sperreRest(_ zeit: Date? = nil) -> Int { DroboKern.sperreRest(start: blattStart, dauer: blattDauer, jetzt: zeit ?? jetzt()) }
+    var schreibenFreigegeben: Bool { !einstellungen.sicherungOrt.isEmpty && (erprobtErgebnis(.schreiben).istErprobt || blattGesichert) }
+
+    private func bestaetigtSichern() {
+        guard let d = try? JSONEncoder().encode(bestaetigt) else { return }
+        try? FileManager.default.createDirectory(atPath: ablage.ordner, withIntermediateDirectories: true)
+        try? d.write(to: URL(fileURLWithPath: ablage.ordner + "/bestaetigt.json"), options: .atomic)
+    }
+
+    /// Bestaetigen im Schreibblatt (Knopf UND Steuerung): erst nach der Sperre, mit Sicherungsort und (bei nicht erprobter Kombination) dem Sicherungs-Kaestchen. Rueckgabe: Grund der Ablehnung.
+    func schreibenBestaetigen() -> String? {
+        guard blatt == .schreiben else { return String(localized: "Kein Blatt offen.") }
+        let r = sperreRest(); if r > 0 { return String(localized: "Gesperrt, noch \(r) s.") }
+        guard schreibenFreigegeben else { return String(localized: "Sicherungsort oder Sicherungs-Bestätigung fehlt.") }
+        let l = schreibenLun
+        bestaetigt[bestaetigtSchluessel] = BestaetigteKombination(build: aktuell?.hw?.firmwareBuild, anschluss: anschluss); bestaetigtSichern()
+        blatt = nil
+        #if DEBUG
+        if DemoDaten.art != nil { return nil }   // Demo fasst kein Geraet an
+        #endif
+        if let l { lunEinhaengen(l, schreiben: true) } else if aktuell?.eingehaengt == true { neuZumSchreiben() } else { einhaengen(schreiben: true) }
+        return nil
+    }
+
+    /// Bestaetigen im Formatblatt (immer volles Blatt, Sperre, Namenspruefung).
+    func formatBestaetigen(lun: Int, name: String) -> String? {
+        guard blatt == .format(lun) else { return String(localized: "Kein Blatt offen.") }
+        let n = name.trimmingCharacters(in: .whitespaces)
+        let r = sperreRest(); if r > 0 { return String(localized: "Gesperrt, noch \(r) s.") }
+        guard !n.isEmpty, !n.contains(":"), n.utf8.count <= 27 else { return String(localized: "Der Name ist ungültig.") }
+        guard erprobtErgebnis(.formatieren).istErprobt || blattGesichert else { return String(localized: "Sicherungsort oder Sicherungs-Bestätigung fehlt.") }
+        blatt = nil
+        #if DEBUG
+        if DemoDaten.art != nil { return nil }
+        #endif
+        lunFormatieren(lun, name: n)
+        return nil
     }
 
     // MARK: Erprobt (Hinweis im Bestaetigungsblatt)

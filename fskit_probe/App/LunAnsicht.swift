@@ -51,12 +51,11 @@ struct FormatBlatt: View {
     @Environment(\.dismiss) private var dismiss
     let lun: Int
     @State private var name = ""
-    @State private var gesichert = false
 
     var eintrag: LunEintrag? { m.aktuell?.luns.first { $0.lun == lun } }
     var bisher: String { m.aktuell?.eintrag.netz?.luns?.first { $0.lun == lun }?.name ?? String(localized: "Volume \(lun + 1)") }
     var gueltig: Bool { let n = name.trimmingCharacters(in: .whitespaces); return !n.isEmpty && !n.contains(":") && n.utf8.count <= 27 }
-    var freigegeben: Bool { m.erprobtErgebnis(.formatieren).istErprobt || gesichert }
+    var freigegeben: Bool { m.erprobtErgebnis(.formatieren).istErprobt || m.blattGesichert }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Abstand.l) {
@@ -71,13 +70,13 @@ struct FormatBlatt: View {
                 }
             }
             Text("Die virtuelle Festplatte wird mit einem leeren Dateisystem (Mac OS Extended) neu angelegt.").foregroundStyle(.secondary)
-            ErprobtBlock(aktion: .formatieren, gesichert: $gesichert)
+            ErprobtBlock(aktion: .formatieren, gesichert: $m.blattGesichert)
             TextField("Neuer Name", text: $name).textFieldStyle(.roundedBorder)
             if !gueltig { Label("Der Name darf nicht leer sein, keinen Doppelpunkt enthalten und höchstens 27 Zeichen lang sein.", systemImage: "info.circle").font(.callout).foregroundStyle(.secondary) }
-            HStack {
+            HStack(alignment: .top) {
                 Spacer()
                 Button("Abbrechen") { dismiss() }.keyboardShortcut(.defaultAction)
-                Button("Formatieren", role: .destructive) { dismiss(); m.lunFormatieren(lun, name: name.trimmingCharacters(in: .whitespaces)) }.disabled(!gueltig || !freigegeben)
+                SperrKnopf(titel: "Formatieren", freigegeben: gueltig && freigegeben, rolle: .destructive) { m.formatBestaetigen(lun: lun, name: name) }
             }
         }
         .padding().frame(minWidth: Mass.blattMin, idealWidth: Mass.blattBreit)

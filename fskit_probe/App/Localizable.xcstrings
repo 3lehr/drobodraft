@@ -7488,6 +7488,246 @@
           }
         }
       }
+    },
+    "Zum ersten Mal mit dieser Drobo.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zum ersten Mal mit dieser Drobo."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "First time with this Drobo."
+          }
+        }
+      }
+    },
+    "Die Firmware der Drobo hat sich seit dem letzten Mal geändert.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Firmware der Drobo hat sich seit dem letzten Mal geändert."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Drobo's firmware has changed since the last time."
+          }
+        }
+      }
+    },
+    "Der Anschluss der Drobo hat sich seit dem letzten Mal geändert.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Anschluss der Drobo hat sich seit dem letzten Mal geändert."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Drobo's connection has changed since the last time."
+          }
+        }
+      }
+    },
+    "DroboDraft hat den Weg zum Schreiben seit dem letzten Mal geändert.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboDraft hat den Weg zum Schreiben seit dem letzten Mal geändert."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboDraft has changed the way it writes since the last time."
+          }
+        }
+      }
+    },
+    "Die letzte Schreibsitzung endete unsauber.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die letzte Schreibsitzung endete unsauber."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The last write session did not end cleanly."
+          }
+        }
+      }
+    },
+    "Entspricht der erprobten Kombination · Die Sicherung der Verwaltungsdaten wird vorher angelegt.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entspricht der erprobten Kombination · Die Sicherung der Verwaltungsdaten wird vorher angelegt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Matches the tested combination · The management data backup is made first."
+          }
+        }
+      }
+    },
+    "%@ (%lld)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (%lld)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (%lld)"
+          }
+        }
+      }
+    },
+    "Gesperrt, noch %lld Sekunden.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gesperrt, noch %lld Sekunden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Locked, %lld seconds left."
+          }
+        }
+      }
+    },
+    "Bestätigen wird in %lld s frei. Abbrechen geht jederzeit.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestätigen wird in %lld s frei. Abbrechen geht jederzeit."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirm unlocks in %lld s. You can cancel at any time."
+          }
+        }
+      }
+    },
+    "Noch %lld Sekunden, bis Bestätigen möglich ist.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch %lld Sekunden, bis Bestätigen möglich ist."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld seconds until confirming is possible."
+          }
+        }
+      }
+    },
+    "Bestätigen ist jetzt möglich.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestätigen ist jetzt möglich."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirming is now possible."
+          }
+        }
+      }
+    },
+    "Kein Blatt offen.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein Blatt offen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No sheet is open."
+          }
+        }
+      }
+    },
+    "Gesperrt, noch %lld s.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gesperrt, noch %lld s."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Locked, %lld s left."
+          }
+        }
+      }
+    },
+    "Sicherungsort oder Sicherungs-Bestätigung fehlt.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sicherungsort oder Sicherungs-Bestätigung fehlt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Backup location or backup confirmation is missing."
+          }
+        }
+      }
+    },
+    "Der Name ist ungültig.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Name ist ungültig."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The name is not valid."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

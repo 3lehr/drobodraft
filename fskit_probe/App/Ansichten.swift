@@ -172,15 +172,34 @@ struct ProtokollAnsicht: View {
 
 
 /// Bestätigung vor jedem Schreib-Einhängen. "Abbrechen" ist die Standardaktion (Return/Escape), das Schreiben hat keine Tastenkürzel.
+/// Volles Blatt mit 15-s-Sperre beim ersten Mal je Drobo und bei jeder Änderung (Firmware, Anschluss, Schreibweg, unsauberes Ende) bzw. bei nicht erprobter Kombination; sonst eine Zeile.
 struct SchreibenBestaetigung: View {
     @EnvironmentObject var m: DroboModell
     @Environment(\.dismiss) private var dismiss
-    @State private var gesichert = false
+    var art: BlattArt { m.blattArtOffen }
+
+    func grund(_ g: VollGrund) -> LocalizedStringKey? {
+        switch g {
+        case .erstmals: return "Zum ersten Mal mit dieser Drobo."
+        case .firmware: return "Die Firmware der Drobo hat sich seit dem letzten Mal geändert."
+        case .anschluss: return "Der Anschluss der Drobo hat sich seit dem letzten Mal geändert."
+        case .schreibweg: return "DroboDraft hat den Weg zum Schreiben seit dem letzten Mal geändert."
+        case .unsauber: return "Die letzte Schreibsitzung endete unsauber."
+        case .nichtErprobt, .formatieren: return nil
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: Abstand.l) {
             Text("Zum Schreiben einhängen?").font(.title2).accessibilityAddTraits(.isHeader)
-            Text("Vorher wird eine Sicherung der Verwaltungsdaten des Laufwerks angelegt. Ohne gelungene Sicherung wird nicht zum Schreiben eingehängt.")
-            ErprobtBlock(aktion: .schreiben, gesichert: $gesichert)
+            if case .voll(let g) = art {
+                Text("Vorher wird eine Sicherung der Verwaltungsdaten des Laufwerks angelegt. Ohne gelungene Sicherung wird nicht zum Schreiben eingehängt.")
+                if let t = grund(g) { Text(t).foregroundStyle(.secondary) }
+                ErprobtBlock(aktion: .schreiben, gesichert: $m.blattGesichert)
+            } else {
+                Label { Text("Entspricht der erprobten Kombination · Die Sicherung der Verwaltungsdaten wird vorher angelegt.") } icon: { Image(systemName: "checkmark.seal.fill").foregroundStyle(Color.green) }
+                    .accessibilityElement(children: .combine)
+            }
             if m.spotlightHinweisNoetig { Hinweis(symbol: "magnifyingglass", text: "Spotlight ist für die Drobo noch nicht ausgeschlossen (empfohlen, siehe Anleitung in den Einstellungen).") }
             if m.physischKnapp, let k = m.aktuell?.hw?.kapazitaet {
                 Hinweis(symbol: "externaldrive.badge.exclamationmark", text: "Die Drobo ist physisch fast voll: nur noch \(groesseText(k.frei)) frei (unter 5 %). Schreiben auf eine fast volle Drobo kann scheitern oder sie verlangsamen. Schaffen Sie zuerst Platz oder setzen Sie größere Festplatten ein.", farbe: .red)
@@ -191,16 +210,41 @@ struct SchreibenBestaetigung: View {
             } else {
                 Text("Sicherungsort: \(m.einstellungen.sicherungOrt)").font(.callout).foregroundStyle(.secondary)
             }
-            HStack {
+            HStack(alignment: .top) {
                 Spacer()
                 Button("Abbrechen") { dismiss() }.keyboardShortcut(.defaultAction)
-                Button("Zum Schreiben einhängen") {
-                    dismiss()
-                    if let l = m.schreibenLun { m.lunEinhaengen(l, schreiben: true) }
-                    else if m.aktuell?.eingehaengt == true { m.neuZumSchreiben() } else { m.einhaengen(schreiben: true) }
-                }.disabled(m.einstellungen.sicherungOrt.isEmpty || !(m.erprobtErgebnis(.schreiben).istErprobt || gesichert))
+                SperrKnopf(titel: "Zum Schreiben einhängen", freigegeben: m.schreibenFreigegeben, rolle: nil) { m.schreibenBestaetigen() }
             }
-        }.padding().frame(minWidth: Mass.blattMin, idealWidth: Mass.blatt)
+        }
+        .padding().frame(minWidth: Mass.blattMin, idealWidth: Mass.blatt)
+    }
+}
+
+/// Bestätigen-Knopf mit Countdown im Titel ("Einhängen (15)"), bis die Sperre abgelaufen ist. VoiceOver: Ansage bei 10 s und bei 0, nicht jede Sekunde.
+struct SperrKnopf: View {
+    @EnvironmentObject var m: DroboModell
+    let titel: LocalizedStringKey
+    let freigegeben: Bool
+    let rolle: ButtonRole?
+    let aktion: () -> Void
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 0.5)) { _ in
+            let rest = m.sperreRest()
+            VStack(alignment: .trailing, spacing: Abstand.xs) {
+                Button(role: rolle, action: aktion) { rest > 0 ? Text("\(Text(titel)) (\(rest))") : Text(titel) }
+                    .disabled(rest > 0 || !freigegeben)
+                    .accessibilityHint(rest > 0 ? Text("Gesperrt, noch \(rest) Sekunden.") : Text(""))
+                if rest > 0 { Text("Bestätigen wird in \(rest) s frei. Abbrechen geht jederzeit.").font(.caption).foregroundStyle(.secondary) }
+            }
+        }
+        .task {
+            guard m.blattDauer > 0 else { return }
+            for ziel in [10, 0] where m.sperreRest() > ziel {
+                while m.sperreRest() > ziel { try? await Task.sleep(for: .milliseconds(250)); if Task.isCancelled { return } }
+                AccessibilityNotification.Announcement(ziel > 0 ? String(localized: "Noch \(ziel) Sekunden, bis Bestätigen möglich ist.") : String(localized: "Bestätigen ist jetzt möglich.")).post()
+            }
+        }
     }
 }
 

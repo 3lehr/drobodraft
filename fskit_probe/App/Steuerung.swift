@@ -10,6 +10,7 @@ import Network
 /// GET /zustand    Bereich, Auswahl, offenes Blatt, Drobo-Liste, Einstellungen, Rueckgaengig-Zustand
 /// POST /aktion?id=<id>[&arg=<text>]   fuehrt die Aktion aus (arg ersetzt Eingabeblatt/Ordnerwahl)
 /// POST /undo, /redo   Rueckgaengig / Wiederholen ueber den UndoManager
+/// POST /bestaetigen[?name=]   Knopf des offenen Schreib-/Formatblatts (Sperre gilt); POST /uhr?versatz=<s> verstellt die Uhr der Sperre; POST /gesichert?an=1 setzt das Sicherungs-Kaestchen
 /// GET /bild       PNG des Hauptfensters (nur eigener Prozess, keine Bildschirmaufnahme)
 /// Dieselben Texte wie die Oberflaeche (Titel kommen aus String(localized:)). Eine Uhr gibt es in der App nicht, nichts zu verstellen.
 @MainActor
@@ -59,6 +60,12 @@ final class Steuerung {
             guard let a = Aktion(rawValue: q["id"] ?? "") else { return json(["ok": false, "fehler": "unbekannte Aktion"], "404 Not Found") }
             let f = m.fuehreAus(a, arg: q["arg"])
             return json(["ok": f == nil, "fehler": f as Any? ?? NSNull()] as [String: Any])
+        case ("POST", "/bestaetigen"):   // Knopf des offenen Schreib-/Formatblatts; die Sperre ist NICHT umgehbar, nur die Uhr verstellbar (/uhr)
+            let f: String?
+            switch m.blatt { case .schreiben: f = m.schreibenBestaetigen(); case .format(let l): f = m.formatBestaetigen(lun: l, name: q["name"] ?? m.aktuell?.eintrag.netz?.luns?.first { $0.lun == l }?.name ?? "DroboPro"); default: f = String(localized: "Kein Blatt offen.") }
+            return json(["ok": f == nil, "fehler": f as Any? ?? NSNull()] as [String: Any])
+        case ("POST", "/uhr"): m.uhrVersatz = Double(q["versatz"] ?? "0") ?? 0; return json(["versatz": m.uhrVersatz])
+        case ("POST", "/gesichert"): m.blattGesichert = q["an"] == "1"; return json(["gesichert": m.blattGesichert])
         case ("POST", "/undo"): let ok = m.undoManager.canUndo; m.undoManager.undo(); return json(["ok": ok])
         case ("POST", "/redo"): let ok = m.undoManager.canRedo; m.undoManager.redo(); return json(["ok": ok])
         case ("GET", "/bild"):
@@ -74,7 +81,12 @@ final class Steuerung {
         let e = (try? JSONEncoder().encode(m.einstellungen)).flatMap { try? JSONSerialization.jsonObject(with: $0) } ?? [:]
         return ["abschnitt": m.abschnitt?.rawValue ?? "", "auswahl": m.auswahl, "blatt": m.blatt?.id as Any? ?? NSNull(),
                 "drobos": m.einstellungen.drobos.map { ["uuid": $0.uuid, "name": $0.name, "rolle": $0.rolle.rawValue] },
+                "blatt_art": blattArtText(), "sperre_rest": m.sperreRest(), "gesichert": m.blattGesichert, "bestaetigt": m.bestaetigt.mapValues { "\($0.build.map(String.init) ?? "-")/\($0.anschluss)/\($0.schreibweg)" },
                 "einstellungen": e, "kann_undo": m.undoManager.canUndo, "kann_redo": m.undoManager.canRedo, "undo_titel": m.undoManager.undoActionName] as [String: Any]
+    }
+
+    func blattArtText() -> String {
+        switch m.blatt { case .schreiben: if case .voll(let g) = m.blattArtOffen { return "voll:" + g.rawValue }; return "kurz"; case .format: return "voll:formatieren"; default: return "" }
     }
 
     func menueleiste() -> [[String: Any]] {
