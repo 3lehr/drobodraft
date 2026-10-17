@@ -21,10 +21,17 @@ public struct ErprobtEintrag: Equatable {
 
 public enum ErprobtAktion { case schreiben, formatieren }
 
+/// Was an der Drobo des Nutzers mit einer erprobten Kombination uebereinstimmt, je Merkmal.
+public enum Merkmal: String, CaseIterable { case modell, firmware, anschluss }
+
 public enum ErprobtErgebnis: Equatable {
-    case erprobt
-    /// Erprobte Kombinationen fuer diese Aktion, damit der Nutzer sieht, wofuer es Belege gibt.
-    case nichtErprobt(erprobt: [ErprobtEintrag])
+    /// Alle drei Merkmale stimmen mit diesem Eintrag ueberein.
+    case erprobt(ErprobtEintrag)
+    /// `naechster`: die erprobte Kombination mit den meisten Treffern (Gleichstand: zuerst Modell), `uebereinstimmend`/`abweichend` gelten gegen sie.
+    /// `erprobt`: alle erprobten Kombinationen fuer diese Aktion, damit der Nutzer sieht, wofuer es Belege gibt.
+    case nichtErprobt(erprobt: [ErprobtEintrag], naechster: ErprobtEintrag?, uebereinstimmend: Set<Merkmal>, abweichend: Set<Merkmal>)
+
+    public var istErprobt: Bool { if case .erprobt = self { return true }; return false }
 }
 
 /// Kabel-iSCSI: nur gelesen, Schreiben NICHT erprobt. USB/FireWire an der DroboPro: nie gemessen.
@@ -40,11 +47,20 @@ func normalisiere(_ modell: String) -> String {
     return m
 }
 
-/// Modell und Firmware-Build kommen aus Seite 0x08 (DroboStatus). Build unbekannt (nil) = nicht erprobt.
+/// Modell und Firmware-Build kommen aus Seite 0x08 (DroboStatus). Build unbekannt (nil) = Firmware weicht ab (nie "erprobt").
 public func erprobt(modell: String, build: Int?, anschluss: Anschluss, aktion: ErprobtAktion) -> ErprobtErgebnis {
     let fuerAktion = erprobteDrobos.filter { aktion == .schreiben ? $0.schreiben : $0.formatieren }
-    if let b = build, fuerAktion.contains(where: { $0.modell == normalisiere(modell) && $0.firmwareBuild == b && $0.anschluss == anschluss }) { return .erprobt }
-    return .nichtErprobt(erprobt: fuerAktion)
+    func treffer(_ e: ErprobtEintrag) -> Set<Merkmal> {
+        var s = Set<Merkmal>()
+        if e.modell == normalisiere(modell) { s.insert(.modell) }
+        if let b = build, e.firmwareBuild == b { s.insert(.firmware) }
+        if e.anschluss == anschluss { s.insert(.anschluss) }
+        return s
+    }
+    if let e = fuerAktion.first(where: { treffer($0).count == Merkmal.allCases.count }) { return .erprobt(e) }
+    let best = fuerAktion.max { (treffer($0).count, treffer($0).contains(.modell) ? 1 : 0) < (treffer($1).count, treffer($1).contains(.modell) ? 1 : 0) }
+    let ok = best.map(treffer) ?? []
+    return .nichtErprobt(erprobt: fuerAktion, naechster: best, uebereinstimmend: ok, abweichend: Set(Merkmal.allCases).subtracting(ok))
 }
 
 // MARK: Anschluss zur Laufzeit
