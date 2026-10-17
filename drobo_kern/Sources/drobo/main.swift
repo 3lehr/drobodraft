@@ -165,10 +165,8 @@ do {
         guard let l = opt("--lun").flatMap(Int.init) else { hilfe() }
         try iscsiEinhaengen(host: h, lun: l, schreiben: flag("--write"), ziel: opt("--target"), ort: opt("--mountpoint"), sicherung: e.sicherungOrt.isEmpty ? nil : (e.sicherungOrt, e.sicherungAnzahl),
                             ohneSicherung: flag("--no-backup"), meldung: { print($0) })
-    case "iscsi-lunsize":     // DroboPro-Testgeraet: LUN-Groesse (TiB) aendern. Trockenlauf ohne --execute; alle Volumes vorher aushaengen.
-        let env = ProcessInfo.processInfo.environment
-        guard let h = env["DROBO_ISCSI_HOST"], !h.isEmpty, let t = opt("--tib").flatMap(Int.init), let w = env["DROBO_TESTDIR"], !w.isEmpty else { throw Fehler.eingabe("set DROBO_ISCSI_HOST and DROBO_TESTDIR, give --tib N") }
-        try iscsiLunGroesse(host: h, port: env["DROBO_ISCSI_PORT"].flatMap { UInt16($0) } ?? 3260, tib: t, ausfuehren: flag("--execute"), sicherungsordner: w + "/lunsize", meldung: { print($0); fflush(stdout) })
+    case "iscsi-lunsize":     // GESPERRT (EA-Systembefehl startet die DroboPro neu, gemessen 2026-10-17): verweigert ohne Netzkontakt.
+        try iscsiLunGroesse()
     case "iscsi-luns":      // alle LUNs: Groesse, Schema (Seite 07), HFS+-Partition, Einhaengung
         guard let h = opt("--host") ?? ProcessInfo.processInfo.environment["DROBO_ISCSI_HOST"] else { hilfe() }
         let mnt = Set(iscsiEingehaengteLuns())
