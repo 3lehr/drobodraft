@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """iSCSI-Pruefziel ueber Abbilddateien (nur Tests, nie ein Geraet). Bildet das gemessene Verhalten einer DroboPro nach:
-Login braucht zwei Runden in der Sicherheitsphase (erste Antwort ohne T), MODE SENSE(10) 5A/3A mit Allokationslaenge > 512 wird nicht
+Login braucht zwei Runden in der Sicherheitsphase (erste Antwort ohne T), MODE SENSE(10) 5A/3A mit anderer Allokationslaenge als Kopf+4 wird nicht
 beantwortet, Seiten 33/35 ebenfalls nicht, InitialR2T=Yes, ImmediateData=No, MaxBurstLength=524288.
 Aufruf: python3 -I iscsi_ziel.py --image LUN0.img [--image LUN1.img] --log LOG.jsonl [Fehlerinjektion]
 Gibt "PORT <n>" auf stdout aus, sobald es lauscht. Jeder Befehl landet als JSON-Zeile im Log (Pruefstand sieht, was das Ziel wirklich erreichte).
@@ -23,7 +23,7 @@ MODESENSE = {  # gemessen an einer DroboPro (Seite 08 ist synthetisch: das Origi
     0x05: "7a0500266ad30546080044726f626f50726f000000000000000000000000000000000000000000000000",
     0x30: "7a300900555f00000000000000",
 }
-EXAKT = {0x03: 0x360, 0x04: 0x9D, 0x05: 0x2A, 0x07: 0x9D, 0x30: 0x0D}
+EXAKT = {0x01: 28, 0x02: 36, 0x03: 581, 0x04: 157, 0x05: 42, 0x06: 6, 0x07: 157, 0x08: 314, 0x09: 16, 0x30: 13}   # Kopflaenge + 4, gemessen
 a = argparse.ArgumentParser()
 a.add_argument("--image", action="append", required=True)
 a.add_argument("--log", required=True)
@@ -159,7 +159,7 @@ def scsi(v, h, imm):
     elif op == 0x5A and cdb[2] == 0x3A:
         al = (cdb[7] << 8) | cdb[8]
         if cdb[3] in EXAKT and al != EXAKT[cdb[3]]: return log(ereignis="verschluckt", grund="modesense-laenge", alloc=al, sub=cdb[3])
-        if (al > 512 and cdb[3] not in EXAKT) or cdb[3] not in MODESENSE: return log(ereignis="verschluckt", grund="modesense", alloc=al, sub=cdb[3])
+        if cdb[3] not in MODESENSE: return log(ereignis="verschluckt", grund="modesense", alloc=al, sub=cdb[3])
         v.datain(itt, lun, bytes.fromhex(MODESENSE[cdb[3]])[:al], exp)
     elif op == 0x88:
         lba, cnt = struct.unpack(">QI", cdb[2:14])

@@ -7,13 +7,21 @@ final class NetzTests: XCTestCase {
 
     func testGateExakteLaengen() {
         func cdb(_ sub: UInt8, _ al: Int) -> [UInt8] { [0x5A, 0x08, 0x3A, sub, 0, 0, 0, UInt8(al >> 8), UInt8(al & 0xff), 0] }
-        for (sub, n) in ISCSISitzung.modeSenseExakt { XCTAssertNil(ISCSISitzung.verbot(cdb: cdb(sub, n), schreiben: 0, lesen: n), "sub \(sub)"); XCTAssertNotNil(ISCSISitzung.verbot(cdb: cdb(sub, n - 1), schreiben: 0, lesen: n - 1)); XCTAssertNotNil(ISCSISitzung.verbot(cdb: cdb(sub, n + 1), schreiben: 0, lesen: n + 1)) }
-        XCTAssertNotNil(ISCSISitzung.verbot(cdb: cdb(0x04, 512), schreiben: 0, lesen: 512), "04 braucht genau 157")
-        XCTAssertNotNil(ISCSISitzung.verbot(cdb: cdb(0x03, 4096), schreiben: 0, lesen: 4096))
-        for al in [4, 8, 512, 864, 868, 869, 872, 876, 1308] { XCTAssertNotNil(ISCSISitzung.verbot(cdb: cdb(0x35, al), schreiben: 0, lesen: al), "35 an der DroboPro nie senden (Messbefund 2026-10-17), Laenge \(al)") }
-        XCTAssertNil(ISCSISitzung.modeSenseExakt[0x35]); XCTAssertFalse(ISCSISitzung.modeSenseUnterseiten.contains(0x35))
-        XCTAssertNil(ISCSISitzung.verbot(cdb: cdb(0x01, 512), schreiben: 0, lesen: 512), "bisheriges Verhalten bleibt")
+        // Tabelle = gemessene Kopflaenge + 4 (Messbefund 2026-10-17); hier bewusst NICHT aus der Quelle abgeleitet
+        let soll: [UInt8: Int] = [0x01: 28, 0x02: 36, 0x03: 581, 0x04: 157, 0x05: 42, 0x06: 6, 0x07: 157, 0x08: 314, 0x09: 16, 0x30: 13]
+        XCTAssertEqual(ISCSISitzung.modeSenseExakt, soll)
+        for (sub, n) in soll {
+            XCTAssertNil(ISCSISitzung.verbot(cdb: cdb(sub, n), schreiben: 0, lesen: n), "sub \(sub) n")
+            XCTAssertNotNil(ISCSISitzung.verbot(cdb: cdb(sub, n - 1), schreiben: 0, lesen: n - 1), "sub \(sub) n-1")
+            XCTAssertNotNil(ISCSISitzung.verbot(cdb: cdb(sub, n + 1), schreiben: 0, lesen: n + 1), "sub \(sub) n+1")
+            XCTAssertNotNil(ISCSISitzung.verbot(cdb: cdb(sub, 512), schreiben: 0, lesen: 512), "keine 512-Vorgabe mehr, sub \(sub)")
+            XCTAssertNotNil(ISCSISitzung.verbot(cdb: cdb(sub, 4096), schreiben: 0, lesen: 4096), "4096 haengt die DroboPro, sub \(sub)")
+        }
+        XCTAssertNotNil(ISCSISitzung.verbot(cdb: cdb(0x03, 864), schreiben: 0, lesen: 864), "864 fuer Seite 03 war falsch und haengte die DroboPro")
+        XCTAssertNotNil(ISCSISitzung.verbot(cdb: cdb(0x01, 4096), schreiben: 0, lesen: 4096))
+        for sub: UInt8 in [0x35, 0x33, 0x00, 0x0A, 0x31, 0xFF] { for al in [4, 8, 13, 512, 864, 876, 1308] { XCTAssertNotNil(ISCSISitzung.verbot(cdb: cdb(sub, al), schreiben: 0, lesen: al), "Seite \(sub) nie senden, Laenge \(al)") } }
         XCTAssertNotNil(ISCSISitzung.verbot(cdb: cdb(0x31, 100), schreiben: 0, lesen: 100))
+        XCTAssertNotNil(ISCSISitzung.verbot(cdb: [0x5A, 0x08, 0x3B, 0x01, 0, 0, 0, 0, 28, 0], schreiben: 0, lesen: 28), "nur Seite 0x3A")
     }
 
     func testSchaechteAusDroboProSeite03() throws {

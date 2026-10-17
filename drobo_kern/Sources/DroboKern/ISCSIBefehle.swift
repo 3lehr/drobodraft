@@ -5,14 +5,12 @@ import Foundation
 public struct SCSIAntwort { public var status: UInt8; public var daten: [UInt8]; public var sense: [UInt8] }
 
 extension ISCSISitzung {
-    /// Seiten 0x3A, die bei der DroboPro gemessen antworten (33 ohne Antwort an der DroboPro, aber lesend ungefaehrlich -> erlaubt, mit Zeitgrenze; 35 siehe unten: verboten).
-    public static let modeSenseUnterseiten: Set<UInt8> = [0x01, 0x02, 0x06, 0x08, 0x09, 0x33]
-    /// Seiten, die die DroboPro NUR mit genau passender Allokationslaenge beantwortet (gemessen: 04/07 bei 512 keine Antwort, bei 157 ja; Laengen aus drobo-utils/Recon).
-    public static let modeSenseExakt: [UInt8: Int] = [0x03: 0x360, 0x04: 0x9D, 0x05: 0x2A, 0x07: 0x9D, 0x30: 0x0D]
-    /// Seite 0x35 (SlotInfo2) wird NIE gesendet: Messbefund 2026-10-17, die DroboPro antwortet bei keiner Allokationslaenge (4, 8, 864, 868, 869, 872, 876 -> keine Antwort,
-    /// "iSCSI timeout: no data within 10.0 s"). Diese Sitzung gibt es nur fuer die DroboPro; Seite 03 (864) liefert Schaechte, Temperatur/Restleben gibt es dort nicht.
-    /// Allokationslaenge 4096 beantwortet die DroboPro nicht (Sitzung haengt) -> Gate begrenzt auf 512.
-    public static let modeSenseMax = 512
+    /// MODE SENSE(10) 5A/3A: JEDE Seite nur mit genau dieser Allokationslaenge (= Kopflaenge + 4). Messbefund DroboPro 2026-10-17: eine Laenge, die sie nicht mag,
+    /// wird nicht beantwortet UND haengt danach ihre gesamte Befehlsverarbeitung (Login geht, kein SCSI-Befehl mehr, bis zum Neustart). Ausgeloest bei 4096 (Seite 01),
+    /// 864 (Seite 03; Kopf `7a03 0241` = 581) und Seite 35 (jede Laenge). Darum keine 512-Vorgabe, keine Seite ausserhalb dieser Tabelle (33, 35 ... werden nie gesendet).
+    /// Laengen aus den gemessenen Kopfbytes: 01: 0x18, 02: 0x20, 03: 0x241, 04/07: 0x99 (Seite 07 antwortet mit Kopf 7a04 0131, wird trotzdem mit 157 abgefragt),
+    /// 05: 0x26, 06: 0x02, 08: 0x136, 09: 0x0c, 30: 0x09.
+    public static let modeSenseExakt: [UInt8: Int] = [0x01: 28, 0x02: 36, 0x03: 581, 0x04: 157, 0x05: 42, 0x06: 6, 0x07: 157, 0x08: 314, 0x09: 16, 0x30: 13]
 
     /// nil = erlaubt, sonst der Ablehnungsgrund. Rein, ohne Netz; das Gate ruft diese Funktion auf.
     public static func verbot(cdb: [UInt8], schreiben: Int, lesen: Int) -> String? {
@@ -38,9 +36,8 @@ extension ISCSISitzung {
         case 0x5A:
             if let f = laenge(10) { return f }
             let al = Int(cdb[7]) << 8 | Int(cdb[8])
-            if cdb[2] == 0x3A, let genau = modeSenseExakt[cdb[3]] { return al == genau ? nil : "0x5a: sub-page \(cdb[3]) needs allocation length exactly \(genau)" }
-            if cdb[2] != 0x3A || !modeSenseUnterseiten.contains(cdb[3]) { return "0x5a: only page 0x3A, sub-pages \(modeSenseUnterseiten.union(modeSenseExakt.keys).sorted())" }
-            if al > modeSenseMax { return "0x5a: allocation length above \(modeSenseMax) is not answered by the DroboPro" }
+            guard cdb[2] == 0x3A, let genau = modeSenseExakt[cdb[3]] else { return "0x5a: only page 0x3A, sub-pages \(modeSenseExakt.keys.sorted())" }
+            if al != genau { return "0x5a: sub-page \(cdb[3]) needs allocation length exactly \(genau)" }
         default: return "opcode \(hex) is not on the allowlist"
         }
         return nil
@@ -152,7 +149,7 @@ extension ISCSISitzung {
     }
 
     public func modeSense3A(lun: Int, unterseite: UInt8) throws -> [UInt8] {
-        let n = Self.modeSenseExakt[unterseite] ?? Self.modeSenseMax
+        guard let n = Self.modeSenseExakt[unterseite] else { throw ISCSIFehler.verboten("MODE SENSE sub-page \(unterseite) is not in the exact-length table") }
         return try gut(befehl(lun: lun, cdb: [0x5A, 0x08, 0x3A, unterseite, 0, 0, 0, UInt8(n >> 8), UInt8(n & 0xff), 0], lesen: n))
     }
 
