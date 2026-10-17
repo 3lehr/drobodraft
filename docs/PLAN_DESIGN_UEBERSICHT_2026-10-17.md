@@ -41,3 +41,10 @@ Seitenleiste: Drobos (Zustandspunkt je Drobo: verbunden/eingehängt/Warnung)
 
 ## Reihenfolge
 Nach der Netzwerk-Ansicht (Agent, selbe Dateien). Dann: (1) Zustandsmodell im Kern (eine Funktion „Gesamtzustand“ aus 09/02/30/Prüfung, getestet), (2) Übersicht + Gerätebild, (3) Seitenleiste/Navigation, (4) Statusleiste/Übersetzung, (5) Tempo. Erfolg: Übersicht zeigt bei der Drobo 5C mit Stand 16.10. „Platz wird knapp“ + Schacht 1; neue Bildschirmfotos ersetzen docs/screens.
+
+## Ergänzung Betreiber (2026-10-17T06:29:50+0200)
+Wörtlich: „Können wir uns bei Design am Original drobo Layout orientieren, und ebenfalls die [Drobo] bildlich darstellen, dann könnten wir Zusatzinformationen wie Temperatur … auch direkt in der dargestellten drobo Laufwerk anzeigen lassen“.
+- Mitte: eigene, gezeichnete Vorderansicht (SwiftUI-Formen, kein Drobo-Logo, keine Grafiken aus dem Original — Urheberrecht), 5 oder 8 Schächte, Schacht 1 oben, Statuslampe je Schacht (Farbe + Symbol + Text), blaue Füllstandsleiste unten wie am Gerät.
+- Je Platte im Bild: Kapazität; bei Zeigen/Antippen/VoiceOver: Modell, Temperatur, Restlebensdauer, Fehlerzähler (Seite 0x35 SlotInfo2, 108 B je Schacht; 5C gemessen, DroboPro mit Länge 512 ohne Antwort → exakte Länge messen wie bei 04/07). Einheiten Temperatur/Lebensdauer laut Recon nur Vermutung → erst am Gerät gegen einen bekannten Wert eichen, bis dahin ohne Einheit anzeigen.
+- Rechts: Aufteilung belegt / frei / für Schutz reserviert (Seite 02), Schutzzustand und eine Handlungsempfehlung.
+- Barrierefreiheit: Bild ist ein zusammenhängendes Element mit Kinder-Elementen je Schacht (VoiceOver liest „Schacht 1, gelb, 16 TB, …“); Tastatur-Fokus je Schacht.
