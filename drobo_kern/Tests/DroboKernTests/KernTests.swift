@@ -5,6 +5,11 @@ import XCTest
 /// Die Freigabeliste des Betreibers wird nicht benutzt (Tests haben eine eigene Datei); tearDown belegt, dass sie byteweise unveraendert ist.
 final class KernTests: XCTestCase {
     static let betreiberListe = NSHomeDirectory() + "/Library/Containers/\(modulKennung)/Data/freigabe.json"
+    /// Der Integrationstest schreibt in die ECHTE Freigabeliste des Betreibers (das Modul liest nur diesen Pfad, ein eigener Container ist nicht moeglich). Darum nur auf ausdruecklichen Wunsch:
+    /// DROBO_INTEGRATION_ECHT=1 und nur, wenn gerade nichts Echtes eingehaengt ist. Sonst wird die echte Datei weder gelesen noch geschrieben.
+    static let integration = Kern.umgebung("DROBO_INTEGRATION_ECHT") == "1"
+    static func listeStand(_ pfad: String) -> String { let a = try? FileManager.default.attributesOfItem(atPath: pfad); return "\(a?[.size] ?? -1)/\(String(describing: a?[.modificationDate]))" }
+    var vorherStand = ""
     var vorher: Data?
     var dir = ""
     var geraete: [String] = []      // von uns angehaengte Abbild-Geraete
@@ -12,7 +17,8 @@ final class KernTests: XCTestCase {
     var erlaubt = false             // Integrationstest schreibt absichtlich in die echte Liste
 
     override func setUpWithError() throws {
-        vorher = FileManager.default.contents(atPath: Self.betreiberListe)
+        vorher = Self.integration ? FileManager.default.contents(atPath: Self.betreiberListe) : nil
+        vorherStand = Self.listeStand(Self.betreiberListe)      // nur Attribute, kein open()
         // Abbilder und Sicherungsorte brauchen ein Laufwerk, das nicht das Startvolume ist (sonst lehnt die Sicherung den Ort ab).
         guard let base = Kern.umgebung("DROBO_TESTDIR") else { throw XCTSkip("DROBO_TESTDIR nicht gesetzt: Ordner auf einem Nicht-Startvolume fuer Test-Abbilder") }
         dir = "\(base)/\(UUID().uuidString)"
@@ -24,7 +30,8 @@ final class KernTests: XCTestCase {
         for g in geraete.reversed() { ausfuehren("/usr/bin/hdiutil", ["detach", g, "-force"]) }
         try? FileManager.default.removeItem(atPath: dir)
         if erlaubt, let v = vorher { try? v.write(to: URL(fileURLWithPath: Self.betreiberListe)) }   // Test hat sie absichtlich veraendert: zurueckstellen, danach belegen
-        XCTAssertEqual(FileManager.default.contents(atPath: Self.betreiberListe), vorher, "Betreiber-Freigabeliste nicht unveraendert")
+        if Self.integration { XCTAssertEqual(FileManager.default.contents(atPath: Self.betreiberListe), vorher, "Betreiber-Freigabeliste nicht unveraendert") }
+        else { XCTAssertEqual(Self.listeStand(Self.betreiberListe), vorherStand, "ohne DROBO_INTEGRATION_ECHT darf der Test die echte Freigabeliste nicht beruehren (Groesse/Aenderungszeit)") }
     }
 
     // MARK: Hilfen
@@ -295,6 +302,7 @@ final class KernTests: XCTestCase {
 
     /// Abbild OHNE Marker: das Modul entscheidet nur nach seiner Freigabeliste (echte Datei im Container; sie wird hier absichtlich ergaenzt und im tearDown byteweise zurueckgestellt).
     func testEinhaengenNurlesenDurchHfsdroboMitEchterFreigabe() throws {
+        try XCTSkipUnless(Self.integration, "schreibt in die echte Freigabeliste: nur mit DROBO_INTEGRATION_ECHT=1 (und nichts Echtes eingehaengt)")
         try XCTSkipUnless(modulStatus().freigeschaltet, "Modul nicht freigeschaltet")
         try XCTSkipUnless(vorher != nil, "Container fuer die Shell gesperrt (App-Daten-Schutz, kTCCServiceSystemPolicyAppData): Liste nur ueber den Hilfsdienst les-/schreibbar -> Ersatz: Integrationslauf CLI+Dienst (signierte CLI)")
         erlaubt = true
@@ -310,5 +318,17 @@ final class KernTests: XCTestCase {
         XCTAssertThrowsError(try k.einhaengen(modus: .schreiben, ort: o)) { XCTAssertEqual(($0 as? Fehler)?.code, 11) }
         try k.aushaengen()
         XCTAssertThrowsError(try k.einhaengen(modus: .schreiben, ort: ort())) { XCTAssertEqual(($0 as? Fehler)?.code, 13) }   // Eintrag nurlesen
+    }
+}
+
+/// Rotprobe fuer den Wachter oben: auf einer Attrappen-Liste erkennt `listeStand` jede Aenderung (auch Zurueckschreiben desselben Inhalts); eine unberuehrte bleibt gleich.
+final class ListeStandTests: XCTestCase {
+    func testStandAendertSichBeiSchreibenAuchMitGleichemInhalt() throws {
+        let p = NSTemporaryDirectory() + "liste-\(UUID().uuidString).json"; defer { try? FileManager.default.removeItem(atPath: p) }
+        try "[]".write(toFile: p, atomically: true, encoding: .utf8)
+        let a = KernTests.listeStand(p); XCTAssertEqual(KernTests.listeStand(p), a, "unberuehrt = gleich")
+        Thread.sleep(forTimeInterval: 0.05); try "[]".write(toFile: p, atomically: true, encoding: .utf8)
+        XCTAssertNotEqual(KernTests.listeStand(p), a, "Schreiben (selber Inhalt) faellt auf")
+        XCTAssertEqual(KernTests.listeStand(p + ".fehlt"), "-1/nil")
     }
 }
