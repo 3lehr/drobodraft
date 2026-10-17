@@ -7856,6 +7856,70 @@
           }
         }
       }
+    },
+    "DroboPro: Standby und Neustart": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboPro: Standby und Neustart"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DroboPro: standby and restart"
+          }
+        }
+      }
+    },
+    "Standby (die Betriebslampe leuchtet orange) ist normal: Die DroboPro schaltet sich nach Ruhe selbst in den Standby. Beim Einhängen in DroboDraft wacht sie von allein auf. Die erste Anmeldung danach darf bis zu 30 Sekunden dauern; die App wartet so lange.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standby (die Betriebslampe leuchtet orange) ist normal: Die DroboPro schaltet sich nach Ruhe selbst in den Standby. Beim Einhängen in DroboDraft wacht sie von allein auf. Die erste Anmeldung danach darf bis zu 30 Sekunden dauern; die App wartet so lange."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standby (the power light is orange) is normal: the DroboPro puts itself into standby after being idle. Mounting it in DroboDraft wakes it up on its own. The first sign-in afterwards may take up to 30 seconds; the app waits that long."
+          }
+        }
+      }
+    },
+    "Einen Knopf für Neustart, Standby oder Blinken gibt es in der App nicht: Solche Systembefehle lösen bei der DroboPro einen Neustart aus, der Minuten dauert. Reagiert die DroboPro danach gar nicht mehr, hilft nur stromlos machen, siehe „Wenn die DroboPro nicht reagiert“.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einen Knopf für Neustart, Standby oder Blinken gibt es in der App nicht: Solche Systembefehle lösen bei der DroboPro einen Neustart aus, der Minuten dauert. Reagiert die DroboPro danach gar nicht mehr, hilft nur stromlos machen, siehe „Wenn die DroboPro nicht reagiert“."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The app has no button for restart, standby or blinking: system commands like these make the DroboPro restart, which takes minutes. If the DroboPro does not respond at all afterwards, the only remedy is to cut its power; see “When the DroboPro does not respond”."
+          }
+        }
+      }
+    },
+    "Standby": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standby"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standby"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

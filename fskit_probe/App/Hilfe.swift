@@ -24,6 +24,10 @@ struct HilfeAnsicht: View {
                     Text("Anzeichen: Die DroboPro ist im Netzwerk erreichbar, aber die App bekommt keine Antwort; meist leuchten alle Schachtlampen rot und die Platten sind still. Die App fragt dann nicht weiter nach, bis du „Erneut prüfen“ wählst.")
                     Text("Abhilfe: Drobo über den Knopf ausschalten, Netzkabel ziehen, ein bis zwei Minuten warten, wieder einstecken und einschalten. Danach kann es bis zu 30 Minuten dauern, bis alle Lampen grün leuchten. In dieser Zeit keine Platten ziehen oder umstecken.")
                 }
+                Karte(titel: "DroboPro: Standby und Neustart") {
+                    Text("Standby (die Betriebslampe leuchtet orange) ist normal: Die DroboPro schaltet sich nach Ruhe selbst in den Standby. Beim Einhängen in DroboDraft wacht sie von allein auf. Die erste Anmeldung danach darf bis zu 30 Sekunden dauern; die App wartet so lange.")
+                    Text("Einen Knopf für Neustart, Standby oder Blinken gibt es in der App nicht: Solche Systembefehle lösen bei der DroboPro einen Neustart aus, der Minuten dauert. Reagiert die DroboPro danach gar nicht mehr, hilft nur stromlos machen, siehe „Wenn die DroboPro nicht reagiert“.")
+                }
                 Karte(titel: "Mehrere Rechner") {
                     Text("Die DroboPro gibt über iSCSI die rohe Platte heraus, nicht einen Ordner. Jede virtuelle Festplatte darf nur ein Rechner gleichzeitig einhängen; die DroboPro lässt außerdem nur einen Rechner zur Zeit zu. Bei „von einem anderen Rechner benutzt“ den anderen Rechner zuerst aushängen.")
                     Text("Gemeinsame Nutzung ist nur über eine Freigabe (SMB) von einem Rechner aus möglich: Dieser Rechner hängt die Festplatte ein und gibt den Ordner im Netzwerk frei.")
