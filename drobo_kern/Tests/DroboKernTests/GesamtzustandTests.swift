@@ -8,7 +8,7 @@ final class GesamtzustandTests: XCTestCase {
     /// Synthetischer Status: nur Prozent steuern (Bits 0, alle Schaechte gruen), Gesamt 1000 -> belegt = Prozent * 10.
     func prozent(_ p: Int, bits: UInt32 = 0, schaechte: [SchachtFarbe] = [.gruen, .gruen]) -> DroboStatus {
         let k = DroboKapazitaet(frei: UInt64(1000 - p * 10), benutzt: UInt64(p * 10), gesamtGeschuetzt: 1000, gesamtUngeschuetzt: 1500)
-        let sc = schaechte.enumerated().map { Schacht(nr: $0.offset + 1, farbe: $0.element, fehler: 0, modell: "X", kapazitaet: 1, temperatur: nil, restleben: nil) }
+        let sc = schaechte.enumerated().map { Schacht(nr: $0.offset + 1, farbe: $0.element, fehler: 0, modell: "X", kapazitaet: 750, temperatur: nil, restleben: nil) }
         return DroboStatus(zeit: Date(), ok: true, fehler: "", modell: "T", firmware: "", firmwareBuild: nil, protokoll: nil, schaechte: sc, kapazitaet: k, statusBits: bits,
                            relayout: 0, meldungen: [], schwere: .ok, unbelegt: [:])
     }
@@ -72,7 +72,21 @@ final class GesamtzustandTests: XCTestCase {
     }
 
     func testAufteilungBelegtFreiReserviert() {
-        let g = gesamtzustand(prozent(40)); XCTAssertEqual(g.belegt, 400); XCTAssertEqual(g.frei, 600); XCTAssertEqual(g.reserviert, 500)
+        let g = gesamtzustand(prozent(40)); XCTAssertEqual(g.belegt, 400); XCTAssertEqual(g.frei, 600); XCTAssertEqual(g.plattenGesamt, 1500); XCTAssertEqual(g.reserviert, 500)
+    }
+
+    /// Betreiberfrage 2026-10-17: 8 TB + 5 x 4 TB + 3 TB ergibt mehr als 16 TB. Echte DroboPro: Platten (Seite 03) 31,01 TB, geschuetzt (Seite 02 +0x14) 17,89 TB -> 13,12 TB fuer den Schutz.
+    func testAufteilungEchteDroboPro_PlattenMinusGeschuetzt() throws {
+        let q = try String(contentsOfFile: #filePath.replacingOccurrences(of: "DroboKernTests/GesamtzustandTests.swift", with: "iscsi_ziel.py"), encoding: .utf8)
+        func hex(_ s: String) -> [UInt8] { let h = q.components(separatedBy: "\(s): \"")[1].components(separatedBy: "\"")[0]; return stride(from: 0, to: h.count, by: 2).map { UInt8(h[h.index(h.startIndex, offsetBy: $0)..<h.index(h.startIndex, offsetBy: $0 + 2)], radix: 16)! } }
+        var d = DroboFixture.dict(); d["p3A_02"] = Data(hex("0x02"))
+        var s = try XCTUnwrap(decodiereDroboStatus(d)); s.schaechte = droboProSchaechte(hex("0x03"))
+        let g = gesamtzustand(s)
+        XCTAssertEqual(Double(g.plattenGesamt) / 1e12, 31.01, accuracy: 0.005)
+        XCTAssertEqual(Double(s.kapazitaet!.gesamtGeschuetzt) / 1e12, 17.89, accuracy: 0.005)
+        XCTAssertEqual(Double(g.reserviert) / 1e12, 13.11, accuracy: 0.005, "Platten gesamt - geschuetzt")
+        XCTAssertEqual(g.plattenGesamt, g.belegt + g.frei + g.reserviert, "Balken: belegt | frei | Schutz summieren sich zu den Platten")
+        var o = s; o.schaechte = []; XCTAssertEqual(gesamtzustand(o).reserviert, 0, "ohne Schachtdaten keine Zahl erfinden")
     }
 
     /// Lampencodes der Schaechte (drobo-utils _ledstatus): alle acht und ein unbekannter.

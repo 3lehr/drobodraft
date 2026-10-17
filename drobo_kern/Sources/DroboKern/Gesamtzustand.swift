@@ -26,17 +26,22 @@ public struct Gesamtzustand: Equatable {
     public var belegtProzent: Int? { belegtAnteil.map { Int(($0 * 100 + 1e-9).rounded(.down)) } }
     /// Blaue Fuellstands-LEDs wie am Geraet: je 10 % eine, ab > 0 % mindestens eine, hoechstens 10.
     public var ledAnzahl: Int { guard let a = belegtAnteil, a > 0 else { return 0 }; return min(10, max(1, Int((a * 10).rounded()))) }
-    public var belegt: UInt64 = 0, frei: UInt64 = 0, reserviert: UInt64 = 0
+    public var belegt: UInt64 = 0, frei: UInt64 = 0
+    /// Summe der Plattenkapazitaeten (Seiten 03/35), 0 ohne Schachtdaten.
+    public var plattenGesamt: UInt64 = 0
+    /// Fuer den Schutz verwendet = Platten gesamt - gesamt geschuetzt (Seite 02 +0x14); 0 ohne Schachtdaten oder wenn die Platten nicht mehr als der geschuetzte Wert sind.
+    public var reserviert: UInt64 = 0
 }
 
 public func gesamtzustand(_ st: DroboStatus, gelbProzent: Int = 85, rotProzent: Int = 95, pruefungOK: Bool? = nil) -> Gesamtzustand {
     var stufe = st.schwere
     var belegt: UInt64 = 0, frei: UInt64 = 0, reserviert: UInt64 = 0
+    let platten = st.schaechte.reduce(UInt64(0)) { $0 + $1.kapazitaet }
     var anteil: Double?
     var platzRot = false, platzGelb = false
     if let k = st.kapazitaet, k.gesamtGeschuetzt > 0 {
         frei = min(k.frei, k.gesamtGeschuetzt); belegt = k.gesamtGeschuetzt - frei
-        reserviert = k.gesamtUngeschuetzt > k.gesamtGeschuetzt ? k.gesamtUngeschuetzt - k.gesamtGeschuetzt : 0
+        reserviert = platten > k.gesamtGeschuetzt ? platten - k.gesamtGeschuetzt : 0
         anteil = Double(belegt) / Double(k.gesamtGeschuetzt)
         // Ganzzahlig statt Double: Grenzwert (Schwelle) muss exakt greifen.
         platzRot = belegt * 100 >= UInt64(max(rotProzent, 0)) * k.gesamtGeschuetzt
@@ -68,5 +73,5 @@ public func gesamtzustand(_ st: DroboStatus, gelbProzent: Int = 85, rotProzent: 
 
     var schutz: Schutz?
     if st.statusBits != nil { schutz = bits & 0x40 != 0 ? .keiner : (bits & 0x200 != 0 ? .wirdHergestellt : .aktiv) }
-    return Gesamtzustand(stufe: stufe, schlagzeile: schlagzeile, empfehlung: empfehlung, schutz: schutz, belegtAnteil: anteil, belegt: belegt, frei: frei, reserviert: reserviert)
+    return Gesamtzustand(stufe: stufe, schlagzeile: schlagzeile, empfehlung: empfehlung, schutz: schutz, belegtAnteil: anteil, belegt: belegt, frei: frei, plattenGesamt: platten, reserviert: reserviert)
 }
