@@ -42,7 +42,7 @@ final class IscsiGeraet: Geraet {
         guard url.scheme?.lowercased() == "iscsi", let c = URLComponents(url: url, resolvingAgainstBaseURL: false), let host = c.host, !host.isEmpty else { throw posixError(EINVAL) }
         let teile = c.path.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
         guard teile.count == 2, teile[0].hasPrefix("iqn."), let lun = Int(teile[1]), lun >= 0, lun < 256 else { throw posixError(EINVAL) }
-        let s = try ISCSISitzung(host: host, port: UInt16(c.port ?? 3260), ziel: teile[0], zeitgrenze: 30)
+        let s = try ISCSISitzung(host: host, port: UInt16(c.port ?? 3260), ziel: teile[0], zeitgrenze: 30, zweck: "mount-lun\(lun)")
         guard try s.kapazitaet(lun: lun).blockgroesse == 512 else { throw posixError(ENOTSUP) }
         guard let p = try GPT.ersteHFS(lies: { try s.lesen(lun: lun, lba: $0, bloecke: $1) }) else { throw posixError(ENODEV) }
         return IscsiGeraet(sitzung: s, lun: lun, partition: p, name: "iscsi-lun\(lun)")

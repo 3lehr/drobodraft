@@ -5,7 +5,8 @@ beantwortet, Seiten 33/35 ebenfalls nicht, InitialR2T=Yes, ImmediateData=No, Max
 Aufruf: python3 -I iscsi_ziel.py --image LUN0.img [--image LUN1.img] --log LOG.jsonl [Fehlerinjektion]
 Gibt "PORT <n>" auf stdout aus, sobald es lauscht. Jeder Befehl landet als JSON-Zeile im Log (Pruefstand sieht, was das Ziel wirklich erreichte).
 Fehlerinjektion: --drop-after N (Verbindung beim (N+1). SCSI-Befehl ohne Antwort schliessen), --swallow K (Befehl Nr. K nicht beantworten),
---r2t-chunk N (R2T in Stuecken von N Byte), --max-seg N (eigene MaxRecvDataSegmentLength, Data-Out darueber -> Verbindung zu).
+--hang-after N (ab dem (N+1). SCSI-Befehl, auf JEDER Verbindung, nie mehr antworten wie die haengende DroboPro; Login und Discovery gehen weiter),
+--reject-other-initiator (Login mit anderem Initiator-Namen als dem ersten mit Status 2/2 ablehnen = Single-Initiator der DroboPro), --r2t-chunk N (R2T in Stuecken von N Byte), --max-seg N (eigene MaxRecvDataSegmentLength, Data-Out darueber -> Verbindung zu).
 DroboPro-Verhalten (gemessen 2026-10-16): ein WRITE ohne Daten im Command-PDU wird nicht beantwortet, kein R2T, Verbindung nach ~1 s zu (die echte DroboPro
 startet dabei neu); hier Log "ABSTURZ write-ohne-immediate". Abschaltbar mit --tolerate-no-immediate."""
 import argparse, json, os, socket, struct, sys, threading
@@ -31,6 +32,8 @@ a.add_argument("--port", type=int, default=0)
 a.add_argument("--iqn", default="iqn.2026-10.local.test:ziel")
 a.add_argument("--drop-after", type=int)
 a.add_argument("--swallow", type=int)
+a.add_argument("--hang-after", type=int)
+a.add_argument("--reject-other-initiator", action="store_true")
 a.add_argument("--r2t-chunk", type=int)
 a.add_argument("--max-seg", type=int, default=65536)
 a.add_argument("--refuse-immediate", action="store_true", help="ImmediateData=No aushandeln (Test des Client-Schutzes)")
@@ -38,6 +41,7 @@ a.add_argument("--tolerate-no-immediate", action="store_true", help="WRITE ohne 
 A = a.parse_args()
 IQN = A.iqn
 loglock = threading.Lock()
+STATE = {"haengt": False, "initiator": None, "befehle": 0}
 
 def log(**k):
     with loglock, open(A.log, "a") as f: f.write(json.dumps(k) + "\n")
@@ -103,7 +107,9 @@ def serve(sock):
                 body = f"TargetName={IQN}\0TargetAddress=127.0.0.1:{sock.getsockname()[1]},1\0".encode()
                 v.senden(0x24, 0x80, data=body, itt=struct.unpack(">I", h[16:20])[0], fields={20: b"\xff\xff\xff\xff"})
             elif op == 0x06:
-                v.senden(0x26, 0x80, itt=struct.unpack(">I", h[16:20])[0]); return
+                log(ereignis="logout", sitzung=sess)
+                if not STATE["haengt"]: v.senden(0x26, 0x80, itt=struct.unpack(">I", h[16:20])[0])
+                return
             elif op == 0x01 and sess == "Normal": scsi(v, h, d)
             elif op == 0x00: v.senden(0x20, 0x80, itt=struct.unpack(">I", h[16:20])[0], fields={20: b"\xff\xff\xff\xff"})
             else: log(ereignis="unerwartet", op=op); return
@@ -117,6 +123,13 @@ def login(v):
         h, d = recv_pdu(v.sock); assert h[0] & 0x3F == 0x03
         k = kv(d); itt = struct.unpack(">I", h[16:20])[0]; csg = (h[1] >> 2) & 3
         if "SessionType" in k: v.sessiontype = k["SessionType"]
+        if csg == 0 and "InitiatorName" in k:
+            log(ereignis="login", isid=bytes(h[8:14]).hex(), initiator=k["InitiatorName"], sitzung=k.get("SessionType"))
+            with loglock:
+                if STATE["initiator"] is None: STATE["initiator"] = k["InitiatorName"]
+                fremd = A.reject_other_initiator and STATE["initiator"] != k["InitiatorName"]
+            if fremd:
+                v.senden(0x23, 0x87, itt=itt, fields={8: h[8:14], 36: bytes([2, 2])}); log(ereignis="abgelehnt", status="0202"); raise Zu()
         if csg == 0:
             runde += 1
             if runde == 1: v.senden(0x23, 0x01, data=b"AuthMethod=None\0", itt=itt, fields={8: h[8:14], 14: bytes([0, v.tsih])})   # T=0, DroboPro-Eigenheit
@@ -135,7 +148,10 @@ def lun_nr(l): return ((l[0] & 0x3F) << 8) | l[1]
 def scsi(v, h, imm):
     itt = struct.unpack(">I", h[16:20])[0]; exp = struct.unpack(">I", h[20:24])[0]; cdb = bytes(h[32:48]); lun = bytes(h[8:16]); n = lun_nr(lun)
     v.nbefehle += 1
-    log(ereignis="befehl", nr=v.nbefehle, op=cdb[0], cdb=cdb.hex(), lun=n, erwartet=exp, flags=h[1])
+    with loglock: STATE["befehle"] += 1; gesamt = STATE["befehle"]
+    log(ereignis="befehl", nr=v.nbefehle, gesamt=gesamt, op=cdb[0], cdb=cdb.hex(), lun=n, erwartet=exp, flags=h[1])
+    if A.hang_after is not None and gesamt > A.hang_after: STATE["haengt"] = True
+    if STATE["haengt"]: return
     if A.drop_after is not None and v.nbefehle > A.drop_after: raise Zu()
     if A.swallow == v.nbefehle: return
     op = cdb[0]
@@ -158,7 +174,7 @@ def scsi(v, h, imm):
         v.datain(itt, lun, struct.pack(">QI", size - 1, 512) + bytes(20), exp)
     elif op == 0x5A and cdb[2] == 0x3A:
         al = (cdb[7] << 8) | cdb[8]
-        if cdb[3] in EXAKT and al != EXAKT[cdb[3]]: return log(ereignis="verschluckt", grund="modesense-laenge", alloc=al, sub=cdb[3])
+        if cdb[3] in EXAKT and al != EXAKT[cdb[3]]: STATE["haengt"] = True; return log(ereignis="verschluckt", grund="modesense-laenge", alloc=al, sub=cdb[3], haengt=True)   # wie die DroboPro: danach keine Antwort mehr
         if cdb[3] not in MODESENSE: return log(ereignis="verschluckt", grund="modesense", alloc=al, sub=cdb[3])
         v.datain(itt, lun, bytes.fromhex(MODESENSE[cdb[3]])[:al], exp)
     elif op == 0x88:

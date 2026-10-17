@@ -323,3 +323,75 @@ final class ISCSITests: XCTestCase {
         XCTAssertNotNil(r3.lanFehler)
     }
 }
+
+/// Schutz der DroboPro-Sitzungen: feste ISID, Logout auch nach Fehler, Bremse bei Haenger. Ziel protokolliert Logins, Logouts und Befehle (Python-Pruefziel).
+extension ISCSITests {
+    func testISIDFestJeZweckUndVerschiedenZwischenZwecken() throws {
+        XCTAssertEqual(ISCSISitzung.isid(maschine: "M", zweck: "status"), ISCSISitzung.isid(maschine: "M", zweck: "status"))
+        XCTAssertNotEqual(ISCSISitzung.isid(maschine: "M", zweck: "status"), ISCSISitzung.isid(maschine: "M", zweck: "mount-lun0"))
+        XCTAssertNotEqual(ISCSISitzung.isid(maschine: "M", zweck: "status"), ISCSISitzung.isid(maschine: "N", zweck: "status"))
+        XCTAssertEqual(ISCSISitzung.isid(maschine: "M", zweck: "x").count, 6); XCTAssertEqual(ISCSISitzung.isid(maschine: "M", zweck: "x")[0], 0x80)
+        let port = try ziel()
+        for z in ["status", "status", "mount-lun1", "format"] {
+            let d = try ISCSISitzung(host: "127.0.0.1", port: port, zeitgrenze: 5); let n = try XCTUnwrap(d.ziele().first?.name); d.abmelden()
+            let s = try ISCSISitzung(host: "127.0.0.1", port: port, ziel: n, zeitgrenze: 5, zweck: z); s.abmelden()
+        }
+        let normal = ereignisse("login").filter { $0["sitzung"] as? String == "Normal" }.compactMap { $0["isid"] as? String }
+        XCTAssertEqual(normal.count, 4)
+        XCTAssertEqual(normal[0], normal[1], "gleicher Zweck, gleiche ISID im Ziel-Log"); XCTAssertEqual(Set(normal).count, 3, "verschiedene Zwecke, verschiedene ISID")
+        XCTAssertEqual(Set(ereignisse("login").compactMap { $0["initiator"] as? String }), [ISCSISitzung.initiatorName(maschine: ISCSISitzung.maschine)], "Initiator-Name ueberall gleich")
+        let a = ISCSISitzung.initiatorName(maschine: "UUID-A")
+        XCTAssertEqual(a, ISCSISitzung.initiatorName(maschine: "UUID-A"), "deterministisch")
+        XCTAssertNotEqual(a, ISCSISitzung.initiatorName(maschine: "UUID-B"), "anderer Mac, anderer Name")
+        XCTAssertNotNil(a.range(of: #"^iqn\.2026-10\.local\.drobodraft:[0-9a-f]{16}$"#, options: .regularExpression)); XCTAssertFalse(a.contains("UUID-A"))
+    }
+
+    func testLogoutNachZeitueberschreitung() throws {
+        let port = try ziel(["--swallow", "1"])
+        let s = try sitzung(port, zeit: 1)
+        XCTAssertThrowsError(try s.inquiry(lun: 0)) { if case ISCSIFehler.zeitueberschreitung = $0 {} else { XCTFail("\($0)") } }
+        for _ in 0..<30 where ereignisse("logout").filter({ $0["sitzung"] as? String == "Normal" }).isEmpty { Thread.sleep(forTimeInterval: 0.1) }
+        XCTAssertEqual(ereignisse("logout").filter { $0["sitzung"] as? String == "Normal" }.count, 1, "Ziel sieht den Logout, obwohl der Befehl in die Zeitueberschreitung lief")
+    }
+
+    func testBremseNachEinerZeitueberschreitungEinBefehlAmZiel() throws {
+        let port = try ziel(["--hang-after", "0"])      // ab dem ersten Befehl haengt das Ziel
+        let b = StatusBremse(); var abfragen = 0
+        for i in 0..<6 {
+            guard b.darfAbfragen(eingehaengt: false, jetzt: Date(timeIntervalSinceNow: Double(i) * 301)) else { continue }
+            abfragen += 1
+            do { _ = try netzStatus(sitzung: try sitzung(port, zeit: 1)); b.ergebnis(nil) } catch { b.ergebnis(error) }
+        }
+        XCTAssertEqual(b.zustand, .reagiertNicht); XCTAssertEqual(abfragen, 1)
+        XCTAssertEqual(log().filter { $0["ereignis"] as? String == "befehl" }.count, 1, "genau ein Befehl am Ziel")
+        b.erneutPruefen(); XCTAssertEqual(b.zustand, .bereit)
+        XCTAssertTrue(b.darfAbfragen(eingehaengt: false)); XCTAssertFalse(b.darfAbfragen(eingehaengt: false), "hoechstens eine Status-Sitzung gleichzeitig")
+    }
+
+    func testBremseGrenzenAbstandEingehaengtUndGleichzeitig() {
+        let b = StatusBremse(), t = Date()
+        XCTAssertFalse(b.darfAbfragen(eingehaengt: true, jetzt: t), "eingehaengt: nie")
+        XCTAssertTrue(b.darfAbfragen(eingehaengt: false, jetzt: t)); b.ergebnis(nil)
+        XCTAssertFalse(b.darfAbfragen(eingehaengt: false, jetzt: t.addingTimeInterval(299)), "n-1")
+        XCTAssertTrue(b.darfAbfragen(eingehaengt: false, jetzt: t.addingTimeInterval(300)), "n"); b.ergebnis(ISCSIFehler.verbindung("netz weg"))
+        XCTAssertEqual(b.zustand, .bereit, "Netzfehler pausiert nicht, bremst nur ueber den Abstand")
+    }
+
+    func testFremderRechnerAbgelehntKeineWiederholung() throws {
+        let port = try ziel(["--reject-other-initiator"])
+        _ = try sitzung(port).abmelden()      // erster Initiator wird gemerkt
+        let b = StatusBremse(); XCTAssertTrue(b.darfAbfragen(eingehaengt: false))
+        do { _ = try ISCSISitzung(host: "127.0.0.1", port: port, zeitgrenze: 5, initiator: "iqn.2026-10.local.fremd:rechner"); XCTFail("sollte abgelehnt werden"); b.ergebnis(nil) }
+        catch { b.ergebnis(error); if case ISCSIFehler.belegt = error {} else { XCTFail("\(error)") } }
+        XCTAssertEqual(b.zustand, .anderemRechner); XCTAssertFalse(b.darfAbfragen(eingehaengt: false, jetzt: Date(timeIntervalSinceNow: 9999)))
+        XCTAssertEqual(ereignisse("abgelehnt").count, 1)
+    }
+
+    func testFalscheLaengeAmZielHaengtNurOhneGate() throws {
+        let port = try ziel()
+        let s = try sitzung(port, zeit: 1)
+        XCTAssertThrowsError(try s.befehl(lun: 0, cdb: [0x5A, 0x08, 0x3A, 0x03, 0, 0, 0, 0x03, 0x60, 0], lesen: 864), "Gate stoppt 864 vor dem Senden")
+        XCTAssertTrue(ereignisse("befehl").isEmpty, "kein Byte erreichte das Ziel")
+        XCTAssertEqual(try s.modeSense3A(lun: 0, unterseite: 0x03).count, 581)
+    }
+}

@@ -8,7 +8,7 @@ let lunGroesseSeiten: [UInt8] = [0x01, 0x02, 0x04, 0x07, 0x09]
 func lunZustand(host: String, port: UInt16) throws -> [String] {
     let d = try ISCSISitzung(host: host, port: port); let ziele = try d.ziele(); d.abmelden()
     guard let z = ziele.first?.name else { throw ISCSIFehler.protokoll("target offers no name") }
-    let s = try ISCSISitzung(host: host, port: port, ziel: z, zeitgrenze: 20); defer { s.abmelden() }
+    let s = try ISCSISitzung(host: host, port: port, ziel: z, zeitgrenze: 20, zweck: "groesse"); defer { s.abmelden() }
     var o = ["luns: \(try s.lunListe())"]
     for u in lunGroesseSeiten { o.append("3A/\(String(format: "%02x", u)): " + hex(try s.modeSense3A(lun: 0, unterseite: u))) }
     for l in try s.lunListe() {
@@ -36,7 +36,7 @@ public func iscsiLunGroesse(host: String, port: UInt16 = 3260, tib: Int, ausfueh
     guard zuschreiben else { meldung("dry run: would send EA 10 00 0F 00 01 21 00 04 00 with data \(String(format: "%08x", tib)) (\(tib) TiB). Add --execute."); return }
     let d = try ISCSISitzung(host: host, port: port); let ziele = try d.ziele(); d.abmelden()
     guard let z = ziele.first?.name else { throw ISCSIFehler.protokoll("target offers no name") }
-    let s = try ISCSISitzung(host: host, port: port, ziel: z, zeitgrenze: 60)
+    let s = try ISCSISitzung(host: host, port: port, ziel: z, zeitgrenze: 60, zweck: "groesse")
     let t0 = Date()
     do {
         let a = try s.lunGroesseSetzen(tib: tib)

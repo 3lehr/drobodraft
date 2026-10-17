@@ -11,7 +11,7 @@ public func iscsiSonde(host: String, port: UInt16 = 3260, schreibtest: Bool, sch
     let ziele = try d.ziele(); d.abmelden()
     z.append("targets: \(ziele.count)")
     guard let ziel = ziele.first else { return z.joined(separator: "\n") }
-    let s = try ISCSISitzung(host: host, port: port, ziel: ziel.name)
+    let s = try ISCSISitzung(host: host, port: port, ziel: ziel.name, zweck: "sonde")
     defer { s.abmelden() }
     z.append("login keys: " + s.login.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: " "))
     try s.testUnitReady(lun: 0)
@@ -51,7 +51,7 @@ private enum Digest {
 public func iscsiSchreibprobe(host: String, port: UInt16 = 3260, ablba: UInt64, groessen: [Int], meldung: (String) -> Void) throws {
     let d = try ISCSISitzung(host: host, port: port); let ziele = try d.ziele(); d.abmelden()
     guard let z = ziele.first?.name else { throw ISCSIFehler.protokoll("no target") }
-    let s = try ISCSISitzung(host: host, port: port, ziel: z, zeitgrenze: 30)
+    let s = try ISCSISitzung(host: host, port: port, ziel: z, zeitgrenze: 30, zweck: "sonde")
     defer { s.abmelden() }
     meldung("negotiated: ImmediateData=\(s.login["ImmediateData"] ?? "-") FirstBurstLength=\(s.login["FirstBurstLength"] ?? "-") MaxBurstLength=\(s.login["MaxBurstLength"] ?? "-") MaxOutstandingR2T=\(s.login["MaxOutstandingR2T"] ?? "-") MaxRecvDataSegmentLength=\(s.login["MaxRecvDataSegmentLength"] ?? "-")")
     var lba = ablba, zufall = SystemRandomNumberGenerator()

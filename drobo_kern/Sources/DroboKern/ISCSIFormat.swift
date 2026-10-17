@@ -17,7 +17,7 @@ public func iscsiFormat(host: String, port: UInt16 = 3260, ziel: String? = nil, 
     guard !name.isEmpty, !name.contains(":"), name.utf8.count <= 27 else { throw ISCSIFehler.verboten("volume name empty, longer than 27 bytes or containing ':'") }
     let d = try ISCSISitzung(host: host, port: port); let ziele = try d.ziele(); d.abmelden()
     guard let z = ziel ?? ziele.first?.name else { throw ISCSIFehler.protokoll("target offers no name") }
-    let s = try ISCSISitzung(host: host, port: port, ziel: z, zeitgrenze: 60)
+    let s = try ISCSISitzung(host: host, port: port, ziel: z, zeitgrenze: 60, zweck: "format")
     defer { s.abmelden() }
     guard try s.lunListe().contains(lun) else { throw ISCSIFehler.protokoll("target has no LUN \(lun)") }
     let k = try s.kapazitaet(lun: lun)

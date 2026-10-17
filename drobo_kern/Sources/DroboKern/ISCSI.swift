@@ -1,4 +1,6 @@
 import Foundation
+import CryptoKit
+import IOKit
 
 /// Fehler des iSCSI-Clients. Nie ein Haengen: jede Wartezeit ist durch `zeitgrenze` begrenzt und endet hier.
 public enum ISCSIFehler: Error, CustomStringConvertible {
@@ -6,6 +8,7 @@ public enum ISCSIFehler: Error, CustomStringConvertible {
     case zeitueberschreitung(String)
     case protokoll(String)
     case login(String)
+    case belegt                                 // Login-Ablehnung 2/2: ein anderer Initiator (Rechner) haelt die DroboPro (Single-Initiator)
     case verboten(String)                       // Allowlist-Gate: der Befehl wurde NICHT gesendet
     case scsi(status: UInt8, sense: [UInt8])    // Ziel antwortete mit Status != GOOD
 
@@ -15,6 +18,7 @@ public enum ISCSIFehler: Error, CustomStringConvertible {
         case .zeitueberschreitung(let s): return "iSCSI timeout: \(s)"
         case .protokoll(let s): return "iSCSI protocol: \(s)"
         case .login(let s): return "iSCSI login: \(s)"
+        case .belegt: return "iSCSI login: target is in use by another initiator"
         case .verboten(let s): return "iSCSI command refused before sending: \(s)"
         case .scsi(let st, let sense):
             let k = sense.count > 13 ? String(format: " key %02x asc %02x/%02x", sense[2] & 0x0f, sense[12], sense[13]) : ""
@@ -26,7 +30,7 @@ public enum ISCSIFehler: Error, CustomStringConvertible {
 /// Roher TCP-Draht mit Zeitgrenze je Wartevorgang (poll). Eine Verbindung, kein Zustand ausser dem Deskriptor.
 final class TCPDraht {
     private var fd: Int32 = -1
-    let zeitgrenze: TimeInterval
+    var zeitgrenze: TimeInterval
     init(host: String, port: UInt16, zeitgrenze: TimeInterval) throws {
         self.zeitgrenze = zeitgrenze
         var hints = addrinfo(); hints.ai_family = AF_INET; hints.ai_socktype = SOCK_STREAM
@@ -41,7 +45,12 @@ final class TCPDraht {
         _ = fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK)
         if connect(fd, ai.pointee.ai_addr, ai.pointee.ai_addrlen) != 0 {
             guard errno == EINPROGRESS else { let e = String(cString: strerror(errno)); schliessen(); throw ISCSIFehler.verbindung("connect: \(e)") }
-            do { try warte(POLLOUT) } catch { schliessen(); throw error }
+            do { try warte(POLLOUT) } catch {
+                schliessen()
+                // Verbindungsaufbau ohne Antwort = Host/Netz weg, NICHT "Drobo haengt" (das ist eine Zeitueberschreitung nach dem Login)
+                if case .zeitueberschreitung = error as? ISCSIFehler { throw ISCSIFehler.verbindung("connect: no answer within \(zeitgrenze) s") }
+                throw error
+            }
             var so: Int32 = 0; var l = socklen_t(MemoryLayout<Int32>.size)
             getsockopt(fd, SOL_SOCKET, SO_ERROR, &so, &l)
             if so != 0 { schliessen(); throw ISCSIFehler.verbindung("connect: \(String(cString: strerror(so)))") }
@@ -127,11 +136,28 @@ public final class ISCSISitzung {
     var tot: ISCSIFehler?
     var blockgroessen: [Int: Int] = [:]
     let discovery: Bool
+    /// Feste ISID je Mac und Zweck. Messbefund DroboPro 2026-10-17: Login mit gleichem Initiator-Namen und gleicher ISID wird angenommen (ersetzt die alte Sitzung),
+    /// ein anderer Name wird mit Status 2/2 abgelehnt (Single-Initiator). Eine zufaellige ISID je Login liess jede abgebrochene Sitzung als Leiche stehen.
+    public let isid: [UInt8]
+    public static let maschine: String = {
+        let e = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPlatformExpertDevice"))
+        defer { if e != IO_OBJECT_NULL { IOObjectRelease(e) } }
+        if e != IO_OBJECT_NULL, let u = IORegistryEntryCreateCFProperty(e, "IOPlatformUUID" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? String { return u }
+        return ProcessInfo.processInfo.hostName
+    }()
+    /// Initiator-Name je Mac eindeutig und stabil: 16 Hex-Zeichen aus SHA-256 der Hardware-UUID (keine Rohausgabe). Ein fester Name fuer alle Macs
+    /// liesse mit festen ISIDs zwei Macs ihre Sitzung gegenseitig ersetzen.
+    public static func initiatorName(maschine: String) -> String {
+        "iqn.2026-10.local.drobodraft:" + SHA256.hash(data: Data("initiator|\(maschine)".utf8)).prefix(8).map { String(format: "%02x", $0) }.joined()
+    }
+    /// Rein: 0x80 + 5 Byte SHA-256("maschine|zweck"). Gleicher Zweck -> gleiche ISID, anderer Zweck -> andere.
+    public static func isid(maschine: String, zweck: String) -> [UInt8] { [0x80] + Array(SHA256.hash(data: Data("\(maschine)|\(zweck)".utf8)).prefix(5)) }
 
     /// `ziel == nil` -> Discovery-Sitzung (nur `ziele()`), sonst Normal-Sitzung auf dieses Ziel.
-    public init(host: String, port: UInt16 = 3260, ziel: String? = nil, zeitgrenze: TimeInterval = 10, initiator: String = "iqn.2026-10.local.drobodraft:kern") throws {
+    public init(host: String, port: UInt16 = 3260, ziel: String? = nil, zeitgrenze: TimeInterval = 10, initiator: String = ISCSISitzung.initiatorName(maschine: ISCSISitzung.maschine), zweck: String = "status") throws {
         draht = try TCPDraht(host: host, port: port, zeitgrenze: zeitgrenze)
         discovery = ziel == nil
+        isid = Self.isid(maschine: Self.maschine, zweck: ziel == nil ? "discovery" : zweck)
         do { try anmelden(initiator: initiator, ziel: ziel) } catch { draht.schliessen(); throw error }
     }
 
@@ -144,7 +170,6 @@ public final class ISCSISitzung {
 
     /// Login in Schritten wie an der DroboPro gemessen: Sicherheitsphase braucht zwei Runden (erste Antwort ohne T), dann Operational.
     private func anmelden(initiator: String, ziel: String?) throws {
-        let isid: [UInt8] = [0x80] + (0..<5).map { _ in UInt8.random(in: 0...255) }
         var keys = ["InitiatorName=" + initiator, "SessionType=" + (ziel == nil ? "Discovery" : "Normal"), "AuthMethod=None"]
         if let z = ziel { keys.insert("TargetName=" + z, at: 2) }
         var flags: UInt8 = 0x81
@@ -156,6 +181,7 @@ public final class ISCSISitzung {
             })
             let r = try empfangen()
             guard r.op == 0x23 else { throw ISCSIFehler.login("unexpected opcode \(r.op)") }
+            if r.bhs[36] == 2 && r.bhs[37] == 2 { throw ISCSIFehler.belegt }
             if r.bhs[36] != 0 { throw ISCSIFehler.login("rejected \(r.bhs[36])/\(r.bhs[37])") }
             tsih = Array(r.bhs[14..<16]); expStatSN = r.u32(24) &+ 1
             for (k, v) in schluessel(r.daten) { login[k] = v }
@@ -208,18 +234,26 @@ public final class ISCSISitzung {
         if let t = tot { throw t }
         do { return try block() }
         catch let f as ISCSIFehler {
-            switch f { case .scsi, .verboten: break; default: tot = f; draht.schliessen() }
+            switch f { case .scsi, .verboten: break; default: tot = f; logoutUndSchliessen() }   // Logout auch nach Zeitueberschreitung/Fehler: keine Leiche am Ziel
             throw f
         }
+    }
+
+    /// Logout mit eigener kurzer Zeitgrenze, dann Verbindung zu. Fehler egal. Sperre muss gehalten werden. Eine verspaetete Antwort auf den letzten Befehl wird uebersprungen.
+    static let logoutZeitgrenze: TimeInterval = 2
+    private func logoutUndSchliessen() {
+        draht.zeitgrenze = Self.logoutZeitgrenze
+        let id = naechsteITT(), c = cmdSN, st = expStatSN
+        if (try? draht.senden(pdu(0x46, 0x80) { h in put32(&h, 16, id); put32(&h, 24, c); put32(&h, 28, st) })) != nil {
+            for _ in 0..<4 { guard let r = try? empfangen(), r.op != 0x26 else { break } }
+        }
+        draht.schliessen()
     }
 
     /// Logout und Verbindung schliessen; Fehler beim Logout sind egal (Verbindung ist danach zu).
     public func abmelden() {
         sperre.lock(); defer { sperre.unlock() }
-        if tot == nil {
-            let id = naechsteITT(); let c = cmdSN, st = expStatSN
-            if (try? draht.senden(pdu(0x46, 0x80) { h in put32(&h, 16, id); put32(&h, 24, c); put32(&h, 28, st) })) != nil { _ = try? empfangen() }
-        }
-        tot = .verbindung("logged out"); draht.schliessen()
+        if tot == nil { logoutUndSchliessen() }
+        tot = .verbindung("logged out")
     }
 }

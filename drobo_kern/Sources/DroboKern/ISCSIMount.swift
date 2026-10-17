@@ -25,7 +25,7 @@ public func iscsiEinhaengen(host: String, lun: Int, schreiben: Bool, ziel: Strin
     meldung("helper forwards 127.0.0.1:\(port) -> \(host):3260")
     let d = try ISCSISitzung(host: "127.0.0.1", port: port); let ziele = try d.ziele(); d.abmelden()
     guard let iqn = ziel ?? ziele.first?.name else { throw ISCSIFehler.protokoll("target offers no name") }
-    let s = try ISCSISitzung(host: "127.0.0.1", port: port, ziel: iqn, zeitgrenze: 30)
+    let s = try ISCSISitzung(host: "127.0.0.1", port: port, ziel: iqn, zeitgrenze: 30, zweck: "mount-lun\(lun)")
     let teil = try GPT.ersteHFS { try s.lesen(lun: lun, lba: $0, bloecke: $1) }
     guard let p = teil else { s.abmelden(); throw ISCSIFehler.protokoll("LUN \(lun) has no HFS+ partition") }
     let vh = try s.lesen(lun: lun, lba: p.ersterLBA + 2, bloecke: 1)       // Offset 1024 der Partition
