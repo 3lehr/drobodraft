@@ -46,6 +46,55 @@ final class ISCSITests: XCTestCase {
     }
     func muster(_ n: Int, _ seed: UInt8 = 7) -> [UInt8] { (0..<n).map { UInt8(truncatingIfNeeded: $0 &* 31 &+ Int(seed) &+ $0 >> 8) } }
 
+    // MARK: Bridge CDB adapter
+
+    func testBridgeAdapterWrite10ToWrite16AndLocalGate() throws {
+        let write10: [UInt8] = [0x2A, 0x18, 1, 2, 3, 4, 0, 0, 2, 7]
+        let translated = try BlockCDBAdapter.adapt(cdb: write10, dataInLength: 0, dataOutLength: 1024, blockSize: 512, lunBlockCount: UInt64.max)
+        XCTAssertEqual(translated, [0x8A, 0x18, 0, 0, 0, 0, 1, 2, 3, 4, 0, 0, 0, 2, 0, 7])
+        let read10: [UInt8] = [0x28, 0x08, 0, 0, 0, 9, 0, 0, 1, 3]
+        XCTAssertEqual(try BlockCDBAdapter.adapt(cdb: read10, dataInLength: 512, dataOutLength: 0, blockSize: 512, lunBlockCount: 8192),
+                       [0x88, 0x08, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 1, 0, 3])
+
+        let port = try ziel(["--refuse-immediate"])
+        let s = try sitzung(port)
+        XCTAssertEqual(s.login["ImmediateData"], "No")
+        XCTAssertThrowsError(try s.befehl(lun: 0, cdb: translated, daten: muster(1024))) { error in
+            guard case ISCSIFehler.verboten = error else { return XCTFail("\(error)") }
+        }
+        XCTAssertTrue(ereignisse("write").isEmpty, "WRITE ohne ImmediateData erreichte das Ziel nie")
+        XCTAssertNil(ISCSISitzung.verbot(cdb: translated, schreiben: 1024, lesen: 0), "bestehender Send-Gate erlaubt formale CDB; Negotiation-Gate bleibt in befehl")
+        var grouped = write10; grouped[6] = 5
+        XCTAssertThrowsError(try BlockCDBAdapter.adapt(cdb: grouped, dataInLength: 0, dataOutLength: 1024, blockSize: 512, lunBlockCount: UInt64.max), "nonzero group is preserved then rejected by existing gate")
+    }
+
+    func testBridgeAdapterWritesOnlyWithNegotiatedImmediateData() throws {
+        let s = try sitzung(try ziel())
+        XCTAssertEqual(s.login["ImmediateData"], "Yes")
+        let cdb = try BlockCDBAdapter.adapt(cdb: [0x2A, 0, 0, 0, 0, 12, 0, 0, 1, 0], dataInLength: 0, dataOutLength: 512, blockSize: 512, lunBlockCount: 8192)
+        _ = try s.befehl(lun: 1, cdb: cdb, daten: muster(512))
+        XCTAssertEqual(ereignisse("write").map { $0["lba"] as? Int }, [12])
+        XCTAssertEqual(ereignisse("write").map { $0["bytes"] as? Int }, [512])
+    }
+
+    func testBridgeAdapterRejectsMalformedAndForbiddenCDBs() throws {
+        for cdb: [UInt8] in [
+            [0x2A], [0x2A, 0, 0, 0, 0, 0, 0, 0, 1],
+            [0x2A, 0, 0, 0, 0, 0, 0x80, 0, 1, 0],
+            [0x2A, 0, 0, 0, 0, 0, 0, 0, 0, 0], // zero transfer is invalid
+            [0xEA, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0x55, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0xC1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        ] {
+            XCTAssertThrowsError(try BlockCDBAdapter.adapt(cdb: cdb, dataInLength: 0, dataOutLength: cdb.first == 0x2A ? 512 : 0, blockSize: 512, lunBlockCount: 8192), "CDB \(cdb)")
+        }
+        XCTAssertThrowsError(try BlockCDBAdapter.adapt(cdb: [0x2A, 0, 0, 0, 0, 0, 0, 0, 2, 0], dataInLength: 0, dataOutLength: 512, blockSize: 512, lunBlockCount: 8192), "transfer length must match CDB")
+        XCTAssertThrowsError(try BlockCDBAdapter.adapt(cdb: [0x2A, 0, 0, 0, 0, 0, 0, 0, 2, 0], dataInLength: 0, dataOutLength: 1024, blockSize: 512, lunBlockCount: 1), "LBA range exceeds LUN")
+        XCTAssertThrowsError(try BlockCDBAdapter.adapt(cdb: [0x12, 0, 0, 0, 0xFF, 0], dataInLength: Int.max, dataOutLength: 0, blockSize: 512, lunBlockCount: 8192), "non-block data-in obeys command transfer cap")
+        XCTAssertThrowsError(try BlockCDBAdapter.adapt(cdb: [0x28, 0, 0, 0, 0, 0, 0, 0, 2, 0], dataInLength: 1024, dataOutLength: 0, blockSize: Int.max, lunBlockCount: 8192), "multiplication overflow is rejected")
+        XCTAssertThrowsError(try BlockCDBAdapter.adapt(cdb: [0x88, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0, 0, 0, 1, 0, 0], dataInLength: 512, dataOutLength: 0, blockSize: 512, lunBlockCount: UInt64.max), "max LBA cannot address one more block")
+    }
+
     // MARK: Lesen
 
     func testDiscoveryLoginUndLesebefehle() throws {

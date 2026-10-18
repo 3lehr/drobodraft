@@ -3,14 +3,14 @@
   "schema": 1,
   "tools": [
     {
-      "id": "canonical-requirement-catalog",
-      "capability": "canonical requirement catalog",
-      "status": "available",
-      "command": "plan_sync",
       "artifact": "docs/PLAN_BLOCKGERAET_DRIVERKIT_2026-10-17.md",
-      "reference": "docs/PLAN_BLOCKGERAET_DRIVERKIT_2026-10-17.md",
+      "capability": "canonical requirement catalog",
+      "command": "plan_sync",
+      "id": "canonical-requirement-catalog",
+      "id_pattern": "BB-(?:0[1-9]|10)",
       "provenance": "working_tree_draft",
-      "id_pattern": "BB-0[1-8]"
+      "reference": "docs/PLAN_BLOCKGERAET_DRIVERKIT_2026-10-17.md",
+      "status": "available"
     }
   ]
 }

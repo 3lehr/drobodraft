@@ -221,6 +221,8 @@ einer nutzbaren VM ab. UserClient/Target erst nach dem Laufzeitgate.
 | BB-06 | UserClient/Fake-Target und Python-Ziel erfüllen Schritt 2–4 | OPEN | OPEN | Abhängigkeit BB-05; Daten-/Fehlerprüfungen wie oben |
 | BB-07 | DroboPro/TM erfüllen Schritt 5 und Time-Machine-Beleg | OPEN | OPEN | Abhängigkeit BB-06; Betreiber-Gates bleiben |
 | BB-08 | 5C nur lesend, EA gesperrt, keine Gerätekennungen im Repo | OPEN | OPEN | Übergabe und PLAN_DROBOPRO_ISCSI; keine Gerätekommunikation in BB-P01 |
+| BB-09 | VM-Speicher einmalig an benanntes externes Task-Unterverzeichnis binden; Kapazität dort messen | OPEN | OPEN | Betreiber benennt externe SSD; kein Repository-Umzug, kein Formatieren der Platte |
+| BB-10 | Brücken-CDBs gerätefrei vorbereiten: WRITE(10)→WRITE(16), gefährliche/unbekannte Befehle lokal ablehnen | TEST-VERIFIED | OPEN | Bestehender Architekturabschnitt; reine Python-Ziel-Vorbereitung, keine Kernel-/Geräteintegration |
 
 ### BB-P01 — statischer Nachweis (2026-10-18)
 
@@ -301,3 +303,91 @@ Integrationstest: Quellmutationen `:latest` und alte `rc == 0`-Erfolgsregel
 führten jeweils zu AssertionError im tatsächlichen Selbsttest (ROT); unveränderte
 Quelle GRÜN. Beleg `blockbruecke/build/BB-P02-regression-evidence.txt`.
 `make check-blockbruecke`, Resource-Guard und `git diff --check` grün.
+
+### BB-P03 — externer VM-Speicher (2026-10-18)
+
+Betreiber benennt externe SSD als Kapazitätsalternative. Read-only geprüft:
+Journaled HFS+, rund 228 GiB frei. Kein privater Dateiinhalt gelesen.
+BB-09 wird zuerst umgesetzt; BB-05 bleibt Laufzeitgate. Integrationsowner
+`/root/coordinator`; erlaubte Quellen `blockbruecke/tools/tart_safe_pull.py`,
+`Makefile`, dieser Plan, `.brainlehr.json`, `AI_HANDOFF.md`.
+Eine explizite lokale Laufzeitbindung setzt Speicherprüfung, TART_HOME und
+Pull-Log auf denselben externen Task-Ordner; Repository und Binärdatei bleiben.
+Keine private Volume-ID oder Klartext-Volumebezeichnung ins öffentliche Repo.
+Vor Download HFS+-Eignung an versionierten Primärquellen prüfen; bei fehlendem
+Clone-Support konservativ vollständige Kopie budgetieren. Kein Formatieren oder
+Löschen externer Bestände, keine Host-Dext-Aktivierung/GUI/Geheimnisse.
+Verifikation: lokale Defaultbindung bleibt unverändert; externe Bindung wird
+von Preflight und Laufwächter benutzt; normaler Runner prüft Bindungsregression.
+
+BB-P03 Dateisystem-Prüfung: versioniertes Tart 2.41.1 verwendet
+`FileManager.copyItem` für die VM-Kopie und legt Pull-Temp unter TART_HOME ab.
+In diesem Pfad kein APFS-Zwang belegt; Virtualization.framework-Laufzeit auf HFS+
+bleibt zu messen. Direkter begrenzter Pull statt Formatieren der externen Platte.
+Ein explizites `DROBO_VM_STORAGE` bindet Task-Ordner, Freiplatzprüfung und Log
+zusammen. Klartext-Volumeidentität bleibt ausschließlich lokale Laufzeitbindung.
+
+BB-P03 Laufversuch: externer HFS+-Taskordner bot rund 228 GiB frei.
+Ein gepinnter begrenzter Pull allokierte rund 50 GB; er blieb bei 0 Prozent,
+Netzwerk-Deltas waren sehr klein. Nach gezieltem Abbruch blieb ein exiting
+Tart-Prozessdatensatz; Cleanup des zuvor leeren eigenen TART_HOME blieb im
+Kernelzustand U. Disk-Zähler zeigten weiter I/O, keine bewiesene Fehlerursache.
+120 Sekunden begrenzte read-only Beobachtung endeten ohne Cleanup-Bestätigung.
+Keine weitere Mess-/Retryserie, keine Formatierung, kein Gaststart/Dext-Test.
+
+BB-05 bleibt BLOCKED, externe Laufzeitbindung nach letzter Validator-Korrektur
+nicht erneut am Volume geprüft. Exakte lokale Pending-PIDs/Taskpfade stehen nur
+in `blockbruecke/build/BB-P03-pending.txt`. Die zuletzt gemessenen freien Bytes
+sind keine bestätigte Platzrückgabe. Nächste sichere Betreiberhandlung: SSD
+verbunden lassen und laufende I/O abwarten; kein blindes Abziehen/Force-Eject.
+Danach erst Zustand neu prüfen, bevor irgendein VM-Versuch wiederholt wird.
+
+### BB-P04 — Fortsetzung des VM-Ziels (2026-10-18)
+
+Betreiber beauftragt VM-Einrichtung/Test und Beginn weiterer DroboDraft-
+Implementierungen/Fixes. Vorhandene BB-05/BB-09-Gates bleiben offen; keine
+Host-Aktivierung oder zweite HFS-Truncate/Unlink-Operation. Pending-I/O zuerst
+rein lesend prüfen. Als reversible Alternative APFS-Sparsebundle untersuchen;
+kleine Probe nur im bisherigen ignorierten Buildordner (max. 256 MB allokiert),
+keine große SSD-Operation solange Cleanup im Kernelzustand U bleibt.
+Integrationsowner `/root/coordinator`; VM-Worker nur lokale ignorierte Probe,
+keine Quelledits. Unabhängige App-Investigation darf Lampen-Decoder/Modell/View
+und vorhandene Tests lesen; ein Fixpaket erhält erst nach reproduzierbarem
+Befund konkrete Dateien/Prüfung hier. Fehlender Mitschnitt ist kein Fixbeweis.
+
+### BB-P05 — reine Brücken-CDB-Vorbereitung
+
+BB-10 ist unabhängig ausführbare Vorbereitung des bestehenden Architekturwegs,
+keine Freigabe der BB-06-Integration. Abhängigkeit BB-P01 technisch abgeschlossen;
+UserClient/Fake-Target-Integration in DriverKit bleibt von BB-05 abhängig.
+Owner `/root/coordinator`; erlaubte Quellen ein neuer reiner CDB-Adapter unter
+`drobo_kern/Sources/DroboKern/` und
+`drobo_kern/Tests/DroboKernTests/ISCSITests.swift`, dieser Plan und Handoff.
+Kein neuer Gerätepfad, keine UserClient- oder DriverKit-API. Übersetzung von
+WRITE(10) nach WRITE(16) wie oben gewählt; Feldmapping/Bounds, Opcode-Allowlist,
+EA/MODE-SELECT-Sperre und vorhandenes ImmediateData-Gate bleiben geprüft.
+Normale Swift-Pakettests gegen ausschließlich Loopback-Pythonziel, Rot/Grün;
+kein Senden an echte Geräte. Keine spekulative Lampenänderung: Untersuchung
+zeigte nur Fixture-Quellassertionen, kein ausgeführter Nachweis eines Live-Bugs.
+
+BB-P05 technisch verifiziert: `BlockCDBAdapter` normalisiert READ/WRITE(10) nach
+16, prüft Datenrichtung, globale Transfergrenze, LBA/LUN/Arithmetik und ruft das
+unveränderte `ISCSISitzung.verbot` auf. Der reale Sendepfad bleibt `befehl` mit
+ImmediateData-Gate. Keine Runtime-Integration/UserClient, kein Gerät kontaktiert.
+Rot: Adapter fehlte zuerst; danach fing ein neuer Test übergroße INQUIRY-Länge
+ab (1 Assertion rot). Grün im Arbeitsverzeichnis `drobo_kern`:
+`DROBO_TESTDIR=/Volumes/daten/Begod2026/drobodraft/blockbruecke/build xcrun swift test --filter ISCSITests/testBridgeAdapter`
+→ 3 Tests / 0 Fehler, Loopback-Pythonziel. WRITE ohne ImmediateData erreichte das
+Ziel nicht; ausgehandelt wurde 512 Byte geschrieben. Overflow/Max-LBA/gefährliche
+Opcodes getestet. Produktgates weiter OPEN; BB-05 bleibt unabhängiger Blocker.
+
+Aktueller VM-Speichergate-Befund: /daten 66.238.853.120 Byte frei, Mindestbudget
+71.474.836.480 Byte; Momentanlücke 5.235.983.360 Byte (4,88 GiB).
+Keine belegten entbehrlichen eigenen Taskoutputs dieser Größenordnung; keine
+andere geeignete lokale Platte gemountet. Unabhängige lokale APFS-Probe:
+256-MiB-Sparsebundle mit 64-MiB-RAW von Virtualization angenommen, normal detached
+und gelöscht; keine große Probe am blockierten externen Dateisystem.
+
+Commitgrenze: BB-P05-Kern+Tests und kanonischer Plan/Handoff/Binder isolierbar.
+`blockbruecke/tools/tart_safe_pull.py` bleibt BB-P03-pending/uncommitted, weil die
+zuletzt generisch korrigierte reale externe Bindung noch nicht verifiziert ist.

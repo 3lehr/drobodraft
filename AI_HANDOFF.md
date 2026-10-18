@@ -53,3 +53,41 @@ Integrationstest: Quellmutationen `:latest` und alte `rc == 0`-Erfolgsregel
 führten jeweils zu AssertionError im tatsächlichen Selbsttest (ROT); unveränderte
 Quelle GRÜN. Beleg `blockbruecke/build/BB-P02-regression-evidence.txt`.
 `make check-blockbruecke`, Resource-Guard und `git diff --check` grün.
+
+## BB-P03 — externer Speicher, Pending-I/O (2026-10-18)
+
+Betreiber benennt externe SSD; Kapazität 228 GiB, HFS+. Repository unverändert
+am bisherigen Ort. `DROBO_VM_STORAGE` bindet Home/Log/Freiplatz an einen lokalen
+Taskordner; keine private Volumebezeichnung in versionierten Quellen.
+Ein Pull blieb nach 50-GB-Allokation bei 0 Prozent. Nach gezieltem Stop blieb
+ein exiting Tart-Datensatz ohne offene Handles; Cleanup eigener Dateien blieb
+im Kernelzustand U. Ursache unbewiesen, Disk-Zähler zeigten aktive I/O.
+120-s-Beobachtung beendet, keine neue Mess-/Retryserie oder Gast-/Dextaktivierung.
+Exakte bekannte PID/Taskpfade nur `blockbruecke/build/BB-P03-pending.txt` (ignoriert).
+Cleanup und Platzrückgabe NICHT abgeschlossen/bestätigt; BB-05 bleibt BLOCKED.
+Sicher weiter: Platte verbunden lassen, I/O abwarten; kein Force-Eject/Reboot
+oder Formatieren. Erst nach neuer Zustandsprüfung darf ein neuer Versuch beginnen.
+
+## BB-P05 — reine CDB-Vorbereitung (2026-10-18)
+
+`BlockCDB.swift` + `ISCSITests.swift`: READ/WRITE(10)→16, Datenrichtung,
+Transferlimit, LUN-Grenzen/Overflow; unverändertes Send-/ImmediateData-Gate.
+Warum: Vorbereitung des gewählten Brückenwegs ohne blockierte Kernelintegration.
+Rot: fehlender Adapter, danach übergroße INQUIRY-Länge als fehlschlagender Test.
+Grün: im `drobo_kern`-Ordner
+`DROBO_TESTDIR=/Volumes/daten/Begod2026/drobodraft/blockbruecke/build xcrun swift test --filter ISCSITests/testBridgeAdapter`
+→ 3 Tests / 0 Fehler; nur Loopback-Ziel. Kein UserClient-/Gerätetest.
+Risiko/Grenze: zukünftige DriverKit-Verwendung erst nach BB-05; keine Aussage
+über Lampen-Livefehler (bisher nur Fixture-Quellinspektion, Mitschnitt fehlt).
+
+VM-Gate weiter: Cleanup-PID 52780 U, Tart-Datensatz 45129 ?E im letzten Check.
+/daten zuletzt 61,68 GiB frei, Mindestbudget 71.474.836.480 Byte;
+5.235.983.360 Byte (4,88 GiB) fehlen. Keine löschbaren eigenen GiB-Outputs belegt.
+Lokale kleine APFS/RAW-Probe erfolgreich, externe I/O nicht wiederholt.
+Nächste Betreiberhandlung: geeigneten Speicher bereitstellen oder /daten über
+Mindestbudget bringen; SSD-I/O erst auslaufen lassen, kein Force-Eject.
+
+Uncommitted Grenze: `blockbruecke/tools/tart_safe_pull.py` (BB-P03 externer
+Validator), keine erneute reale externe Bindungsprüfung möglich. BB-P05 darf
+mit Plan/Manifest/Handoff isoliert committen; diese Datei bleibt unstaged.
+Brainlehr: e10dee42, L-a76324, efb7a14a, L-dc602d, L-b4609d.
