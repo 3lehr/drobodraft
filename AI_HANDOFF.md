@@ -91,3 +91,43 @@ Uncommitted Grenze: `blockbruecke/tools/tart_safe_pull.py` (BB-P03 externer
 Validator), keine erneute reale externe Bindungsprüfung möglich. BB-P05 darf
 mit Plan/Manifest/Handoff isoliert committen; diese Datei bleibt unstaged.
 Brainlehr: e10dee42, L-a76324, efb7a14a, L-dc602d, L-b4609d.
+
+## fix(vm): preserve guarded Tart resume — BB-P06 (2026-10-18)
+
+Der immutable Tahoe-Pull endete mit Exit 0; geklonte headless VM lief und der
+Tart Guest Agent antwortete. Gast: macOS 26.6.2, CSR disabled durch das
+vorgefertigte Image; keine SIP-/AMFI-Änderung. Beide gültigen Provisioningprofile
+enthalten die Gast-UUID nicht. Dext-Entitlements passen zum Profil; App-Abgleich
+nicht parsebar. Aktivierung scheiterte mit RBS/POSIX 162; Crashreport meldet
+CODESIGNING / Code Signature Invalid. Kein UserInitializeController-, Provider-
+oder Stop-PASS: BB-05 bleibt BLOCKED, Produktgates OPEN.
+Bundle-IDs: App `de.begod.drobo.blockbruecke2`, Dext
+`de.begod.drobo.blockbruecke2.dext`.
+
+Legitime Signierroute: keine Developer-ID-Application-Identität gefunden;
+`-allowProvisioningUpdates` ist in Xcode verfügbar, beide Profile sind keine
+`ProvisionsAllDevices`-Profile. Betreiber muss die Gast-UUID aus der ignorierten
+lokalen Datei `blockbruecke/build/BB-P06evidence/guest-registration-udid.txt`
+im vorhandenen Apple Developer Team registrieren bzw. Profile erneuern; danach
+`blockbruecke/tools/bauen.sh gruen --id2`. Kein Portal-/Credential-Zugriff.
+Nächster Test nach der Betreiberregistrierung: neu signiertes v0.4-Artefakt in
+derselben headless VM aktivieren, `UserInitializeController`/Provider belegen,
+danach normal deaktivieren und terminalen Guest-Status belegen.
+
+Wrapper enthält APFS-/TART_HOME-Binding mit zwei Kapazitätswächtern, Digest-
+Preflight, markergebundener nativer Resume-Validierung, Concurrency 4 und
+PID-gebundenem caffeinate. Reviewkorrektur erhält validierte Partialdaten, wenn
+der Preflight vor Prozessstart am Platz scheitert. Red/green: vor Fix meldete
+ein unpinned `:latest`-Lauf PASS; danach runtime refusal vor Nebenwirkungen.
+Vor der Partial-Korrektur löschte `python3 blockbruecke/tools/tart_safe_pull.py
+--self-test` eine markergebundene Fixture (Exit 1); danach `make
+check-blockbruecke` grün. `git diff --check` grün.
+
+Geprüft: `tart exec --help` zeigt `tart exec <name> <command> ...`; `--`
+verursachte rc125, korrigiert durch Wiederholung ohne Trenner. Plan: BB-09
+RUNTIME-VERIFIED, Produktgate OPEN; BB-05 BLOCKED. Keine Provider-/Start-/Stop-
+Abnahme. Geänderte Dateien und vorgesehene Commitgrenze:
+`blockbruecke/tools/tart_safe_pull.py`,
+`docs/PLAN_BLOCKGERAET_DRIVERKIT_2026-10-17.md`, `AI_HANDOFF.md`; keine fremden
+Changes im geprüften Arbeitsbaum.
+Brainlehr: 036f110f, L-2a5737, L-00a72f, L-6fa9a7, 9b65ef41, 8e97530a, 0b6d3d2f, L-01ea2b.

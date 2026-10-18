@@ -217,11 +217,11 @@ einer nutzbaren VM ab. UserClient/Target erst nach dem Laufzeitgate.
 | BB-02 | Wurzel nach erfolgreichem Super-Start registrieren; eindeutige zweite Personality | STATIC-VERIFIED | OPEN | Quelle Vorschlag v0.4; Guard und Build |
 | BB-03 | v0.4 unter eigener Bundle-ID bauen; kein Aktivieren/Ersetzen auf dem Arbeitsrechner | BUILD-VERIFIED | OPEN | Quelle Wiedereinstieg; bauen.sh Guard und Signaturprüfung |
 | BB-04 | Reproduzierbare Panic-Ursache im automatischen Baupfad abfangen | STATIC-VERIFIED | OPEN | Quelle L-d7b25d; rot vor grün |
-| BB-05 | VM-Start zeigt UserInitializeController und Provider; Deaktivieren endet ohne Panic/Hänger | BLOCKED | OPEN | Keine VM in utmctl list am 2026-10-18; Betreiberaktivierung nötig |
+| BB-05 | VM-Start zeigt UserInitializeController und Provider; Deaktivieren endet ohne Panic/Hänger | BLOCKED | OPEN | Headless VM bootet, aber Gastprofil enthält VM-UUID nicht; Aktivierung endete mit CODESIGNING/RBS-Fehler, kein Initialize-/Provider-/Stop-Beleg |
 | BB-06 | UserClient/Fake-Target und Python-Ziel erfüllen Schritt 2–4 | OPEN | OPEN | Abhängigkeit BB-05; Daten-/Fehlerprüfungen wie oben |
 | BB-07 | DroboPro/TM erfüllen Schritt 5 und Time-Machine-Beleg | OPEN | OPEN | Abhängigkeit BB-06; Betreiber-Gates bleiben |
 | BB-08 | 5C nur lesend, EA gesperrt, keine Gerätekennungen im Repo | OPEN | OPEN | Übergabe und PLAN_DROBOPRO_ISCSI; keine Gerätekommunikation in BB-P01 |
-| BB-09 | VM-Speicher einmalig an benanntes externes Task-Unterverzeichnis binden; Kapazität dort messen | OPEN | OPEN | Betreiber benennt externe SSD; kein Repository-Umzug, kein Formatieren der Platte |
+| BB-09 | VM-Speicher einmalig an benanntes externes Task-Unterverzeichnis binden; Kapazität dort messen | RUNTIME-VERIFIED | OPEN | APFS-Sparsebundle-Binding verifiziert; beide Kapazitätswächter liefen beim gepinnten Pull, kein Repository-Umzug/Formatieren |
 | BB-10 | Brücken-CDBs gerätefrei vorbereiten: WRITE(10)→WRITE(16), gefährliche/unbekannte Befehle lokal ablehnen | TEST-VERIFIED | OPEN | Bestehender Architekturabschnitt; reine Python-Ziel-Vorbereitung, keine Kernel-/Geräteintegration |
 
 ### BB-P01 — statischer Nachweis (2026-10-18)
@@ -391,3 +391,95 @@ und gelöscht; keine große Probe am blockierten externen Dateisystem.
 Commitgrenze: BB-P05-Kern+Tests und kanonischer Plan/Handoff/Binder isolierbar.
 `blockbruecke/tools/tart_safe_pull.py` bleibt BB-P03-pending/uncommitted, weil die
 zuletzt generisch korrigierte reale externe Bindung noch nicht verifiziert ist.
+
+### BB-P06 — APFS-Container auf externem Backing, lokal gemountet
+
+Nach neuem bounded Check sind alte PIDs und Taskreste absent; die benannte SSD
+ist wieder gemountet und hat rund 228 GiB frei. `df` auf einem gelöschten Taskpfad
+ist kein Volume-Fehler. Vergleichsprobe externes/lokales APFS-Sparsebundle mit
+identischem lokalem Mountpunkt: beide Create/Attach/Detach PASS. Voriges
+„Zugriff verweigert“ trat beim externen Mountpunktsetup auf; keine allgemeine
+HFS-/Virtualization-Inkompatibilität daraus ableiten. Beleg lokal ignoriert:
+`blockbruecke/build/BB-P06evidence/hdiutil-attach-pair-corrective.json`.
+
+BB-09: eine lokale ignorierte Ressourcenbindung verbindet Containerdatei auf
+bereits genehmigter SSD, lokalen APFS-Mount und TART_HOME. Beide Freiplatzwerte
+(physisches Backing und inneres APFS) werden überwacht; kein Gate-Bypass.
+Konservatives Budget: Container höchstens 128 GiB logisch plus 20 GiB physische
+Reserve und 1 GiB Metadatenmarge = 149 GiB extern frei. Innen mindestens
+50.000.000.000 Byte Disk plus 20 GiB frei; Quelle/Kopie passen in 128 GiB auch
+bei 2×50-GB-Allokation. Keine Änderung am bestehenden externen Dateisystem.
+Owner `/root/coordinator`; erlaubte Quellen `blockbruecke/tools/tart_safe_pull.py`,
+`Makefile` bei Testverdrahtung, dieser Plan/Handoff. Vor Download kleine lokale
+Bindungs-/Doppelguard-Tests rot/grün und reale Mount-Zuordnung prüfen.
+Ein gepinnter begrenzter Pull, dann headless Guest; Prozesshandle/PID bis
+terminal behalten. Detach nur bei terminalem Guest; Host-Dext unverändert.
+BB-05 bleibt offen bis Guest-Start-/Provider-/Stop-Beleg; Gastfreigabe darf
+weiter eine konkrete Betreiberhandlung erfordern.
+
+BB-P06 erster echter APFS-Pull zeigte fortlaufenden Fortschritt (4 Prozent bei
+180 s; rund 1,65 GB physisch). Daraus geschätzte Gesamtdauer ca. 70–90 Minuten;
+die ursprüngliche operative 20-Minuten-Grenze war zu kurz. Root autorisiert
+einmal kontrollierten Stop/Partialcleanup und Neustart mit 120 Minuten,
+Speicherwächter unverändert. Kein Guard-Bypass oder wiederholte Retry-Serie.
+
+BB-P06 Gastkontext: offizielles Cirrus-Tahoe-base ist mit SIP-off vorkonfiguriert.
+Kanonisches BB-05 verlangt den Start-/Provider-/Stop-Nachweis, keinen expliziten
+SIP-on-Status. Read-only `csrutil status` vor Tests dokumentieren; kein Host-SIP
+ändern und keine Gast-SIP-/Developer-Mode-/Approval-Umgehung einrichten.
+Root gibt Gast-Aktivierung/Deaktivierung des vorhandenen signierten v0.4-App-
+Artefakts zur technischen Matching-Vorprüfung frei. Signatur/Entitlements und
+AMFI-Beobachtung mit Gastkontext kennzeichnen; daraus kein SIP-on-
+Kompatibilitäts-/Produktbeleg ableiten. Produktgates bleiben OPEN.
+Nur Gast-CLI `--activate`/`--deactivate`, niemals Dext-Prozess killen.
+Vor jeder Statusänderung Gast-ioreg/kmutil/Start-Logs prüfen. Falls
+`requestNeedsUserApproval` kommt, konkrete Gast-App/Schritte/Logs bereitstellen;
+keine Systemfreigabe selbst umgehen. Host-Dext und Host-Fenster unverändert.
+
+BB-P06 Netzbefund: zweiter Lauf endete bei 61 Prozent mit mehrfachen Layer-39-
+Request-Timeouts und Foundation-Offlinefehler; kein Gueststart. Partial-Home
+wurde vom bisherigen Wrapper entfernt, Logs lokal erhalten. Frische kleine
+Probe: Manifest HTTP 200, Layer-39-Range HTTP 206/64 KiB in 0,26 s (curl) bzw.
+0,40 s (Python). Ursache zum Ausfallzeitpunkt ungeklärt; kein dauerhafter
+Offlinezustand oder Signed-URL-Ablauf bewiesen.
+
+Root autorisiert verbesserten Weg: offizielles natives Concurrency-4-Pull mit
+PID-gebundenem caffeinate; unveränderter Pin und reale Storagebindung. Tart
+2.41.1 kann URLError bis fünfmal intern wiederholen, Range-Resume und bei
+Folgelauf hashverifizierte fertige Layers wiederverwenden. Netzfehler sollen
+solchen eigentums-/pin-/bindungsgebundenen Zustand erhalten; Gesamtstatus bleibt
+FAIL. Space/Pin/Deadline-Abbruch bleibt FAIL, kein Guard-Bypass. Vor einem
+Folgelauf nur zusätzliche Restallokation budgetieren, vorhandene Partialdaten
+nicht als zweite volle VM zählen. Minimale Änderung im bestehenden Script,
+gezielte rot/grün + normaler Runner; danach native Fortsetzung ohne erneute
+Grundsatzfrage bei jedem Transientfehler. Keine neue Transferplattform.
+
+BB-P06 Abschlussmessung 2026-10-18: der gepinnte Pull endete mit Exit 0 und
+`PASS Tart pull complete`; Klon und headless Tahoe-VM starteten, Tart Guest
+Agent antwortete. VM meldet macOS 26.6.2 und CSR disabled (Vorgabe des Images,
+unverändert). Das App- und Dext-Provisioningprofil ist gültig, aber die
+tatsächliche Gast-UUID fehlt in beiden `ProvisionedDevices`-Listen (Counts 1
+und 2). Dext-Entitlements sind Profil-Subset; App-Abgleich nicht parsebar.
+Gastaktivierung scheiterte mit LaunchServices/RBS POSIX 162; Crashreport meldet
+CODESIGNING / Code Signature Invalid. Kein `UserInitializeController`, Provider
+oder Normal-Stop PASS. Keine Host-/Gast-SIP- oder AMFI-Änderung. BB-05 bleibt
+BLOCKED; alle Produktgates OPEN. `tart exec` verlangt exakt `tart exec <name>
+<command>`; ein zusätzliches `--` liefert rc125 und ist kein Guest-Agent-Fehler.
+
+Legitime Signierroute geprüft: vorhandene Developer-ID-Application-Identitäten
+Count 0, beide Profile `ProvisionsAllDevices=false`, `xcodebuild -help`
+bestätigt `-allowProvisioningUpdates`. Nächster Betreiber-Schritt: die Gast-UUID
+aus der ignorierten lokalen Datei
+`blockbruecke/build/BB-P06evidence/guest-registration-udid.txt` im bestehenden
+Apple Developer Team registrieren bzw. Profile erneuern; danach
+`blockbruecke/tools/bauen.sh gruen --id2` für Automatic Signing ausführen.
+Keine Zugangsdaten gelesen, kein Portalzugriff vorgenommen.
+
+Wrapper-Reviewkorrekturen: `main()` prüft den unveränderlichen Image-Digest vor
+jeder Bindungs-/Netzwerknebenwirkung. Zusätzlich erhält ein markergebundener
+Partial-Home bei einem reinen Preflight-Kapazitätsfehler seinen Inhalt; erst
+ein tatsächlich gestarteter und kontrolliert abgebrochener Pull darf den
+eigenen Partialzustand bereinigen. `make check-blockbruecke` rot vor der
+zweiten Korrektur (Partialdatei und Resume-Marker wurden gelöscht), danach
+grün; Runner prüft Pin-Refusal vor Storage/Netzwerk, beide Freiplatzwächter,
+Resume-Bindung und bestehende Matching-Gates. `git diff --check` grün.
