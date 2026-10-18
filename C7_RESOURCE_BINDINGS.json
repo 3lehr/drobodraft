@@ -1,0 +1,11 @@
+{
+  "project_root": "/Volumes/daten/Begod2026/drobodraft",
+  "project_id": "drobodraft",
+  "policy_path": "/Volumes/daten/Begod2026/brainlehr/docs/RESOURCE_BINDING_POLICY.json",
+  "policy_version": 1,
+  "policy_sha256": "0da4a657c65989fd7688d8946c0f2f0d2fb15656daec382d3095bb8fd4f8af4c",
+  "resources": [
+    "knowledge_store",
+    "knowledge_model_endpoint"
+  ]
+}

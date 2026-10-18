@@ -7,7 +7,7 @@ settings:
   base:
     DEVELOPMENT_TEAM: JR9H9Q532P
     CODE_SIGN_STYLE: Automatic
-    # BB_ID: Umgebungsvariable, setzt tools/bauen.sh (Vorgabe de.begod.drobo.blockbruecke, --id2 = ...blockbruecke2)
+    # BB_ID: tools/bauen.sh erzwingt v0.4 unter de.begod.drobo.blockbruecke2 (--id2).
 targets:
   BlockbrueckeHost:
     type: application

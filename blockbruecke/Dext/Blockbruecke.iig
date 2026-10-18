@@ -4,7 +4,7 @@
 #include <DriverKit/IOService.iig>
 #include <SCSIControllerDriverKit/IOUserSCSIParallelInterfaceController.iig>
 
-// Plan Schritt 1 (docs/PLAN_BLOCKGERAET_DRIVERKIT_2026-10-17.md): virtueller Controller auf IOUserResources, KEIN Target,
+// Plan Schritt 1 (docs/PLAN_BLOCKGERAET_DRIVERKIT_2026-10-17.md): virtueller Controller auf der registrierten Wurzel, KEIN Target,
 // jeder Befehl wird abgelehnt. Misst nur: nimmt AMFI das Profil an, startet der Controller ohne Hardware-Provider.
 class Blockbruecke : public IOUserSCSIParallelInterfaceController
 {

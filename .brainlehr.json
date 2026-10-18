@@ -1,0 +1,16 @@
+{
+  "project_id": "drobodraft",
+  "schema": 1,
+  "tools": [
+    {
+      "id": "canonical-requirement-catalog",
+      "capability": "canonical requirement catalog",
+      "status": "available",
+      "command": "plan_sync",
+      "artifact": "docs/PLAN_BLOCKGERAET_DRIVERKIT_2026-10-17.md",
+      "reference": "docs/PLAN_BLOCKGERAET_DRIVERKIT_2026-10-17.md",
+      "provenance": "working_tree_draft",
+      "id_pattern": "BB-0[1-8]"
+    }
+  ]
+}

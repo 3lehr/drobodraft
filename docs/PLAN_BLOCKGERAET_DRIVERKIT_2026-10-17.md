@@ -197,3 +197,59 @@ Lehre: Ein DriverKit-`Create` ist kein Ersatz für Matching; „ret=0x0“ beim 
 - Treiber v0.3 (de.begod.drobo.blockbruecke.dext) aktiv, aber leer: IOSCSIParallelFamily nicht geladen, kein Controller (geprüft 2026-10-17T19:58:30+0200). Deaktivieren ist so gefahrlos; Klick in BlockbrueckeHost „Treiber deaktivieren“ steht aus (Betreiber).
 - Nächster Schritt: v0.4 (Nub + Matching statt IOService::Create, eigene Bundle-ID --id2), Test bevorzugt in VM. Invarianten siehe Abschnitt Kernel-Panic.
 - Offen DroboDraft-App: Schachtlampen grau (Ursache unbekannt), Dashboard-Mitschnitt LUN-Größe (en8!), LUN-Befehle 0x0F/0x12/0x13 nur gegen Python-Ziel getestet, Gate zu.
+
+## Kanonischer Anforderungskatalog und Paketqueue (2026-10-18)
+
+Dieser Abschnitt versieht den bestehenden Plan mit stabilen IDs; die drei oben
+benannten Pläne bleiben die fachlichen Quellen. Kein zweiter Katalog.
+Status beschreibt technische Evidenz; Produktgate bleibt bis zur ausdrücklichen
+Abnahme OPEN. Paket BB-P01: BB-01 bis BB-04, keine Abhängigkeit, Integrationsowner
+`/root/coordinator`; erlaubte Dateien `blockbruecke/Dext/*`,
+`blockbruecke/tools/*`, `blockbruecke/project.yml`, `Makefile`, dieser Plan, `.brainlehr.json`,
+`C7_RESOURCE_BINDINGS.json`, `AI_HANDOFF.md`, `docs/AI_DECISIONS.md`.
+Prüfung: automatischer Matching-Guard rot gegen v0.3, grün gegen v0.4;
+Kompilierung/signierte Prüfung ohne Installation. BB-P02 hängt von BB-P01 und
+einer nutzbaren VM ab. UserClient/Target erst nach dem Laufzeitgate.
+
+| ID | Muss | Status | Produktgate | Gate und Quelle |
+|---|---|---|---|---|
+| BB-01 | Familiencontroller nur über Nub-Matching; kein Create/Terminate aus der Wurzel | STATIC-VERIFIED | OPEN | Quelle Kernel-Panic; Guard und Build |
+| BB-02 | Wurzel nach erfolgreichem Super-Start registrieren; eindeutige zweite Personality | STATIC-VERIFIED | OPEN | Quelle Vorschlag v0.4; Guard und Build |
+| BB-03 | v0.4 unter eigener Bundle-ID bauen; kein Aktivieren/Ersetzen auf dem Arbeitsrechner | BUILD-VERIFIED | OPEN | Quelle Wiedereinstieg; bauen.sh Guard und Signaturprüfung |
+| BB-04 | Reproduzierbare Panic-Ursache im automatischen Baupfad abfangen | STATIC-VERIFIED | OPEN | Quelle L-d7b25d; rot vor grün |
+| BB-05 | VM-Start zeigt UserInitializeController und Provider; Deaktivieren endet ohne Panic/Hänger | BLOCKED | OPEN | Keine VM in utmctl list am 2026-10-18; Betreiberaktivierung nötig |
+| BB-06 | UserClient/Fake-Target und Python-Ziel erfüllen Schritt 2–4 | OPEN | OPEN | Abhängigkeit BB-05; Daten-/Fehlerprüfungen wie oben |
+| BB-07 | DroboPro/TM erfüllen Schritt 5 und Time-Machine-Beleg | OPEN | OPEN | Abhängigkeit BB-06; Betreiber-Gates bleiben |
+| BB-08 | 5C nur lesend, EA gesperrt, keine Gerätekennungen im Repo | OPEN | OPEN | Übergabe und PLAN_DROBOPRO_ISCSI; keine Gerätekommunikation in BB-P01 |
+
+### BB-P01 — statischer Nachweis (2026-10-18)
+
+v0.4 entfernt die manuelle Controller-Lebensdauer aus der Wurzel. Zwei
+Top-Level-Personalities, Nub-Kennung und IOPropertyMatch führen den geplanten
+Matching-Weg aus. `RegisterService` folgt nur auf erfolgreichen Super-Start.
+Primärbeleg: DriverKit25.5.sdk `DriverKit.framework/Headers/IOService.iig:162–167`
+(„Start the matching process on the IOService object“), `IOKitKeys.h:91`
+(`kIOPropertyMatchKey`); Apple-Klassendokumentation schreibt IOClass und Kernel-Bundle vor:
+https://developer.apple.com/documentation/scsicontrollerdriverkit/iouserscsiparallelinterfacecontroller
+
+Rot: `python3 blockbruecke/tools/check_matching.py` am tatsächlichen v0.3-Stand
+verweigert Create/Terminate, manuelle Lebensdauer und verschachtelte Personality
+(Exit 1). Grün: `make check-blockbruecke` akzeptiert v0.4 und verwirft 15 unsichere
+Mutationen/Alt-ID-Wege. Derselbe Guard läuft automatisch vor jedem `bauen.sh`-Build.
+Das ist ein Quellstruktur-Gate gegen den bekannten Auslöser, kein Kernel-/Panic-Test.
+Kein test-router ist registriert. Resource-Binding wird über die zentrale Policy
+in `C7_RESOURCE_BINDINGS.json` referenziert; zentraler Guard liefert `pass`.
+
+BB-05 bleibt blockiert: UTM installiert, `utmctl list` enthält keine VM. Keine
+Installation/Aktivierung/Deaktivierung am Host, kein Gerät kontaktiert. Nächster
+sicherer Schritt: bereitgestellte VM mit separater v0.4-ID, dort Betreiberfreigabe,
+Start-/Provider-Nachweis und vollständiger Stop ohne Panic/Hänger; erst dann BB-06.
+
+BB-P01 technisch abgeschlossen (Kind `/root/coordinator/worker` final konsumiert):
+`blockbruecke/tools/bauen.sh gruen --id2` → BUILD SUCCEEDED / PASS gruen;
+`codesign --verify --strict --deep blockbruecke/build/blockbruecke2-gruen/Build/Products/Debug/BlockbrueckeHost.app`
+→ Exit 0. Gebautes Dext-Plist: eigene ID, v0.4/4 und beide Matching-Personalities.
+Beleg `blockbruecke/build/BB-P01-evidence.txt`, Log
+`blockbruecke/build/blockbruecke2-gruen.log` (ignorierte lokale Artefakte).
+Kein Laufzeitbeleg. Produktgates bleiben OPEN; `plan_next` nennt daher weiterhin
+BB-01 und ist keine Freigabe für BB-06.

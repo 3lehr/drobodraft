@@ -42,3 +42,9 @@ check-io: all
 lint-texte:
 	python3 fskit_probe/tools/lint_texte_test.py && python3 fskit_probe/tools/lint_texte.py
 .PHONY: lint-texte
+
+# DriverKit-Lifecycle-Sicherheitsgate (auch vor jedem bauen.sh-Build).
+check-blockbruecke:
+	python3 blockbruecke/tools/check_matching_test.py
+	python3 blockbruecke/tools/check_matching.py
+.PHONY: check-blockbruecke

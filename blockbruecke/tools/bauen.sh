@@ -1,13 +1,24 @@
 #!/bin/bash
 # Baut BlockbrueckeHost.app (mit eingebettetem Dext), signiert mit Automatic Signing (Team JR9H9Q532P).
-# bauen.sh [gruen|rot] [--id2]   --id2 = Bundle-ID de.begod.drobo.blockbruecke2 (Fallback, wenn alte Instanzen haengen).
-# bauen.sh [gruen|rot]   rot = Dext OHNE family.scsicontroller (Rotprobe, Aktivierung muss scheitern).
+# bauen.sh [gruen|rot] [--id2] — v0.4 erzwingt die eigene Bundle-ID ...blockbruecke2.
+# rot = Dext OHNE family.scsicontroller (Rotprobe, Aktivierung muss scheitern).
 # Laedt/aktiviert/installiert NICHTS. Ausgabe: Pfad der App + Entitlements des Dext.
 set -euo pipefail
-art=${1:-gruen}; id=de.begod.drobo.blockbruecke; [ "${2:-}" = --id2 ] && id=de.begod.drobo.blockbruecke2
+art=${1:-gruen}
+case "$art" in gruen|rot) ;; *) echo "FAIL unbekannte Bauart: $art"; exit 1;; esac
+if [ "$#" -gt 2 ] || { [ "$#" -ge 2 ] && [ "$2" != --id2 ]; }; then
+  echo "FAIL v0.4 erlaubt nur die eigene Identitaet --id2"; exit 1
+fi
+id=de.begod.drobo.blockbruecke2
+if [ -n "${BB_ID:-}" ] && [ "$BB_ID" != "$id" ]; then
+  echo "FAIL v0.4 verweigert fremde/alte BB_ID"; exit 1
+fi
 cd "$(dirname "$0")/.."
+python3 tools/check_matching_test.py
+python3 tools/check_matching.py
 ent=Dext/Dext.entitlements; [ "$art" = rot ] && ent=Dext/Dext.rot.entitlements
-dd=${TMPDIR:-/private/tmp}/${id##*.}-$art
+dd="$PWD/build/${id##*.}-$art"
+mkdir -p "$dd"
 export BB_ID="$id"; xcodegen generate -q   # project.yml liest ${BB_ID} beim Erzeugen (Einbettungspfad des Dext haengt am Namen)
 xcodebuild -project Blockbruecke.xcodeproj -scheme BlockbrueckeHost -configuration Debug -derivedDataPath "$dd" \
   -allowProvisioningUpdates BB_DEXT_ENT="$ent" build > "$dd.log" 2>&1 || { grep -E "error:" "$dd.log" | sort -u; echo "FAIL build ($dd.log)"; exit 1; }
