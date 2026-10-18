@@ -34,7 +34,7 @@ Zweig `feature/dropro-iscsi`, Kopf `a1cfdfe`, gepusht, Arbeitsbaum sauber. Nicht
 
 ## Swift-Design (verbindlich für jede UI-Änderung)
 
-Quelle: Werkzeug-Prinzip (Wissensknoten 3d76cdf5, Ergebnis 3588c88f) und `docs/PLAN_DESIGN_UEBERSICHT_2026-10-17.md`.
+**Systemweit verbindlich:** `~/.claude/regeln/wcag.md` (WCAG 2.2 AA, keine Entwicklerinfo, Steuerung per Text, Layout zuerst als ASCII, Schablone + Bausteine, Tastatur schließbar, **Werkzeug-Prinzip** mit HIG-Werten und Klickfluss) — für Codex über Skill `oberflaeche-regeln` (siehe `~/.codex/AGENTS.md`). Vor der ersten UI-Änderung lesen. Projektspezifisch dazu: Wissensknoten 3d76cdf5/3588c88f und `docs/PLAN_DESIGN_UEBERSICHT_2026-10-17.md`; Kurzfassung:
 
 - Mac-nativ, kein großes iPad: Menüleiste, Tastaturkürzel, Undo (`UndoManager`), Fokus, VoiceOver, WCAG 2.2 AA.
 - Werte nur aus Tokens `Mass.swift` / `Farben.swift`; `ui_guard.py` mit `sperrlisten/drobodraft.json` muss 0 Befunde zeigen.
