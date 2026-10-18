@@ -32,6 +32,19 @@ Zweig `feature/dropro-iscsi`, Kopf `a1cfdfe`, gepusht, Arbeitsbaum sauber. Nicht
 - Nächster Schritt: v0.4 nach Vorschlag im Plan (Wurzel registriert Nub, zweite Personality matcht darauf). **Test bevorzugt in einer VM**, nicht auf dem Arbeitsrechner.
 - Danach: UserClient + Brücke zum vorhandenen Swift-iSCSI-Client (Helper), zuerst gegen `drobo_kern/Tests/iscsi_ziel.py`, dann DroboPro, dann Time Machine (`tmutil` tippt der Betreiber).
 
+## Swift-Design (verbindlich für jede UI-Änderung)
+
+Quelle: Werkzeug-Prinzip (Wissensknoten 3d76cdf5, Ergebnis 3588c88f) und `docs/PLAN_DESIGN_UEBERSICHT_2026-10-17.md`.
+
+- Mac-nativ, kein großes iPad: Menüleiste, Tastaturkürzel, Undo (`UndoManager`), Fokus, VoiceOver, WCAG 2.2 AA.
+- Werte nur aus Tokens `Mass.swift` / `Farben.swift`; `ui_guard.py` mit `sperrlisten/drobodraft.json` muss 0 Befunde zeigen.
+- Ein Aktionskatalog `Aktionen.swift` speist Menü, Menüleisten-Symbol und Textsteuerung — neue Aktionen nur dort.
+- Ein Blatt (Sheet) zur Zeit. Destruktive Aktionen ohne Tastenkürzel, mit Bestätigung, „Abbrechen“ als Standard.
+- Schreib-/Formatier-Bestätigung mit „Erprobt mit“-Block (Modell + Firmware + Anschluss) und 15-s-Sperre beim ersten Mal, bei Änderung oder wenn nicht erprobt.
+- Anrede „du“, Texte de + en, keine Entwicklerinformation in der Oberfläche.
+- Gerätebild nach Original-Drobo: gezeichnetes Gerät, Schachtlampen je Bay, blaue Füllstands-LEDs senkrecht rechts, darunter Power-LED und zwei Statuslampen; Zusatzinfos an den Platten. „Drobos finden“ fasst USB- und Netzsuche zusammen.
+- Während kritischer Vorgänge Sperr-Überlagerung nur über der betroffenen Drobo (kein Sheet), Wechsel zu anderer Drobo bleibt möglich.
+
 ## DroboDraft-App — offen
 
 - Schachtlampen in der App grau, obwohl Rohbytes grün; Ursache unbekannt (Test mit echten Bytes ist grün). Braucht einen Rohbyte-Mitschnitt im Moment des Fehlers.
