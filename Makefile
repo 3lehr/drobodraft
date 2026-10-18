@@ -47,4 +47,5 @@ lint-texte:
 check-blockbruecke:
 	python3 blockbruecke/tools/check_matching_test.py
 	python3 blockbruecke/tools/check_matching.py
+	python3 blockbruecke/tools/tart_safe_pull.py --self-test
 .PHONY: check-blockbruecke

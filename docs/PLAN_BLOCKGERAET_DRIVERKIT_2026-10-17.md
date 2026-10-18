@@ -253,3 +253,51 @@ Beleg `blockbruecke/build/BB-P01-evidence.txt`, Log
 `blockbruecke/build/blockbruecke2-gruen.log` (ignorierte lokale Artefakte).
 Kein Laufzeitbeleg. Produktgates bleiben OPEN; `plan_next` nennt daher weiterhin
 BB-01 und ist keine Freigabe für BB-06.
+
+### BB-P02 — VM bereitstellen und Laufzeitgate (2026-10-18)
+
+Betreiber startet den angekündigten nächsten VM-Schritt. IDs BB-03/BB-05/BB-08;
+Abhängigkeit BB-P01 technisch abgeschlossen; Integrationsowner
+`/root/coordinator`. Erlaubte Quellen: `blockbruecke/tools/*`, `Makefile`, dieser Plan,
+`AI_HANDOFF.md`, `docs/AI_DECISIONS.md`; Laufzeit/VM/Images nur in ignoriertem
+`blockbruecke/build/`. Keine Host-Aktivierung, kein Gerätekontakt, keine sichtbaren
+Fenster, kein Computer Use; Geheimnisse/Privilegfreigaben bleiben Betreiberaufgabe.
+Prüfung: CLI-Provisionierung und Guest-Shell; danach v0.4 im Guest aktivieren,
+UserInitializeController + echter Provider, vollständiger Stop ohne Hänger/Panic.
+Vor jeder großen Übertragung Speicherbilanz prüfen (mindestens 20 GB frei halten).
+Erst bei bestandenem BB-05 beginnt UserClient/Fake-Target (BB-06).
+
+#### BB-P02 Befund: Kapazitätsgate, kein VM-Start
+
+Tart 2.41.1 lokal unter `blockbruecke/build/tools/` signaturgeprüft.
+Tahoe-base Manifest: 26.392.647.081 komprimierte Layerbytes,
+50.000.000.000 Byte logische Disk. Primärquelle: Tart-Tag 2.41.1,
+`VMStorageOCI.swift`, `OCI/Layerizer/DiskV2.swift`, `Commands/Clone.swift`.
+Streaming/Nullblock-Auslassung beweisen keinen maximalen physischen Platzbedarf.
+
+Ein begrenzter Pull mit concurrency=1, 20-Minuten-Grenze und 28-GiB-Freiplatzgate
+wurde nach fünf Sekunden gezielt abgebrochen: `df` meldete 19,4 GiB frei
+(kurz 18,6). Die genaue Ursache des transienten Volumenverbrauchs ist unbewiesen.
+Danach Prozess beendet, TART_HOME leer, Speicher wieder 64 GiB frei auf Daten
+und 43 GiB auf System. Kein weiterer Pull, kein VM-Start, keine Host-/Gast-Dext-
+Aktivierung, kein Kernel-/Provider-/Stop-Beleg. BB-05 bleibt BLOCKED.
+
+Nächster Versuch frühestens nach konservativem Vorab-Gate:
+50.000.000.000 Byte Disk + 20 GiB Reserve = 71.474.836.480 Byte
+(**66,57 GiB freie Kapazität**). Das überschreitet aktuell verfügbare 64 GiB;
+es braucht zusätzlichen freien Platz. Es wurde nichts Fremdes gelöscht.
+Laufender Freiplatzwächter bleibt zusätzliche Absicherung, kein Ersatz für
+Vorab-Budget. Beleg: `blockbruecke/build/BB-P02-tart-source-evidence.txt`;
+Pull-Log `blockbruecke/build/tart-p02-pull.log` (beide lokal/ignoriert).
+Brainlehr: L-319c31, L-b48625, L-3c1b1d.
+
+Vorbereitete letzte sichere Handlung: nach zusätzlicher freier Kapazität
+`python3 blockbruecke/tools/tart_safe_pull.py`. Der Wrapper verweigert aktuell
+vor Netzwerk, ist auf den gemessenen Image-Digest gebunden und bewahrt einen
+Guard-Abbruch unabhängig vom Child-Exitcode als FAIL. Sein Selbsttest ist im
+normalen `make check-blockbruecke` registriert. Das setzt keinen Gaststart voraus.
+
+Integrationstest: Quellmutationen `:latest` und alte `rc == 0`-Erfolgsregel
+führten jeweils zu AssertionError im tatsächlichen Selbsttest (ROT); unveränderte
+Quelle GRÜN. Beleg `blockbruecke/build/BB-P02-regression-evidence.txt`.
+`make check-blockbruecke`, Resource-Guard und `git diff --check` grün.
